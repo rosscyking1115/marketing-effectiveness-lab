@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Marketing Effectiveness Lab</title>
+    <meta
+      name="description"
+      content="A marketing effectiveness, MMM, incrementality, and budget planning portfolio project for commercial data science roles."
+    />
+    <style>
+      :root {
+        --ink: #1f2933;
+        --muted: #65717f;
+        --line: #d9e2ec;
+        --bg: #f6f8fa;
+        --green: #2f7d64;
+        --blue: #4b6f9c;
+        --coral: #c65f4b;
+        --gold: #9a7b3f;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--white);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--green);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .shell {
+        width: min(1160px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 0;
+      }
+
+      .brand {
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        font-size: 0.95rem;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
+        gap: 44px;
+        align-items: center;
+        padding: 56px 0 44px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.3rem, 5vw, 4.6rem);
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        margin: 22px 0 0;
+        max-width: 680px;
+        color: var(--muted);
+        font-size: 1.12rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        font-weight: 700;
+      }
+
+      .button.primary {
+        background: var(--green);
+        border-color: var(--green);
+        color: var(--white);
+      }
+
+      .button.secondary {
+        background: var(--white);
+        color: var(--ink);
+      }
+
+      .dashboard {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--white);
+        box-shadow: 0 18px 50px rgba(31, 41, 51, 0.11);
+      }
+
+      .dashboard-bar {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        height: 38px;
+        padding: 0 14px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .dashboard-body {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr);
+        min-height: 420px;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--line);
+        background: #f8fafc;
+        padding: 18px 14px;
+      }
+
+      .side-label {
+        height: 11px;
+        margin-bottom: 16px;
+        border-radius: 99px;
+        background: var(--line);
+      }
+
+      .side-label:nth-child(2) {
+        width: 76%;
+      }
+
+      .side-label:nth-child(3) {
+        width: 52%;
+      }
+
+      .main-preview {
+        padding: 22px;
+      }
+
+      .metric-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+
+      .metric {
+        min-height: 76px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .metric small {
+        display: block;
+        color: var(--muted);
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 1.15rem;
+      }
+
+      .chart-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 14px;
+        margin-top: 16px;
+      }
+
+      .chart {
+        min-height: 156px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .bars {
+        display: grid;
+        align-items: end;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 5px;
+        height: 104px;
+        margin-top: 14px;
+      }
+
+      .bar {
+        border-radius: 4px 4px 0 0;
+        background: var(--green);
+      }
+
+      .bar:nth-child(3n) {
+        background: var(--blue);
+      }
+
+      .bar:nth-child(4n) {
+        background: var(--coral);
+      }
+
+      .lines {
+        display: grid;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .line {
+        height: 12px;
+        border-radius: 99px;
+        background: var(--line);
+      }
+
+      .line:nth-child(1) {
+        width: 92%;
+        background: var(--green);
+      }
+
+      .line:nth-child(2) {
+        width: 76%;
+        background: var(--blue);
+      }
+
+      .line:nth-child(3) {
+        width: 60%;
+        background: var(--gold);
+      }
+
+      section {
+        padding: 38px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: 1.55rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        background: var(--white);
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 1.03rem;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 7px 10px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      footer {
+        padding: 28px 0 42px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 900px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard-body {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .grid,
+        .metric-row,
+        .chart-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav class="shell" aria-label="Main navigation">
+        <div class="brand">Marketing Effectiveness Lab</div>
+        <div class="nav-links">
+          <a href="case-study.md">Case Study</a>
+          <a href="architecture.md">Architecture</a>
+          <a href="deployment.md">Deployment</a>
+          <a href="https://github.com/rosscyking1115/marketing-effectiveness-lab">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="shell hero">
+        <div>
+          <h1>Marketing Effectiveness Lab</h1>
+          <p class="lead">
+            A polished commercial data science project for MMM, incrementality evidence,
+            uncertainty, and profit-aware budget planning in a UK fashion ecommerce setting.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app">
+              Open Interactive App
+            </a>
+            <a class="button secondary" href="case-study.md">Read Case Study</a>
+          </div>
+        </div>
+
+        <div class="dashboard" aria-label="Dashboard preview">
+          <div class="dashboard-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="dashboard-body">
+            <aside class="sidebar">
+              <div class="side-label"></div>
+              <div class="side-label"></div>
+              <div class="side-label"></div>
+            </aside>
+            <div class="main-preview">
+              <div class="metric-row">
+                <div class="metric"><small>Revenue</small><strong>GBP 588.5M</strong></div>
+                <div class="metric"><small>Media spend</small><strong>GBP 41.8M</strong></div>
+                <div class="metric"><small>Blended ROAS</small><strong>14.1x</strong></div>
+                <div class="metric"><small>Profit ROI</small><strong>4.7x</strong></div>
+              </div>
+              <div class="chart-grid">
+                <div class="chart">
+                  <strong>Weekly revenue and media response</strong>
+                  <div class="bars">
+                    <div class="bar" style="height: 42%"></div>
+                    <div class="bar" style="height: 48%"></div>
+                    <div class="bar" style="height: 56%"></div>
+                    <div class="bar" style="height: 51%"></div>
+                    <div class="bar" style="height: 66%"></div>
+                    <div class="bar" style="height: 62%"></div>
+                    <div class="bar" style="height: 71%"></div>
+                    <div class="bar" style="height: 64%"></div>
+                    <div class="bar" style="height: 78%"></div>
+                    <div class="bar" style="height: 84%"></div>
+                    <div class="bar" style="height: 96%"></div>
+                    <div class="bar" style="height: 88%"></div>
+                  </div>
+                </div>
+                <div class="chart">
+                  <strong>Evidence-calibrated channels</strong>
+                  <div class="lines">
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section>
+        <div class="shell">
+          <h2>What The Project Shows</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Marketing Mix Modeling</h3>
+              <p>Adstock, saturation, holdout validation, response curves, contribution, and ROI.</p>
+            </article>
+            <article class="card">
+              <h3>Causal Evidence</h3>
+              <p>Lift-test upload, evidence quality scoring, approval filtering, and calibration diagnostics.</p>
+            </article>
+            <article class="card">
+              <h3>Commercial Planning</h3>
+              <p>Budget scenarios with gross margin, contribution profit, and stakeholder-ready summaries.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Stack</h2>
+          <div class="stack">
+            <span class="pill">Python</span>
+            <span class="pill">Streamlit</span>
+            <span class="pill">Pandas</span>
+            <span class="pill">Statsmodels</span>
+            <span class="pill">Plotly</span>
+            <span class="pill">Pytest</span>
+            <span class="pill">uv</span>
+            <span class="pill">GitHub Pages</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        Built as a serious commercial data science portfolio project with a path toward a useful
+        marketing effectiveness tool.
+      </div>
+    </footer>
+  </body>
+</html>

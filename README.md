@@ -63,11 +63,28 @@ Launch the analyst dashboard:
 uv run streamlit run app/streamlit_app.py --server.port 8501 --server.headless true
 ```
 
+The repository also includes a root Streamlit Cloud entrypoint:
+
+```powershell
+uv run streamlit run streamlit_app.py
+```
+
 Run the test suite:
 
 ```powershell
 uv run --group dev pytest
 ```
+
+## Deployment
+
+Streamlit Community Cloud settings:
+
+- Repository: `rosscyking1115/marketing-effectiveness-lab`
+- Branch: `main`
+- Main file path: `streamlit_app.py`
+- Suggested app URL: `marketing-effectiveness-lab`
+
+GitHub Pages can host the static portfolio site from the `/docs` folder. Use it as the case-study website and link visitors to the Streamlit app for the interactive experience.
 
 ## Positioning
 
