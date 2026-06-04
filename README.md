@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 10: Incrementality calibration.
+Phase 11: Experiment evidence upload.
 
 The project currently includes:
 
@@ -24,6 +24,7 @@ The project currently includes:
 - Calibrated MMM adstock/saturation search
 - Contribution, ROI, and holdout prediction intervals
 - Demo lift-test calibration for contribution, ROI, and uncertainty diagnostics
+- Lift-test CSV template and upload validation
 
 The next major modeling phase is Bayesian MMM with posterior diagnostics and experiment-informed priors.
 
@@ -40,6 +41,7 @@ Useful docs:
 - `docs/architecture.md` - current and future architecture
 - `docs/production-security-roadmap.md` - security and production roadmap
 - `docs/phase-10-incrementality-calibration.md` - lift-test calibration workflow
+- `docs/phase-11-experiment-evidence-upload.md` - real-data-ready experiment evidence upload
 
 ## Quick Start
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from io import StringIO
+
 import pandas as pd
 
 from marketing_effectiveness_lab.analytics import CHANNEL_LABELS
@@ -18,6 +20,16 @@ REQUIRED_LIFT_TEST_COLUMNS = {
     "observed_lift_lower_gbp",
     "observed_lift_upper_gbp",
 }
+
+OPTIONAL_LIFT_TEST_COLUMNS = [
+    "test_name",
+    "start_date",
+    "end_date",
+    "market",
+    "confidence_level",
+    "owner",
+    "source_notes",
+]
 
 
 def demo_lift_test_calibrations(mmm_result: MmmModelResult) -> pd.DataFrame:
@@ -85,6 +97,73 @@ def demo_lift_test_calibrations(mmm_result: MmmModelResult) -> pd.DataFrame:
     return lift_tests
 
 
+def lift_test_template_dataframe() -> pd.DataFrame:
+    """Return a small lift-test CSV template for real experiment evidence."""
+
+    return pd.DataFrame(
+        [
+            {
+                "test_name": "Paid search geo holdout",
+                "channel": "Paid search",
+                "experiment_type": "Geo holdout",
+                "start_date": "2025-04-07",
+                "end_date": "2025-05-18",
+                "weeks": 6,
+                "market": "UK regions",
+                "model_lift_gbp": 250000,
+                "observed_lift_gbp": 240000,
+                "observed_lift_lower_gbp": 200000,
+                "observed_lift_upper_gbp": 280000,
+                "confidence_level": 0.90,
+                "owner": "Marketing analytics",
+                "source_notes": "Matched regions using pre-period revenue and spend.",
+            },
+            {
+                "test_name": "Paid social conversion lift",
+                "channel": "Paid social",
+                "experiment_type": "Conversion lift",
+                "start_date": "2025-06-02",
+                "end_date": "2025-06-29",
+                "weeks": 4,
+                "market": "UK prospecting audience",
+                "model_lift_gbp": 180000,
+                "observed_lift_gbp": 205000,
+                "observed_lift_lower_gbp": 160000,
+                "observed_lift_upper_gbp": 250000,
+                "confidence_level": 0.90,
+                "owner": "Growth team",
+                "source_notes": "Platform conversion-lift readout reconciled to revenue.",
+            },
+        ]
+    )
+
+
+def lift_test_template_csv() -> str:
+    """Return a downloadable lift-test CSV template."""
+
+    return lift_test_template_dataframe().to_csv(index=False)
+
+
+def validate_lift_test_csv_text(csv_text: str) -> tuple[pd.DataFrame | None, list[str]]:
+    """Parse and validate lift-test CSV text."""
+
+    try:
+        lift_tests = pd.read_csv(StringIO(csv_text))
+    except Exception as exc:  # pragma: no cover - parser wording varies by pandas version.
+        return None, [f"CSV could not be parsed: {exc}"]
+
+    lift_tests = _coerce_lift_test_types(lift_tests)
+    errors = validate_lift_tests(lift_tests)
+    if errors:
+        return None, errors
+
+    if "calibration_factor" not in lift_tests.columns:
+        lift_tests["calibration_factor"] = (
+            lift_tests["observed_lift_gbp"] / lift_tests["model_lift_gbp"]
+        )
+    return lift_tests, []
+
+
 def validate_lift_tests(lift_tests: pd.DataFrame) -> list[str]:
     """Validate lift-test rows before applying them to MMM output."""
 
@@ -94,6 +173,7 @@ def validate_lift_tests(lift_tests: pd.DataFrame) -> list[str]:
         errors.append(f"Missing required lift-test columns: {', '.join(missing)}.")
         return errors
 
+    lift_tests = _coerce_lift_test_types(lift_tests)
     known_channels = set(CHANNEL_LABELS.values())
     unknown_channels = sorted(set(lift_tests["channel"].dropna()) - known_channels)
     if unknown_channels:
@@ -106,6 +186,8 @@ def validate_lift_tests(lift_tests: pd.DataFrame) -> list[str]:
         "observed_lift_lower_gbp",
         "observed_lift_upper_gbp",
     ]
+    if "confidence_level" in lift_tests.columns:
+        numeric_columns.append("confidence_level")
     for column in numeric_columns:
         if lift_tests[column].isna().any():
             errors.append(f"{column} contains missing values.")
@@ -121,6 +203,9 @@ def validate_lift_tests(lift_tests: pd.DataFrame) -> list[str]:
         errors.append("observed_lift_lower_gbp cannot exceed observed_lift_gbp.")
     if (lift_tests["observed_lift_upper_gbp"] < lift_tests["observed_lift_gbp"]).any():
         errors.append("observed_lift_upper_gbp cannot be below observed_lift_gbp.")
+    if "confidence_level" in lift_tests.columns:
+        if ((lift_tests["confidence_level"] <= 0) | (lift_tests["confidence_level"] >= 1)).any():
+            errors.append("confidence_level must be greater than 0 and less than 1.")
 
     return errors
 
@@ -234,3 +319,21 @@ def apply_lift_calibration_to_intervals(
         "contribution_mean_calibrated_gbp",
         ascending=False,
     )
+
+
+def _coerce_lift_test_types(lift_tests: pd.DataFrame) -> pd.DataFrame:
+    typed = lift_tests.copy()
+    for column in [
+        "weeks",
+        "model_lift_gbp",
+        "observed_lift_gbp",
+        "observed_lift_lower_gbp",
+        "observed_lift_upper_gbp",
+        "confidence_level",
+    ]:
+        if column in typed.columns:
+            typed[column] = pd.to_numeric(typed[column], errors="coerce")
+    for column in ["start_date", "end_date"]:
+        if column in typed.columns:
+            typed[column] = pd.to_datetime(typed[column], errors="coerce").dt.strftime("%Y-%m-%d")
+    return typed

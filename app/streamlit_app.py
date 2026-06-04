@@ -28,6 +28,8 @@ from marketing_effectiveness_lab.calibration import (
     apply_lift_calibration_to_intervals,
     calibration_factors,
     demo_lift_test_calibrations,
+    lift_test_template_csv,
+    validate_lift_test_csv_text,
 )
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
@@ -880,13 +882,48 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-lift_tests = demo_lift_test_calibrations(active_mmm_result)
+demo_lift_tests = demo_lift_test_calibrations(active_mmm_result)
+evidence_source = st.radio(
+    "Experiment evidence",
+    ["Demo lift tests", "Upload lift-test CSV"],
+    horizontal=True,
+)
+st.download_button(
+    "Download lift-test template",
+    data=lift_test_template_csv(),
+    file_name="incrementality_lift_tests_template.csv",
+    mime="text/csv",
+)
+
+lift_tests = demo_lift_tests
+evidence_label = "Demo lift-test evidence"
+if evidence_source == "Upload lift-test CSV":
+    uploaded_lift_tests = st.file_uploader(
+        "Upload incrementality lift-test CSV",
+        type=["csv"],
+        key="lift_test_csv_upload",
+    )
+    if uploaded_lift_tests is None:
+        st.info("Upload a lift-test CSV to replace the demo evidence.")
+    else:
+        lift_csv_text = uploaded_lift_tests.getvalue().decode("utf-8-sig")
+        parsed_lift_tests, lift_errors = validate_lift_test_csv_text(lift_csv_text)
+        if lift_errors or parsed_lift_tests is None:
+            st.error("Uploaded lift-test CSV failed validation. Demo evidence remains active.")
+            for error in lift_errors:
+                st.write(f"- {error}")
+        else:
+            lift_tests = parsed_lift_tests
+            evidence_label = uploaded_lift_tests.name
+            st.success(f"Loaded {len(lift_tests):,} lift-test rows from {uploaded_lift_tests.name}.")
+
 lift_factor_table = calibration_factors(lift_tests)
-apply_incrementality_calibration = st.checkbox("Apply demo lift-test calibration", value=False)
+apply_incrementality_calibration = st.checkbox("Apply selected lift-test calibration", value=False)
+st.caption(f"Active experiment evidence: {evidence_label}.")
 
 calibration_left, calibration_right = st.columns((1.05, 1))
 with calibration_left:
-    st.markdown("**Demo lift-test readouts**")
+    st.markdown("**Lift-test readouts**")
     lift_display = lift_tests.copy()
     for money_col in [
         "model_lift_gbp",
@@ -896,17 +933,24 @@ with calibration_left:
     ]:
         lift_display[money_col] = lift_display[money_col].map(gbp)
     lift_display["calibration_factor"] = lift_display["calibration_factor"].map(x_value)
+    lift_display_columns = [
+        column
+        for column in [
+            "test_name",
+            "channel",
+            "experiment_type",
+            "start_date",
+            "end_date",
+            "weeks",
+            "market",
+            "model_lift_gbp",
+            "observed_lift_gbp",
+            "calibration_factor",
+        ]
+        if column in lift_display.columns
+    ]
     st.dataframe(
-        lift_display[
-            [
-                "channel",
-                "experiment_type",
-                "weeks",
-                "model_lift_gbp",
-                "observed_lift_gbp",
-                "calibration_factor",
-            ]
-        ],
+        lift_display[lift_display_columns],
         use_container_width=True,
         hide_index=True,
     )

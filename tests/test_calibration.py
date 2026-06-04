@@ -8,6 +8,9 @@ from marketing_effectiveness_lab.calibration import (
     apply_lift_calibration_to_intervals,
     calibration_factors,
     demo_lift_test_calibrations,
+    lift_test_template_csv,
+    lift_test_template_dataframe,
+    validate_lift_test_csv_text,
     validate_lift_tests,
 )
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
@@ -25,6 +28,17 @@ def test_demo_lift_tests_generate_valid_calibration_rows() -> None:
     assert validate_lift_tests(lift_tests) == []
     assert set(lift_tests["channel"]) == {"Paid search", "Paid social", "Display", "Influencer"}
     assert (lift_tests["calibration_factor"] > 0).all()
+
+
+def test_lift_test_template_can_be_parsed_and_validated() -> None:
+    template = lift_test_template_dataframe()
+    parsed, errors = validate_lift_test_csv_text(lift_test_template_csv())
+
+    assert len(template) == 2
+    assert errors == []
+    assert parsed is not None
+    assert set(parsed["channel"]) == {"Paid search", "Paid social"}
+    assert "calibration_factor" in parsed.columns
 
 
 def test_calibration_factors_aggregate_duplicate_channel_tests() -> None:
@@ -109,3 +123,21 @@ def test_validate_lift_tests_rejects_unknown_channels_and_bad_bounds() -> None:
     assert any("Unknown channel" in error for error in errors)
     assert any("cannot exceed" in error for error in errors)
     assert any("cannot be below" in error for error in errors)
+
+
+def test_validate_lift_test_csv_text_rejects_missing_columns() -> None:
+    parsed, errors = validate_lift_test_csv_text("channel,weeks\nPaid search,4\n")
+
+    assert parsed is None
+    assert any("Missing required lift-test columns" in error for error in errors)
+
+
+def test_validate_lift_test_csv_text_rejects_bad_confidence_level() -> None:
+    template = lift_test_template_dataframe()
+    template.loc[0, "confidence_level"] = 1.2
+    csv_text = template.to_csv(index=False)
+
+    parsed, errors = validate_lift_test_csv_text(csv_text)
+
+    assert parsed is None
+    assert any("confidence_level" in error for error in errors)
