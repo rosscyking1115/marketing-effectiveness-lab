@@ -19,6 +19,7 @@ from marketing_effectiveness_lab.analytics import (
 )
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
+from marketing_effectiveness_lab.modeling import fit_baseline_model
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +94,10 @@ def gbp(value: float) -> str:
 
 def integer(value: float) -> str:
     return f"{value:,.0f}"
+
+
+def percent(value: float) -> str:
+    return f"{value * 100:,.1f}%"
 
 
 @st.cache_data(show_spinner=False)
@@ -369,3 +374,96 @@ with st.expander("Dataset contract"):
     )
     st.dataframe(selected_df.head(20), use_container_width=True, hide_index=True)
 
+st.divider()
+st.subheader("Baseline Econometrics")
+st.markdown(
+    '<p class="mel-caption">Transparent OLS benchmark using log revenue, log media spend, '
+    "promotions, seasonality, trend, organic demand, and macro controls.</p>",
+    unsafe_allow_html=True,
+)
+
+baseline = fit_baseline_model(df, holdout_weeks=26)
+model_metric_cols = st.columns(5)
+model_metric_cols[0].metric("Train R-squared", f"{baseline.metrics['train_r_squared']:,.2f}")
+model_metric_cols[1].metric(
+    "Adj. R-squared", f"{baseline.metrics['train_adjusted_r_squared']:,.2f}"
+)
+model_metric_cols[2].metric("Train MAPE", percent(baseline.metrics["train_mape"]))
+model_metric_cols[3].metric("Holdout MAPE", percent(baseline.metrics["test_mape"]))
+model_metric_cols[4].metric("Holdout RMSE", gbp(baseline.metrics["test_rmse_gbp"]))
+
+model_frame = pd.concat(
+    [
+        baseline.train_frame.assign(sample="Training"),
+        baseline.test_frame.assign(sample="Holdout"),
+    ],
+    ignore_index=True,
+)
+
+fit_fig = go.Figure()
+fit_fig.add_trace(
+    go.Scatter(
+        x=model_frame["week_start"],
+        y=model_frame["revenue_gbp"],
+        mode="lines",
+        name="Actual revenue",
+        line={"color": "#1f2933", "width": 2.4},
+    )
+)
+fit_fig.add_trace(
+    go.Scatter(
+        x=model_frame["week_start"],
+        y=model_frame["predicted_revenue_gbp"],
+        mode="lines",
+        name="Baseline prediction",
+        line={"color": "#2f7d64", "width": 2.0},
+    )
+)
+holdout_start = baseline.test_frame["week_start"].min()
+fit_fig.add_vline(
+    x=holdout_start,
+    line_dash="dash",
+    line_color="#c65f4b",
+    annotation_text="Holdout",
+    annotation_position="top left",
+)
+fit_fig.update_layout(
+    title="Actual vs baseline predicted revenue",
+    height=430,
+    margin={"l": 12, "r": 12, "t": 48, "b": 24},
+    yaxis_title="Revenue GBP",
+    xaxis_title=None,
+    legend_orientation="h",
+    legend_y=1.08,
+    plot_bgcolor="#ffffff",
+    paper_bgcolor="#ffffff",
+)
+st.plotly_chart(fit_fig, use_container_width=True)
+
+coef_left, coef_right = st.columns((1.1, 1))
+with coef_left:
+    st.markdown("**Coefficient review**")
+    coef_display = baseline.coefficient_table.copy()
+    coef_display = coef_display[coef_display["raw_feature"] != "const"]
+    coef_display["coefficient"] = coef_display["coefficient"].map(lambda x: f"{x:,.3f}")
+    coef_display["p_value"] = coef_display["p_value"].map(lambda x: f"{x:,.3f}")
+    st.dataframe(
+        coef_display[["feature", "direction", "coefficient", "p_value"]],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with coef_right:
+    st.markdown("**VIF collinearity scan**")
+    vif_display = baseline.vif_table.copy()
+    vif_display["vif"] = vif_display["vif"].map(lambda x: f"{x:,.1f}")
+    st.dataframe(
+        vif_display[["feature", "vif"]].head(12),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+st.info(
+    "This baseline is for diagnostic comparison, not final budget allocation. "
+    "The next modeling phase should add adstock, saturation, priors, and uncertainty-aware MMM."
+)

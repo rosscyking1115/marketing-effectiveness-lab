@@ -6,15 +6,17 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 1: Data foundation.
+Phase 3: Baseline econometrics.
 
-This phase creates a documented weekly marketing dataset that can support:
+The project currently includes:
 
+- A documented weekly marketing dataset
+- Schema validation
 - Analyst dashboarding
-- Baseline econometrics
-- Marketing mix modeling
-- ROI and contribution analysis
-- Budget scenario planning
+- Baseline econometric modeling
+- Time-aware holdout diagnostics
+
+The next major modeling phase is Bayesian MMM with adstock, saturation, contribution, uncertainty, and budget planning.
 
 ## Project Shape
 
