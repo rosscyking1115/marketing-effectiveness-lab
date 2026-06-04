@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 8: Calibrated MMM search.
+Phase 9: MMM uncertainty layer.
 
 The project currently includes:
 
@@ -22,8 +22,9 @@ The project currently includes:
 - Executive summary generation
 - CSV template download and upload validation
 - Calibrated MMM adstock/saturation search
+- Contribution, ROI, and holdout prediction intervals
 
-The next major modeling phase is Bayesian MMM with uncertainty, posterior diagnostics, and experiment calibration.
+The next major modeling phase is Bayesian MMM with posterior diagnostics and experiment calibration.
 
 ## Project Shape
 

@@ -29,6 +29,7 @@ from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
 from marketing_effectiveness_lab.reporting import build_executive_summary
+from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -741,6 +742,128 @@ if run_calibration:
         active_mmm_label = "calibrated MMM"
 else:
     st.info("Calibration is optional. Run it when you want to compare fixed assumptions with tuned parameters.")
+
+st.divider()
+st.subheader("MMM Uncertainty Intervals")
+st.markdown(
+    '<p class="mel-caption">Coefficient simulation around the active MMM model. These intervals are '
+    "not Bayesian posteriors, but they make model uncertainty visible for planning.</p>",
+    unsafe_allow_html=True,
+)
+
+draw_count = st.slider("Uncertainty simulation draws", 100, 1000, 500, 100)
+uncertainty = simulate_mmm_uncertainty(active_mmm_result, draws=draw_count, seed=42)
+
+uncertainty_left, uncertainty_right = st.columns((1.1, 1))
+with uncertainty_left:
+    interval_fig = go.Figure()
+    interval_df = uncertainty.contribution_intervals.sort_values("contribution_mean_gbp")
+    interval_fig.add_trace(
+        go.Bar(
+            x=interval_df["contribution_mean_gbp"],
+            y=interval_df["channel"],
+            orientation="h",
+            name="Mean contribution",
+            marker={"color": "#2f7d64"},
+            error_x={
+                "type": "data",
+                "symmetric": False,
+                "array": interval_df["contribution_upper_gbp"] - interval_df["contribution_mean_gbp"],
+                "arrayminus": interval_df["contribution_mean_gbp"] - interval_df["contribution_lower_gbp"],
+            },
+        )
+    )
+    interval_fig.update_layout(
+        title="Estimated contribution intervals by channel",
+        height=410,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        xaxis_title="Contribution GBP",
+        yaxis_title=None,
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        showlegend=False,
+    )
+    st.plotly_chart(interval_fig, use_container_width=True)
+
+with uncertainty_right:
+    prediction_fig = go.Figure()
+    prediction_df = uncertainty.prediction_intervals.copy()
+    prediction_fig.add_trace(
+        go.Scatter(
+            x=prediction_df["week_start"],
+            y=prediction_df["prediction_upper_gbp"],
+            mode="lines",
+            line={"width": 0},
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    prediction_fig.add_trace(
+        go.Scatter(
+            x=prediction_df["week_start"],
+            y=prediction_df["prediction_lower_gbp"],
+            mode="lines",
+            fill="tonexty",
+            fillcolor="rgba(47, 125, 100, 0.18)",
+            line={"width": 0},
+            name="Interval",
+        )
+    )
+    prediction_fig.add_trace(
+        go.Scatter(
+            x=prediction_df["week_start"],
+            y=prediction_df["revenue_gbp"],
+            mode="lines+markers",
+            name="Actual holdout",
+            line={"color": "#1f2933", "width": 2},
+        )
+    )
+    prediction_fig.add_trace(
+        go.Scatter(
+            x=prediction_df["week_start"],
+            y=prediction_df["prediction_mean_gbp"],
+            mode="lines",
+            name="Mean prediction",
+            line={"color": "#2f7d64", "width": 2},
+        )
+    )
+    prediction_fig.update_layout(
+        title="Holdout prediction interval",
+        height=410,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        yaxis_title="Revenue GBP",
+        xaxis_title=None,
+        legend_orientation="h",
+        legend_y=1.08,
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+    )
+    st.plotly_chart(prediction_fig, use_container_width=True)
+
+uncertainty_display = uncertainty.contribution_intervals.copy()
+for money_col in [
+    "contribution_mean_gbp",
+    "contribution_lower_gbp",
+    "contribution_upper_gbp",
+]:
+    uncertainty_display[money_col] = uncertainty_display[money_col].map(gbp)
+for roi_col in ["roi_mean", "roi_lower", "roi_upper"]:
+    uncertainty_display[roi_col] = uncertainty_display[roi_col].map(x_value)
+st.dataframe(
+    uncertainty_display[
+        [
+            "channel",
+            "contribution_mean_gbp",
+            "contribution_lower_gbp",
+            "contribution_upper_gbp",
+            "roi_mean",
+            "roi_lower",
+            "roi_upper",
+        ]
+    ],
+    use_container_width=True,
+    hide_index=True,
+)
 
 st.divider()
 st.subheader("Budget Scenario Planner")
