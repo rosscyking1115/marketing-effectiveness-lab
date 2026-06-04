@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 7: Real data import workflow.
+Phase 8: Calibrated MMM search.
 
 The project currently includes:
 
@@ -21,8 +21,9 @@ The project currently includes:
 - Budget scenario planning
 - Executive summary generation
 - CSV template download and upload validation
+- Calibrated MMM adstock/saturation search
 
-The next major modeling phase is calibrated or Bayesian MMM with uncertainty and budget planning.
+The next major modeling phase is Bayesian MMM with uncertainty, posterior diagnostics, and experiment calibration.
 
 ## Project Shape
 

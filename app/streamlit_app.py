@@ -27,7 +27,7 @@ from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
-from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
+from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
 from marketing_effectiveness_lab.reporting import build_executive_summary
 
 
@@ -665,11 +665,88 @@ st.warning(
     "or Bayesian MMM to estimate uncertainty and improve channel separation."
 )
 
+active_mmm_result = mmm_result
+active_mmm_label = "MMM foundation"
+
+st.divider()
+st.subheader("Calibrated MMM Search")
+st.markdown(
+    '<p class="mel-caption">Optional time-aware search over adstock and saturation assumptions. '
+    "Use this as a bridge toward Bayesian MMM, not as final uncertainty modeling.</p>",
+    unsafe_allow_html=True,
+)
+
+run_calibration = st.checkbox("Run calibrated parameter search", value=False)
+if run_calibration:
+    with st.spinner("Calibrating MMM parameters..."):
+        calibration = calibrate_mmm_parameters(df, holdout_weeks=26, validation_weeks=20)
+
+    calibration_metrics = pd.DataFrame(
+        [
+            {
+                "model": "Fixed MMM",
+                "train_r_squared": mmm_result.metrics["train_r_squared"],
+                "holdout_mape": mmm_result.metrics["test_mape"],
+                "holdout_rmse_gbp": mmm_result.metrics["test_rmse_gbp"],
+            },
+            {
+                "model": "Calibrated MMM",
+                "train_r_squared": calibration.mmm_result.metrics["train_r_squared"],
+                "holdout_mape": calibration.mmm_result.metrics["test_mape"],
+                "holdout_rmse_gbp": calibration.mmm_result.metrics["test_rmse_gbp"],
+            },
+        ]
+    )
+    calibration_display = calibration_metrics.copy()
+    calibration_display["train_r_squared"] = calibration_display["train_r_squared"].map(
+        lambda x: f"{x:,.2f}"
+    )
+    calibration_display["holdout_mape"] = calibration_display["holdout_mape"].map(percent)
+    calibration_display["holdout_rmse_gbp"] = calibration_display["holdout_rmse_gbp"].map(gbp)
+    st.dataframe(calibration_display, use_container_width=True, hide_index=True)
+
+    cal_left, cal_right = st.columns((1, 1))
+    with cal_left:
+        st.markdown("**Calibrated parameters**")
+        calibrated_params = calibration.mmm_result.parameter_table.copy()
+        calibrated_params["adstock_decay"] = calibrated_params["adstock_decay"].map(
+            lambda x: f"{x:,.2f}"
+        )
+        calibrated_params["half_saturation_gbp"] = calibrated_params["half_saturation_gbp"].map(gbp)
+        calibrated_params["slope"] = calibrated_params["slope"].map(lambda x: f"{x:,.2f}")
+        st.dataframe(calibrated_params, use_container_width=True, hide_index=True)
+
+    with cal_right:
+        st.markdown("**Best validation candidates by channel**")
+        best_rows = (
+            calibration.search_table.sort_values("validation_mape")
+            .groupby("channel", as_index=False)
+            .first()
+            .sort_values("channel")
+        )
+        best_display = best_rows[
+            ["channel", "adstock_decay", "half_saturation_gbp", "validation_mape"]
+        ].copy()
+        best_display["adstock_decay"] = best_display["adstock_decay"].map(lambda x: f"{x:,.2f}")
+        best_display["half_saturation_gbp"] = best_display["half_saturation_gbp"].map(gbp)
+        best_display["validation_mape"] = best_display["validation_mape"].map(percent)
+        st.dataframe(best_display, use_container_width=True, hide_index=True)
+
+    use_calibrated_for_planner = st.checkbox(
+        "Use calibrated MMM for budget planner",
+        value=True,
+    )
+    if use_calibrated_for_planner:
+        active_mmm_result = calibration.mmm_result
+        active_mmm_label = "calibrated MMM"
+else:
+    st.info("Calibration is optional. Run it when you want to compare fixed assumptions with tuned parameters.")
+
 st.divider()
 st.subheader("Budget Scenario Planner")
 st.markdown(
     '<p class="mel-caption">Compare current weekly spend with a proposed allocation using the '
-    "MMM foundation response curves.</p>",
+    f"{active_mmm_label} response curves.</p>",
     unsafe_allow_html=True,
 )
 
@@ -690,7 +767,7 @@ with planner_left:
         tilt_strength = st.slider("ROI tilt strength", 0.10, 1.50, 0.60, 0.10)
         proposed_spend = roi_weighted_allocation(
             current_spend,
-            mmm_result,
+            active_mmm_result,
             proposed_total_budget,
             tilt_strength=tilt_strength,
         )
@@ -721,7 +798,7 @@ with planner_left:
 
 scenario = evaluate_budget_scenario(
     df,
-    mmm_result,
+    active_mmm_result,
     proposed_spend,
     lookback_weeks=lookback_weeks,
 )
@@ -792,13 +869,13 @@ st.dataframe(
 )
 
 st.info(
-    "Scenario planning uses deterministic response curves from the MMM foundation model. "
+    f"Scenario planning uses deterministic response curves from the {active_mmm_label} model. "
     "It is suitable for directional planning, not final budget approval."
 )
 
 st.divider()
 st.subheader("Executive Summary Draft")
-executive_summary = build_executive_summary(kpis, mmm_result, scenario)
+executive_summary = build_executive_summary(kpis, active_mmm_result, scenario)
 st.markdown(f"**{executive_summary.headline}**")
 
 summary_cols = st.columns((1.2, 1))

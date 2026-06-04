@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from marketing_effectiveness_lab.analytics import CHANNEL_LABELS, spend_columns
-from marketing_effectiveness_lab.mmm import DEFAULT_MEDIA_PARAMETERS, MmmModelResult, hill_saturation
+from marketing_effectiveness_lab.mmm import MmmModelResult, hill_saturation
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ def response_for_weekly_spend(
 ) -> float:
     """Estimate weekly contribution for a channel at a given weekly spend level."""
 
-    params = DEFAULT_MEDIA_PARAMETERS[spend_column]
+    params = mmm_result.media_parameters[spend_column]
     coefficient = max(float(mmm_result.model.params.get(f"{spend_column}_mmm", 0.0)), 0.0)
     steady_state_adstock = max(spend_gbp, 0.0) / (1 - params["adstock_decay"])
     saturated = hill_saturation(
@@ -157,4 +157,3 @@ def _normalized_shares(
         current_total = sum(current_spend.values())
         return {column: spend / current_total for column, spend in current_spend.items()}
     return {column: share / total for column, share in clipped.items()}
-
