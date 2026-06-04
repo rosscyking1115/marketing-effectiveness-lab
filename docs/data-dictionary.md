@@ -32,7 +32,17 @@ Weekly UK fashion ecommerce marketing effectiveness dataset.
 
 ## Notes
 
-The dataset is generated for development and portfolio use. It is not ASOS data and does not copy any private brand data.
+The demo dataset is generated for development and portfolio use. It is not ASOS data and does not copy any private brand data.
 
 The schema is intentionally close to what a real business could provide through weekly spreadsheet exports or warehouse tables.
 
+The dashboard can also accept uploaded CSV files that follow this schema. Uploaded files are parsed in memory in the current prototype.
+
+## Validation Rules
+
+- `week_start` must be a Monday date.
+- Weekly dates must be unique and continuous.
+- Required columns must be present.
+- Numeric columns must contain numeric values.
+- Non-negative columns cannot contain negative values.
+- Flag columns must contain only `0` and `1`.

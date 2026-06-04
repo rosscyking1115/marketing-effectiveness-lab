@@ -4,6 +4,8 @@
 
 The current project is a local prototype. It does not yet handle real private marketing data, multi-user access, authentication, or production deployment.
 
+The current CSV upload workflow parses files in memory and does not persist uploaded data to disk. A production version should add authentication, explicit storage controls, audit logging, and retention policies before accepting private company data.
+
 ## Data Security Principles
 
 For real company data, the project should follow these principles:
@@ -58,4 +60,3 @@ For real decision-making, add:
 - NIST Secure Software Development Framework
 - SLSA supply-chain security guidance
 - OpenSSF security scorecard practices
-

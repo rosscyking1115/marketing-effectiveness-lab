@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 6: Portfolio packaging.
+Phase 7: Real data import workflow.
 
 The project currently includes:
 
@@ -20,6 +20,7 @@ The project currently includes:
 - Response curves
 - Budget scenario planning
 - Executive summary generation
+- CSV template download and upload validation
 
 The next major modeling phase is calibrated or Bayesian MMM with uncertainty and budget planning.
 

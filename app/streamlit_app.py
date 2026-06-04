@@ -24,6 +24,7 @@ from marketing_effectiveness_lab.budget import (
     roi_weighted_allocation,
 )
 from marketing_effectiveness_lab.data.generator import generate_and_validate
+from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
@@ -113,7 +114,7 @@ def x_value(value: float) -> str:
 
 
 @st.cache_data(show_spinner=False)
-def load_data() -> pd.DataFrame:
+def load_demo_data() -> pd.DataFrame:
     if not DATA_PATH.exists():
         generate_and_validate(DEMO_OUTPUT_DIR)
     raw = pd.read_csv(DATA_PATH)
@@ -124,6 +125,49 @@ def load_data() -> pd.DataFrame:
             st.write(f"- {error}")
         st.stop()
     return prepare_weekly_frame(raw)
+
+
+@st.cache_data(show_spinner=False)
+def parse_uploaded_csv(csv_text: str) -> tuple[pd.DataFrame | None, list[str]]:
+    parsed, errors = validate_csv_text(csv_text)
+    if errors or parsed is None:
+        return None, errors
+    return prepare_weekly_frame(parsed), []
+
+
+def select_dataset() -> tuple[pd.DataFrame, str]:
+    with st.sidebar:
+        st.header("Data source")
+        source = st.radio("Dataset", ["Demo data", "Upload CSV"], horizontal=True)
+        st.download_button(
+            "Download CSV template",
+            data=template_csv(rows=12),
+            file_name="marketing_effectiveness_template.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+        if source == "Upload CSV":
+            uploaded_file = st.file_uploader("Upload weekly marketing CSV", type=["csv"])
+            if uploaded_file is None:
+                st.info("Upload a CSV that follows the documented weekly schema.")
+                st.stop()
+            csv_text = uploaded_file.getvalue().decode("utf-8-sig")
+            uploaded_df, errors = parse_uploaded_csv(csv_text)
+            if errors or uploaded_df is None:
+                st.error("Uploaded CSV failed validation.")
+                for error in errors:
+                    st.write(f"- {error}")
+                st.stop()
+            if len(uploaded_df) <= 56:
+                st.error("Uploaded data needs at least 57 weekly rows for the current holdout models.")
+                st.stop()
+            st.success(f"Loaded {len(uploaded_df):,} weekly rows from uploaded CSV.")
+            return uploaded_df, uploaded_file.name
+
+        demo_df = load_demo_data()
+        st.caption("Using generated demo data. No private data is stored.")
+        return demo_df, "Demo data"
 
 
 def line_with_average(
@@ -200,7 +244,7 @@ def filtered_frame(df: pd.DataFrame) -> pd.DataFrame:
     return selected
 
 
-df = load_data()
+df, data_source_label = select_dataset()
 selected_df = filtered_frame(df)
 selected_channels = selected_df.attrs["channels"]
 show_promotions = selected_df.attrs["show_promotions"]
@@ -211,6 +255,7 @@ st.markdown(
     "MMM readiness, and commercial diagnostics.</p>",
     unsafe_allow_html=True,
 )
+st.caption(f"Data source: {data_source_label}")
 
 if selected_df.empty:
     st.warning("No rows available for the selected date range.")

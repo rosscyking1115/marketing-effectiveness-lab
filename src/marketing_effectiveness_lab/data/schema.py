@@ -68,8 +68,12 @@ def validate_weekly_dataset(df: pd.DataFrame) -> list[str]:
     for spec in REQUIRED_COLUMNS:
         if df[spec.name].isna().any():
             errors.append(f"{spec.name} contains null values.")
-        if spec.non_negative and (pd.to_numeric(df[spec.name], errors="coerce") < 0).any():
-            errors.append(f"{spec.name} contains negative values.")
+        if spec.name != "week_start":
+            numeric_values = pd.to_numeric(df[spec.name], errors="coerce")
+            if numeric_values.isna().any():
+                errors.append(f"{spec.name} contains non-numeric values.")
+            if spec.non_negative and (numeric_values < 0).any():
+                errors.append(f"{spec.name} contains negative values.")
 
     for flag_col in ("promotion_flag", "holiday_flag", "season_spring_summer", "season_autumn_winter"):
         bad_values = set(df[flag_col].dropna().unique()).difference({0, 1})
@@ -91,4 +95,3 @@ def schema_as_records(columns: Iterable[ColumnSpec] = REQUIRED_COLUMNS) -> list[
         }
         for column in columns
     ]
-
