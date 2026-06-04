@@ -33,6 +33,12 @@ uv run python scripts/generate_demo_data.py
 
 The generated files are written to `data/demo/`.
 
+Launch the analyst dashboard:
+
+```powershell
+uv run streamlit run app/streamlit_app.py --server.port 8501 --server.headless true
+```
+
 Run the test suite:
 
 ```powershell
