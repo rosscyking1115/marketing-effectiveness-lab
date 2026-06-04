@@ -1,0 +1,60 @@
+from __future__ import annotations
+
+from marketing_effectiveness_lab.analytics import prepare_weekly_frame, summarize_kpis
+from marketing_effectiveness_lab.budget import (
+    allocation_from_shares,
+    current_weekly_spend,
+    evaluate_budget_scenario,
+    roi_weighted_allocation,
+)
+from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
+from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
+from marketing_effectiveness_lab.reporting import build_executive_summary
+
+
+def test_executive_summary_contains_business_sections() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    proposed = roi_weighted_allocation(current, mmm_result, sum(current.values()), tilt_strength=0.6)
+    scenario = evaluate_budget_scenario(df, mmm_result, proposed, lookback_weeks=13)
+
+    summary = build_executive_summary(kpis, mmm_result, scenario)
+
+    assert summary.headline
+    assert len(summary.highlights) == 4
+    assert summary.recommendation
+    assert len(summary.caveats) == 3
+
+
+def test_neutral_scenario_summary_is_not_overstated() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    scenario = evaluate_budget_scenario(df, mmm_result, current, lookback_weeks=13)
+
+    summary = build_executive_summary(kpis, mmm_result, scenario)
+
+    assert "neutral" in summary.headline.lower()
+    assert "baseline" in summary.recommendation.lower()
+
+
+def test_negative_scenario_summary_warns_against_advancing() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    low_response_shares = {column: 1.0 for column in current}
+    proposed = allocation_from_shares(current, low_response_shares, 0.0)
+    scenario = evaluate_budget_scenario(df, mmm_result, proposed, lookback_weeks=13)
+
+    summary = build_executive_summary(kpis, mmm_result, scenario)
+
+    assert scenario.summary["weekly_contribution_change_gbp"] < 0
+    assert "weaker" in summary.headline.lower()
+    assert "do not advance" in summary.recommendation.lower()

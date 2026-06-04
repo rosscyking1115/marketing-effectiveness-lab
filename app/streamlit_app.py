@@ -27,6 +27,7 @@ from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
+from marketing_effectiveness_lab.reporting import build_executive_summary
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -749,3 +750,22 @@ st.info(
     "Scenario planning uses deterministic response curves from the MMM foundation model. "
     "It is suitable for directional planning, not final budget approval."
 )
+
+st.divider()
+st.subheader("Executive Summary Draft")
+executive_summary = build_executive_summary(kpis, mmm_result, scenario)
+st.markdown(f"**{executive_summary.headline}**")
+
+summary_cols = st.columns((1.2, 1))
+with summary_cols[0]:
+    st.markdown("**Highlights**")
+    for highlight in executive_summary.highlights:
+        st.write(f"- {highlight}")
+
+with summary_cols[1]:
+    st.markdown("**Recommendation**")
+    st.write(executive_summary.recommendation)
+
+with st.expander("Caveats for stakeholder communication"):
+    for caveat in executive_summary.caveats:
+        st.write(f"- {caveat}")

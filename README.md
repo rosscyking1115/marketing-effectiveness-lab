@@ -2,11 +2,11 @@
 
 An end-to-end marketing effectiveness and MMM project for a UK fashion ecommerce scenario.
 
-The lab is designed as a serious technical portfolio project with a future product path: data foundation, econometrics, Bayesian marketing mix modeling, causal validation, and budget optimization.
+The lab is designed as a serious technical portfolio project with a future product path: data foundation, econometrics, marketing mix modeling, causal validation, budget optimization, and executive decision support.
 
 ## Current Phase
 
-Phase 5: Budget scenario planner.
+Phase 6: Portfolio packaging.
 
 The project currently includes:
 
@@ -19,6 +19,7 @@ The project currently includes:
 - Directional contribution and ROI estimates
 - Response curves
 - Budget scenario planning
+- Executive summary generation
 
 The next major modeling phase is calibrated or Bayesian MMM with uncertainty and budget planning.
 
@@ -28,6 +29,12 @@ The next major modeling phase is calibrated or Bayesian MMM with uncertainty and
 - `src/marketing_effectiveness_lab/` - reusable Python package code
 - `scripts/` - runnable project scripts
 - `data/demo/` - generated demo data
+
+Useful docs:
+
+- `docs/case-study.md` - business case study
+- `docs/architecture.md` - current and future architecture
+- `docs/production-security-roadmap.md` - security and production roadmap
 
 ## Quick Start
 
