@@ -32,6 +32,7 @@ The project is built in phases:
 5. Estimate directional channel contribution and ROI.
 6. Build a budget scenario planner.
 7. Generate executive-ready summary text and caveats.
+8. Add uncertainty intervals and experiment calibration diagnostics.
 
 ## Current Outputs
 
@@ -46,6 +47,8 @@ The dashboard provides:
 - MMM foundation diagnostics
 - Estimated contribution and ROI
 - Response curves
+- Uncertainty intervals
+- Incrementality calibration diagnostics
 - Budget scenario planning
 - Executive summary draft
 
@@ -61,9 +64,9 @@ The dashboard provides:
 
 ## Modeling Notes
 
-The current MMM foundation model is deterministic. It uses fixed channel-specific adstock and saturation parameters, then fits an OLS model on transformed media features and controls.
+The current MMM foundation model is deterministic. It uses channel-specific adstock and saturation parameters, then fits an OLS model on transformed media features and controls.
 
-This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
+The project now includes parameter search, coefficient uncertainty simulation, and demo lift-test calibration. This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
 
 ## Future Enhancements
 
@@ -71,8 +74,8 @@ High-value next steps:
 
 - Calibrated parameter search for adstock and saturation
 - Bayesian MMM with PyMC-Marketing or Meridian
-- Experiment calibration
-- Credible intervals for contribution and ROI
+- Real experiment upload and approval workflow
+- Posterior credible intervals for contribution and ROI
 - Profit-aware budget optimization
 - Real data import templates
 - Production API and user authentication
@@ -87,4 +90,3 @@ This project is suitable for roles in:
 - Retail analytics
 - Marketing effectiveness consulting
 - Econometrics and causal inference
-

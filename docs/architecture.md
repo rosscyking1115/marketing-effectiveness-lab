@@ -12,9 +12,12 @@ flowchart LR
     B --> E["Baseline Econometrics"]
     B --> F["MMM Foundations"]
     F --> G["Contribution and ROI"]
-    F --> H["Response Curves"]
-    H --> I["Budget Scenario Planner"]
-    I --> J["Executive Summary"]
+    F --> H["Uncertainty Intervals"]
+    G --> I["Experiment Calibration"]
+    H --> I
+    F --> J["Response Curves"]
+    J --> K["Budget Scenario Planner"]
+    K --> L["Executive Summary"]
 ```
 
 ## Code Structure
@@ -23,6 +26,8 @@ flowchart LR
 - `src/marketing_effectiveness_lab/analytics.py` handles dashboard metrics and diagnostics.
 - `src/marketing_effectiveness_lab/modeling.py` handles baseline econometrics.
 - `src/marketing_effectiveness_lab/mmm.py` handles MMM-style adstock, saturation, contribution, and response curves.
+- `src/marketing_effectiveness_lab/uncertainty.py` handles coefficient simulation for contribution and prediction intervals.
+- `src/marketing_effectiveness_lab/calibration.py` handles lift-test validation and experiment calibration.
 - `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning.
 - `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation.
 - `app/streamlit_app.py` renders the analyst dashboard.
@@ -53,4 +58,3 @@ Suggested future stack:
 - MLflow for model tracking
 - dbt for governed marketing marts
 - Next.js for a production web app
-

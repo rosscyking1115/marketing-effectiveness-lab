@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 9: MMM uncertainty layer.
+Phase 10: Incrementality calibration.
 
 The project currently includes:
 
@@ -23,8 +23,9 @@ The project currently includes:
 - CSV template download and upload validation
 - Calibrated MMM adstock/saturation search
 - Contribution, ROI, and holdout prediction intervals
+- Demo lift-test calibration for contribution, ROI, and uncertainty diagnostics
 
-The next major modeling phase is Bayesian MMM with posterior diagnostics and experiment calibration.
+The next major modeling phase is Bayesian MMM with posterior diagnostics and experiment-informed priors.
 
 ## Project Shape
 
@@ -38,6 +39,7 @@ Useful docs:
 - `docs/case-study.md` - business case study
 - `docs/architecture.md` - current and future architecture
 - `docs/production-security-roadmap.md` - security and production roadmap
+- `docs/phase-10-incrementality-calibration.md` - lift-test calibration workflow
 
 ## Quick Start
 

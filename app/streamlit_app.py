@@ -23,6 +23,12 @@ from marketing_effectiveness_lab.budget import (
     evaluate_budget_scenario,
     roi_weighted_allocation,
 )
+from marketing_effectiveness_lab.calibration import (
+    apply_lift_calibration,
+    apply_lift_calibration_to_intervals,
+    calibration_factors,
+    demo_lift_test_calibrations,
+)
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
@@ -863,6 +869,159 @@ st.dataframe(
     ],
     use_container_width=True,
     hide_index=True,
+)
+
+st.divider()
+st.subheader("Incrementality Calibration")
+st.markdown(
+    '<p class="mel-caption">Bridge MMM estimates with experiment evidence. '
+    "The demo readouts mimic geo holdouts and lift tests that a commercial analytics team would use "
+    "to calibrate channel contribution.</p>",
+    unsafe_allow_html=True,
+)
+
+lift_tests = demo_lift_test_calibrations(active_mmm_result)
+lift_factor_table = calibration_factors(lift_tests)
+apply_incrementality_calibration = st.checkbox("Apply demo lift-test calibration", value=False)
+
+calibration_left, calibration_right = st.columns((1.05, 1))
+with calibration_left:
+    st.markdown("**Demo lift-test readouts**")
+    lift_display = lift_tests.copy()
+    for money_col in [
+        "model_lift_gbp",
+        "observed_lift_gbp",
+        "observed_lift_lower_gbp",
+        "observed_lift_upper_gbp",
+    ]:
+        lift_display[money_col] = lift_display[money_col].map(gbp)
+    lift_display["calibration_factor"] = lift_display["calibration_factor"].map(x_value)
+    st.dataframe(
+        lift_display[
+            [
+                "channel",
+                "experiment_type",
+                "weeks",
+                "model_lift_gbp",
+                "observed_lift_gbp",
+                "calibration_factor",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with calibration_right:
+    factor_fig = px.bar(
+        lift_factor_table.sort_values("calibration_factor"),
+        x="calibration_factor",
+        y="channel",
+        orientation="h",
+        title="Experiment calibration factors",
+        labels={"calibration_factor": "Observed / MMM lift", "channel": ""},
+        color="calibration_factor",
+        color_continuous_scale=["#c65f4b", "#f7f7f7", "#2f7d64"],
+        range_color=[0.5, 1.5],
+    )
+    factor_fig.add_vline(x=1.0, line_dash="dash", line_color="#1f2933")
+    factor_fig.update_layout(
+        height=330,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        coloraxis_showscale=False,
+    )
+    st.plotly_chart(factor_fig, use_container_width=True)
+
+if apply_incrementality_calibration:
+    calibrated_contribution = apply_lift_calibration(
+        active_mmm_result.contribution_table,
+        lift_tests,
+    )
+    calibrated_intervals = apply_lift_calibration_to_intervals(uncertainty, lift_tests)
+
+    calibrated_left, calibrated_right = st.columns((1, 1))
+    with calibrated_left:
+        calibrated_fig = px.bar(
+            calibrated_contribution.sort_values("estimated_contribution_calibrated_gbp"),
+            x="estimated_contribution_calibrated_gbp",
+            y="channel",
+            orientation="h",
+            title="Experiment-calibrated contribution",
+            labels={"estimated_contribution_calibrated_gbp": "Contribution GBP", "channel": ""},
+            color="estimated_roi_calibrated",
+            color_continuous_scale=["#dfe7e2", "#2f7d64"],
+        )
+        calibrated_fig.update_layout(
+            height=380,
+            margin={"l": 12, "r": 12, "t": 48, "b": 24},
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#ffffff",
+            coloraxis_showscale=False,
+        )
+        st.plotly_chart(calibrated_fig, use_container_width=True)
+
+    with calibrated_right:
+        calibrated_interval_display = calibrated_intervals.copy()
+        for money_col in [
+            "contribution_mean_calibrated_gbp",
+            "contribution_lower_calibrated_gbp",
+            "contribution_upper_calibrated_gbp",
+        ]:
+            calibrated_interval_display[money_col] = calibrated_interval_display[money_col].map(gbp)
+        calibrated_interval_display["roi_mean_calibrated"] = calibrated_interval_display[
+            "roi_mean_calibrated"
+        ].map(x_value)
+        st.markdown("**Calibrated uncertainty view**")
+        st.dataframe(
+            calibrated_interval_display[
+                [
+                    "channel",
+                    "calibration_status",
+                    "contribution_mean_calibrated_gbp",
+                    "contribution_lower_calibrated_gbp",
+                    "contribution_upper_calibrated_gbp",
+                    "roi_mean_calibrated",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    calibrated_display = calibrated_contribution.copy()
+    for money_col in [
+        "spend_gbp",
+        "estimated_contribution_gbp",
+        "estimated_contribution_calibrated_gbp",
+    ]:
+        calibrated_display[money_col] = calibrated_display[money_col].map(gbp)
+    for roi_col in ["estimated_roi", "estimated_roi_calibrated", "calibration_factor"]:
+        calibrated_display[roi_col] = calibrated_display[roi_col].map(x_value)
+    st.dataframe(
+        calibrated_display[
+            [
+                "channel",
+                "calibration_status",
+                "spend_gbp",
+                "estimated_contribution_gbp",
+                "estimated_contribution_calibrated_gbp",
+                "estimated_roi",
+                "estimated_roi_calibrated",
+                "calibration_factor",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+else:
+    st.info(
+        "Lift-test evidence is loaded for review. Enable calibration to show adjusted contribution, "
+        "ROI, and uncertainty intervals."
+    )
+
+st.caption(
+    "This calibration layer is diagnostic. The current budget planner still uses the active MMM response curves; "
+    "future phases can feed experiment-calibrated priors into Bayesian MMM."
 )
 
 st.divider()
