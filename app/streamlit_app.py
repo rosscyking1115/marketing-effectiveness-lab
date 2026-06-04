@@ -20,6 +20,7 @@ from marketing_effectiveness_lab.analytics import (
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
+from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -98,6 +99,10 @@ def integer(value: float) -> str:
 
 def percent(value: float) -> str:
     return f"{value * 100:,.1f}%"
+
+
+def x_value(value: float) -> str:
+    return f"{value:,.1f}x"
 
 
 @st.cache_data(show_spinner=False)
@@ -466,4 +471,144 @@ with coef_right:
 st.info(
     "This baseline is for diagnostic comparison, not final budget allocation. "
     "The next modeling phase should add adstock, saturation, priors, and uncertainty-aware MMM."
+)
+
+st.divider()
+st.subheader("MMM Foundations")
+st.markdown(
+    '<p class="mel-caption">Deterministic MMM-style benchmark with channel-specific adstock, '
+    "saturation, contribution estimates, and response curves.</p>",
+    unsafe_allow_html=True,
+)
+
+mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+mmm_metric_cols = st.columns(5)
+mmm_metric_cols[0].metric("MMM Train R-squared", f"{mmm_result.metrics['train_r_squared']:,.2f}")
+mmm_metric_cols[1].metric("MMM Adj. R-squared", f"{mmm_result.metrics['train_adjusted_r_squared']:,.2f}")
+mmm_metric_cols[2].metric("MMM Train MAPE", percent(mmm_result.metrics["train_mape"]))
+mmm_metric_cols[3].metric("MMM Holdout MAPE", percent(mmm_result.metrics["test_mape"]))
+mmm_metric_cols[4].metric("MMM Holdout RMSE", gbp(mmm_result.metrics["test_rmse_gbp"]))
+
+mmm_frame = pd.concat(
+    [
+        mmm_result.train_frame.assign(sample="Training"),
+        mmm_result.test_frame.assign(sample="Holdout"),
+    ],
+    ignore_index=True,
+)
+
+mmm_fit_fig = go.Figure()
+mmm_fit_fig.add_trace(
+    go.Scatter(
+        x=mmm_frame["week_start"],
+        y=mmm_frame["revenue_gbp"],
+        mode="lines",
+        name="Actual revenue",
+        line={"color": "#1f2933", "width": 2.4},
+    )
+)
+mmm_fit_fig.add_trace(
+    go.Scatter(
+        x=mmm_frame["week_start"],
+        y=mmm_frame["predicted_revenue_gbp"],
+        mode="lines",
+        name="MMM foundation prediction",
+        line={"color": "#4b6f9c", "width": 2.0},
+    )
+)
+mmm_fit_fig.add_vline(
+    x=mmm_result.test_frame["week_start"].min(),
+    line_dash="dash",
+    line_color="#c65f4b",
+    annotation_text="Holdout",
+    annotation_position="top left",
+)
+mmm_fit_fig.update_layout(
+    title="Actual vs MMM foundation predicted revenue",
+    height=430,
+    margin={"l": 12, "r": 12, "t": 48, "b": 24},
+    yaxis_title="Revenue GBP",
+    xaxis_title=None,
+    legend_orientation="h",
+    legend_y=1.08,
+    plot_bgcolor="#ffffff",
+    paper_bgcolor="#ffffff",
+)
+st.plotly_chart(mmm_fit_fig, use_container_width=True)
+
+contrib_left, contrib_right = st.columns((1, 1))
+with contrib_left:
+    contribution_fig = px.bar(
+        mmm_result.contribution_table,
+        x="estimated_contribution_gbp",
+        y="channel",
+        orientation="h",
+        title="Estimated media contribution by channel",
+        labels={"estimated_contribution_gbp": "Contribution GBP", "channel": ""},
+        color="estimated_roi",
+        color_continuous_scale=["#dfe7e2", "#2f7d64"],
+    )
+    contribution_fig.update_layout(
+        height=390,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        yaxis={"categoryorder": "total ascending"},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        coloraxis_showscale=False,
+    )
+    st.plotly_chart(contribution_fig, use_container_width=True)
+
+with contrib_right:
+    response_fig = px.line(
+        mmm_result.response_curves,
+        x="spend_gbp",
+        y="estimated_weekly_contribution_gbp",
+        color="channel",
+        title="Estimated response curves",
+        labels={
+            "spend_gbp": "Weekly spend GBP",
+            "estimated_weekly_contribution_gbp": "Estimated weekly contribution GBP",
+            "channel": "Channel",
+        },
+        color_discrete_sequence=["#2f7d64", "#4b6f9c", "#c65f4b", "#9a7b3f", "#6b7280", "#7c6aa6"],
+    )
+    response_fig.update_layout(
+        height=390,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        legend_orientation="h",
+        legend_y=1.08,
+    )
+    st.plotly_chart(response_fig, use_container_width=True)
+
+mmm_table_left, mmm_table_right = st.columns((1.2, 1))
+with mmm_table_left:
+    st.markdown("**Contribution and ROI estimates**")
+    contribution_display = mmm_result.contribution_table.copy()
+    contribution_display["spend_gbp"] = contribution_display["spend_gbp"].map(gbp)
+    contribution_display["estimated_contribution_gbp"] = contribution_display[
+        "estimated_contribution_gbp"
+    ].map(gbp)
+    contribution_display["estimated_roi"] = contribution_display["estimated_roi"].map(x_value)
+    contribution_display["contribution_share"] = contribution_display["contribution_share"].map(percent)
+    st.dataframe(
+        contribution_display[
+            ["channel", "spend_gbp", "estimated_contribution_gbp", "estimated_roi", "contribution_share"]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with mmm_table_right:
+    st.markdown("**Media transformation parameters**")
+    parameter_display = mmm_result.parameter_table.copy()
+    parameter_display["adstock_decay"] = parameter_display["adstock_decay"].map(lambda x: f"{x:,.2f}")
+    parameter_display["half_saturation_gbp"] = parameter_display["half_saturation_gbp"].map(gbp)
+    parameter_display["slope"] = parameter_display["slope"].map(lambda x: f"{x:,.2f}")
+    st.dataframe(parameter_display, use_container_width=True, hide_index=True)
+
+st.warning(
+    "MMM foundations are directional estimates. The next phase should add calibrated parameter search "
+    "or Bayesian MMM to estimate uncertainty and improve channel separation."
 )

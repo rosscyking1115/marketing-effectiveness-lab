@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 3: Baseline econometrics.
+Phase 4: MMM foundations.
 
 The project currently includes:
 
@@ -15,8 +15,11 @@ The project currently includes:
 - Analyst dashboarding
 - Baseline econometric modeling
 - Time-aware holdout diagnostics
+- MMM-style adstock and saturation transformations
+- Directional contribution and ROI estimates
+- Response curves
 
-The next major modeling phase is Bayesian MMM with adstock, saturation, contribution, uncertainty, and budget planning.
+The next major modeling phase is calibrated or Bayesian MMM with uncertainty and budget planning.
 
 ## Project Shape
 
