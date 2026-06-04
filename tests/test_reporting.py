@@ -24,7 +24,8 @@ def test_executive_summary_contains_business_sections() -> None:
     summary = build_executive_summary(kpis, mmm_result, scenario)
 
     assert summary.headline
-    assert len(summary.highlights) == 4
+    assert len(summary.highlights) == 5
+    assert any("contribution profit" in highlight for highlight in summary.highlights)
     assert summary.recommendation
     assert len(summary.caveats) == 3
 

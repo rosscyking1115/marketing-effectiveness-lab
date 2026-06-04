@@ -1099,6 +1099,14 @@ with planner_left:
     current_spend = current_weekly_spend(df, lookback_weeks=lookback_weeks)
     current_total_budget = sum(current_spend.values())
     budget_multiplier = st.slider("Weekly budget multiplier", 0.70, 1.30, 1.00, 0.05)
+    gross_margin_rate = st.slider(
+        "Gross margin assumption",
+        0.20,
+        0.80,
+        0.52,
+        0.01,
+        format="%.2f",
+    )
     proposed_total_budget = current_total_budget * budget_multiplier
     allocation_profile = st.radio(
         "Allocation profile",
@@ -1144,14 +1152,16 @@ scenario = evaluate_budget_scenario(
     active_mmm_result,
     proposed_spend,
     lookback_weeks=lookback_weeks,
+    gross_margin_rate=gross_margin_rate,
 )
 
 with planner_right:
-    scenario_cols = st.columns(4)
+    scenario_cols = st.columns(5)
     scenario_cols[0].metric("Current weekly spend", gbp(scenario.summary["current_weekly_spend_gbp"]))
     scenario_cols[1].metric("Proposed weekly spend", gbp(scenario.summary["proposed_weekly_spend_gbp"]))
     scenario_cols[2].metric("Est. contribution lift", gbp(scenario.summary["weekly_contribution_change_gbp"]))
-    scenario_cols[3].metric("Scenario ROI", x_value(scenario.summary["proposed_roi"]))
+    scenario_cols[3].metric("Est. profit lift", gbp(scenario.summary["weekly_profit_change_gbp"]))
+    scenario_cols[4].metric("Profit ROI", x_value(scenario.summary["proposed_profit_roi"]))
 
     scenario_chart_df = scenario.channel_table.copy()
     scenario_chart = px.bar(
@@ -1188,12 +1198,16 @@ for money_col in [
     "weekly_spend_change_gbp",
     "proposed_weekly_contribution_gbp",
     "weekly_contribution_change_gbp",
+    "proposed_weekly_profit_after_media_gbp",
+    "weekly_profit_change_gbp",
 ]:
     scenario_display[money_col] = scenario_display[money_col].map(gbp)
-scenario_display["proposed_roi"] = scenario_display["proposed_roi"].map(x_value)
-scenario_display["incremental_roi"] = scenario_display["incremental_roi"].map(
-    lambda value: "n/a" if pd.isna(value) else x_value(value)
-)
+for roi_col in ["proposed_roi", "proposed_profit_roi"]:
+    scenario_display[roi_col] = scenario_display[roi_col].map(x_value)
+for roi_col in ["incremental_roi", "incremental_profit_roi"]:
+    scenario_display[roi_col] = scenario_display[roi_col].map(
+        lambda value: "n/a" if pd.isna(value) else x_value(value)
+    )
 st.dataframe(
     scenario_display[
         [
@@ -1203,8 +1217,12 @@ st.dataframe(
             "weekly_spend_change_gbp",
             "proposed_weekly_contribution_gbp",
             "weekly_contribution_change_gbp",
+            "proposed_weekly_profit_after_media_gbp",
+            "weekly_profit_change_gbp",
             "proposed_roi",
             "incremental_roi",
+            "proposed_profit_roi",
+            "incremental_profit_roi",
         ]
     ],
     use_container_width=True,
@@ -1213,6 +1231,7 @@ st.dataframe(
 
 st.info(
     f"Scenario planning uses deterministic response curves from the {active_mmm_label} model. "
+    f"Profit metrics assume a {gross_margin_rate * 100:,.0f}% gross margin. "
     "It is suitable for directional planning, not final budget approval."
 )
 

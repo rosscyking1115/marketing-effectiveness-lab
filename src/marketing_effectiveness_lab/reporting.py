@@ -29,9 +29,20 @@ def build_executive_summary(
     top_channel = _top_channel(mmm_result.contribution_table)
     scenario_lift = scenario.summary["weekly_contribution_change_gbp"]
     scenario_lift_pct = scenario.summary["contribution_change_pct"]
+    scenario_profit_lift = scenario.summary.get("weekly_profit_change_gbp")
     spend_change_pct = scenario.summary["spend_change_pct"]
 
-    if scenario_lift > 0:
+    if scenario_profit_lift is not None and scenario_profit_lift > 0:
+        headline = (
+            "The proposed allocation is directionally profitable, with estimated weekly "
+            f"contribution profit up {_gbp(scenario_profit_lift)}."
+        )
+    elif scenario_profit_lift is not None and scenario_profit_lift < 0:
+        headline = (
+            "The proposed allocation is directionally weaker, with estimated weekly "
+            f"contribution profit down {_gbp(abs(scenario_profit_lift))}."
+        )
+    elif scenario_lift > 0:
         headline = (
             "The proposed allocation is directionally positive, with estimated weekly "
             f"media contribution up {_pct(scenario_lift_pct)}."
@@ -48,10 +59,23 @@ def build_executive_summary(
         f"Total selected revenue is {_gbp(kpis.revenue_gbp)} with blended ROAS of {kpis.blended_roas:,.1f}x.",
         f"{top_channel['channel']} has the largest estimated media contribution at {_gbp(top_channel['estimated_contribution_gbp'])}.",
         f"The scenario changes weekly spend by {_pct(spend_change_pct)} and estimated weekly contribution by {_gbp(scenario_lift)}.",
+        f"Estimated weekly contribution profit changes by {_gbp(scenario_profit_lift)}."
+        if scenario_profit_lift is not None
+        else "Profit-aware planning is not enabled for this scenario.",
         f"MMM foundation holdout MAPE is {_pct(mmm_result.metrics['test_mape'])}, useful for directional planning but not final budget approval.",
     ]
 
-    if scenario_lift > 0:
+    if scenario_profit_lift is not None and scenario_profit_lift > 0:
+        recommendation = (
+            "Use this scenario as a candidate reallocation for deeper review. Prioritize checking "
+            "channel constraints, campaign availability, and whether profitable channels can absorb spend."
+        )
+    elif scenario_profit_lift is not None and scenario_profit_lift < 0:
+        recommendation = (
+            "Do not advance this scenario without revision. Review channels with lower estimated ROI "
+            "or weaker profit impact before considering budget movement."
+        )
+    elif scenario_lift > 0:
         recommendation = (
             "Use this scenario as a candidate reallocation for deeper review. Prioritize checking "
             "channel constraints, campaign availability, and whether high-ROI channels can absorb spend."
@@ -70,7 +94,7 @@ def build_executive_summary(
     caveats = [
         "Scenario outputs use deterministic MMM foundation response curves, not Bayesian uncertainty.",
         "Contribution estimates are directional and should be calibrated with experiments where possible.",
-        "The planner does not yet include margin, inventory, channel capacity, or brand constraints.",
+        "Profit metrics use a gross margin assumption and do not yet include inventory, channel capacity, or brand constraints.",
     ]
 
     return ExecutiveSummary(
@@ -97,4 +121,3 @@ def _gbp(value: float) -> str:
 
 def _pct(value: float) -> str:
     return f"{value * 100:,.1f}%"
-

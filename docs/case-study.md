@@ -51,6 +51,7 @@ The dashboard provides:
 - Incrementality calibration diagnostics
 - Lift-test evidence upload and validation
 - Evidence quality review and approved-only calibration
+- Profit-aware budget scenario planning
 - Budget scenario planning
 - Executive summary draft
 
@@ -68,7 +69,7 @@ The dashboard provides:
 
 The current MMM foundation model is deterministic. It uses channel-specific adstock and saturation parameters, then fits an OLS model on transformed media features and controls.
 
-The project now includes parameter search, coefficient uncertainty simulation, demo lift-test calibration, real-data-ready lift-test CSV upload, and evidence governance. This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
+The project now includes parameter search, coefficient uncertainty simulation, demo lift-test calibration, real-data-ready lift-test CSV upload, evidence governance, and profit-aware scenario planning. This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
 
 ## Future Enhancements
 
@@ -77,6 +78,7 @@ High-value next steps:
 - Calibrated parameter search for adstock and saturation
 - Bayesian MMM with PyMC-Marketing or Meridian
 - Experiment registry with approval workflow
+- Profit-aware optimization
 - Posterior credible intervals for contribution and ROI
 - Profit-aware budget optimization
 - Real data import templates

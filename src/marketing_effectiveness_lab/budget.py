@@ -51,8 +51,12 @@ def evaluate_budget_scenario(
     mmm_result: MmmModelResult,
     proposed_weekly_spend: Mapping[str, float],
     lookback_weeks: int = 13,
+    gross_margin_rate: float = 0.52,
 ) -> BudgetScenarioResult:
     """Compare current weekly spend with a proposed channel allocation."""
+
+    if not 0 <= gross_margin_rate <= 1:
+        raise ValueError("gross_margin_rate must be between 0 and 1.")
 
     current_spend = current_weekly_spend(df, lookback_weeks=lookback_weeks)
     missing_channels = set(current_spend).difference(proposed_weekly_spend)
@@ -66,6 +70,11 @@ def evaluate_budget_scenario(
         proposed_contribution = response_for_weekly_spend(proposed_value, spend_column, mmm_result)
         spend_change = proposed_value - current_value
         contribution_change = proposed_contribution - current_contribution
+        current_gross_profit = current_contribution * gross_margin_rate
+        proposed_gross_profit = proposed_contribution * gross_margin_rate
+        current_profit_after_media = current_gross_profit - current_value
+        proposed_profit_after_media = proposed_gross_profit - proposed_value
+        profit_change = proposed_profit_after_media - current_profit_after_media
 
         rows.append(
             {
@@ -77,8 +86,17 @@ def evaluate_budget_scenario(
                 "current_weekly_contribution_gbp": current_contribution,
                 "proposed_weekly_contribution_gbp": proposed_contribution,
                 "weekly_contribution_change_gbp": contribution_change,
+                "current_weekly_gross_profit_gbp": current_gross_profit,
+                "proposed_weekly_gross_profit_gbp": proposed_gross_profit,
+                "current_weekly_profit_after_media_gbp": current_profit_after_media,
+                "proposed_weekly_profit_after_media_gbp": proposed_profit_after_media,
+                "weekly_profit_change_gbp": profit_change,
                 "proposed_roi": proposed_contribution / proposed_value if proposed_value else 0.0,
                 "incremental_roi": contribution_change / spend_change if spend_change > 0 else np.nan,
+                "proposed_profit_roi": (
+                    proposed_profit_after_media / proposed_value if proposed_value else 0.0
+                ),
+                "incremental_profit_roi": profit_change / spend_change if spend_change > 0 else np.nan,
             }
         )
 
@@ -87,8 +105,17 @@ def evaluate_budget_scenario(
     proposed_total_spend = float(channel_table["proposed_weekly_spend_gbp"].sum())
     current_total_contribution = float(channel_table["current_weekly_contribution_gbp"].sum())
     proposed_total_contribution = float(channel_table["proposed_weekly_contribution_gbp"].sum())
+    current_total_gross_profit = float(channel_table["current_weekly_gross_profit_gbp"].sum())
+    proposed_total_gross_profit = float(channel_table["proposed_weekly_gross_profit_gbp"].sum())
+    current_total_profit_after_media = float(
+        channel_table["current_weekly_profit_after_media_gbp"].sum()
+    )
+    proposed_total_profit_after_media = float(
+        channel_table["proposed_weekly_profit_after_media_gbp"].sum()
+    )
     spend_change = proposed_total_spend - current_total_spend
     contribution_change = proposed_total_contribution - current_total_contribution
+    profit_change = proposed_total_profit_after_media - current_total_profit_after_media
 
     summary = {
         "current_weekly_spend_gbp": current_total_spend,
@@ -97,14 +124,31 @@ def evaluate_budget_scenario(
         "current_weekly_contribution_gbp": current_total_contribution,
         "proposed_weekly_contribution_gbp": proposed_total_contribution,
         "weekly_contribution_change_gbp": contribution_change,
+        "gross_margin_rate": gross_margin_rate,
+        "current_weekly_gross_profit_gbp": current_total_gross_profit,
+        "proposed_weekly_gross_profit_gbp": proposed_total_gross_profit,
+        "current_weekly_profit_after_media_gbp": current_total_profit_after_media,
+        "proposed_weekly_profit_after_media_gbp": proposed_total_profit_after_media,
+        "weekly_profit_change_gbp": profit_change,
         "spend_change_pct": spend_change / current_total_spend if current_total_spend else 0.0,
         "contribution_change_pct": (
             contribution_change / current_total_contribution if current_total_contribution else 0.0
+        ),
+        "profit_change_pct": (
+            profit_change / abs(current_total_profit_after_media)
+            if current_total_profit_after_media
+            else 0.0
         ),
         "proposed_roi": proposed_total_contribution / proposed_total_spend
         if proposed_total_spend
         else 0.0,
         "incremental_roi": contribution_change / spend_change if spend_change > 0 else np.nan,
+        "proposed_profit_roi": (
+            proposed_total_profit_after_media / proposed_total_spend
+            if proposed_total_spend
+            else 0.0
+        ),
+        "incremental_profit_roi": profit_change / spend_change if spend_change > 0 else np.nan,
     }
     return BudgetScenarioResult(summary=summary, channel_table=channel_table)
 
