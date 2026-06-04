@@ -17,6 +17,12 @@ from marketing_effectiveness_lab.analytics import (
     summarize_kpis,
     weekly_spend_long,
 )
+from marketing_effectiveness_lab.budget import (
+    allocation_from_shares,
+    current_weekly_spend,
+    evaluate_budget_scenario,
+    roi_weighted_allocation,
+)
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
@@ -611,4 +617,135 @@ with mmm_table_right:
 st.warning(
     "MMM foundations are directional estimates. The next phase should add calibrated parameter search "
     "or Bayesian MMM to estimate uncertainty and improve channel separation."
+)
+
+st.divider()
+st.subheader("Budget Scenario Planner")
+st.markdown(
+    '<p class="mel-caption">Compare current weekly spend with a proposed allocation using the '
+    "MMM foundation response curves.</p>",
+    unsafe_allow_html=True,
+)
+
+planner_left, planner_right = st.columns((0.9, 1.25))
+with planner_left:
+    lookback_weeks = st.slider("Current spend lookback", 4, 26, 13, help="Latest weeks used to estimate current weekly spend.")
+    current_spend = current_weekly_spend(df, lookback_weeks=lookback_weeks)
+    current_total_budget = sum(current_spend.values())
+    budget_multiplier = st.slider("Weekly budget multiplier", 0.70, 1.30, 1.00, 0.05)
+    proposed_total_budget = current_total_budget * budget_multiplier
+    allocation_profile = st.radio(
+        "Allocation profile",
+        ["Current mix", "ROI-weighted tilt", "Manual shares"],
+        horizontal=False,
+    )
+
+    if allocation_profile == "ROI-weighted tilt":
+        tilt_strength = st.slider("ROI tilt strength", 0.10, 1.50, 0.60, 0.10)
+        proposed_spend = roi_weighted_allocation(
+            current_spend,
+            mmm_result,
+            proposed_total_budget,
+            tilt_strength=tilt_strength,
+        )
+    elif allocation_profile == "Manual shares":
+        st.markdown("**Manual channel shares**")
+        current_shares = {
+            column: spend / current_total_budget if current_total_budget else 0.0
+            for column, spend in current_spend.items()
+        }
+        manual_shares = {}
+        for column, label in CHANNEL_LABELS.items():
+            manual_shares[column] = st.slider(
+                label,
+                0.0,
+                0.60,
+                float(current_shares[column]),
+                0.01,
+                format="%.2f",
+            )
+        proposed_spend = allocation_from_shares(current_spend, manual_shares, proposed_total_budget)
+        st.caption("Manual shares are normalized to sum to 100%.")
+    else:
+        proposed_spend = allocation_from_shares(
+            current_spend,
+            {column: spend for column, spend in current_spend.items()},
+            proposed_total_budget,
+        )
+
+scenario = evaluate_budget_scenario(
+    df,
+    mmm_result,
+    proposed_spend,
+    lookback_weeks=lookback_weeks,
+)
+
+with planner_right:
+    scenario_cols = st.columns(4)
+    scenario_cols[0].metric("Current weekly spend", gbp(scenario.summary["current_weekly_spend_gbp"]))
+    scenario_cols[1].metric("Proposed weekly spend", gbp(scenario.summary["proposed_weekly_spend_gbp"]))
+    scenario_cols[2].metric("Est. contribution lift", gbp(scenario.summary["weekly_contribution_change_gbp"]))
+    scenario_cols[3].metric("Scenario ROI", x_value(scenario.summary["proposed_roi"]))
+
+    scenario_chart_df = scenario.channel_table.copy()
+    scenario_chart = px.bar(
+        scenario_chart_df,
+        x="channel",
+        y=["current_weekly_spend_gbp", "proposed_weekly_spend_gbp"],
+        barmode="group",
+        title="Current vs proposed weekly spend",
+        labels={"value": "Weekly spend GBP", "channel": "", "variable": "Scenario"},
+        color_discrete_sequence=["#6b7280", "#2f7d64"],
+    )
+    scenario_chart.update_layout(
+        height=360,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        legend_orientation="h",
+        legend_y=1.08,
+    )
+    scenario_chart.for_each_trace(
+        lambda trace: trace.update(
+            name={
+                "current_weekly_spend_gbp": "Current",
+                "proposed_weekly_spend_gbp": "Proposed",
+            }.get(trace.name, trace.name)
+        )
+    )
+    st.plotly_chart(scenario_chart, use_container_width=True)
+
+scenario_display = scenario.channel_table.copy()
+for money_col in [
+    "current_weekly_spend_gbp",
+    "proposed_weekly_spend_gbp",
+    "weekly_spend_change_gbp",
+    "proposed_weekly_contribution_gbp",
+    "weekly_contribution_change_gbp",
+]:
+    scenario_display[money_col] = scenario_display[money_col].map(gbp)
+scenario_display["proposed_roi"] = scenario_display["proposed_roi"].map(x_value)
+scenario_display["incremental_roi"] = scenario_display["incremental_roi"].map(
+    lambda value: "n/a" if pd.isna(value) else x_value(value)
+)
+st.dataframe(
+    scenario_display[
+        [
+            "channel",
+            "current_weekly_spend_gbp",
+            "proposed_weekly_spend_gbp",
+            "weekly_spend_change_gbp",
+            "proposed_weekly_contribution_gbp",
+            "weekly_contribution_change_gbp",
+            "proposed_roi",
+            "incremental_roi",
+        ]
+    ],
+    use_container_width=True,
+    hide_index=True,
+)
+
+st.info(
+    "Scenario planning uses deterministic response curves from the MMM foundation model. "
+    "It is suitable for directional planning, not final budget approval."
 )

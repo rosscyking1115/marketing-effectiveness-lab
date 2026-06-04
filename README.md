@@ -6,7 +6,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 4: MMM foundations.
+Phase 5: Budget scenario planner.
 
 The project currently includes:
 
@@ -18,6 +18,7 @@ The project currently includes:
 - MMM-style adstock and saturation transformations
 - Directional contribution and ROI estimates
 - Response curves
+- Budget scenario planning
 
 The next major modeling phase is calibrated or Bayesian MMM with uncertainty and budget planning.
 
