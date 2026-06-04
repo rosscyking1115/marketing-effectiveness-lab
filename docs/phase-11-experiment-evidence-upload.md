@@ -33,6 +33,7 @@ The calibration layer now supports:
 - `end_date`
 - `market`
 - `confidence_level`
+- `approval_status`
 - `owner`
 - `source_notes`
 

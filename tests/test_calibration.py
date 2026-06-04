@@ -6,6 +6,8 @@ import pytest
 from marketing_effectiveness_lab.calibration import (
     apply_lift_calibration,
     apply_lift_calibration_to_intervals,
+    approved_lift_tests,
+    assess_lift_test_evidence,
     calibration_factors,
     demo_lift_test_calibrations,
     lift_test_template_csv,
@@ -39,6 +41,55 @@ def test_lift_test_template_can_be_parsed_and_validated() -> None:
     assert parsed is not None
     assert set(parsed["channel"]) == {"Paid search", "Paid social"}
     assert "calibration_factor" in parsed.columns
+
+
+def test_assess_lift_test_evidence_scores_quality_and_approval() -> None:
+    parsed, errors = validate_lift_test_csv_text(lift_test_template_csv())
+    assert errors == []
+    assert parsed is not None
+
+    assessed = assess_lift_test_evidence(parsed)
+
+    assert {"evidence_quality_score", "quality_tier", "review_flags"}.issubset(assessed.columns)
+    assert assessed["approved_for_calibration"].all()
+    assert (assessed["evidence_quality_score"] >= 60).all()
+    assert set(assessed["quality_tier"]).issubset({"Strong", "Usable"})
+
+
+def test_approved_lift_tests_filters_unapproved_evidence() -> None:
+    parsed, errors = validate_lift_test_csv_text(lift_test_template_csv())
+    assert errors == []
+    assert parsed is not None
+    parsed.loc[0, "approval_status"] = "Needs review"
+
+    approved = approved_lift_tests(parsed)
+
+    assert len(approved) == 1
+    assert approved.iloc[0]["channel"] == "Paid social"
+
+
+def test_assess_lift_test_evidence_flags_weak_tests() -> None:
+    weak = pd.DataFrame(
+        [
+            {
+                "channel": "Paid search",
+                "experiment_type": "Geo holdout",
+                "weeks": 2,
+                "model_lift_gbp": 100.0,
+                "observed_lift_gbp": 300.0,
+                "observed_lift_lower_gbp": 10.0,
+                "observed_lift_upper_gbp": 590.0,
+                "approval_status": "Needs review",
+            }
+        ]
+    )
+
+    assessed = assess_lift_test_evidence(weak)
+
+    assert assessed.loc[0, "quality_tier"] == "Needs review"
+    assert not bool(assessed.loc[0, "approved_for_calibration"])
+    assert "Short test" in assessed.loc[0, "review_flags"]
+    assert "Wide interval" in assessed.loc[0, "review_flags"]
 
 
 def test_calibration_factors_aggregate_duplicate_channel_tests() -> None:

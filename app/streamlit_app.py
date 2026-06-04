@@ -26,6 +26,8 @@ from marketing_effectiveness_lab.budget import (
 from marketing_effectiveness_lab.calibration import (
     apply_lift_calibration,
     apply_lift_calibration_to_intervals,
+    approved_lift_tests,
+    assess_lift_test_evidence,
     calibration_factors,
     demo_lift_test_calibrations,
     lift_test_template_csv,
@@ -917,14 +919,25 @@ if evidence_source == "Upload lift-test CSV":
             evidence_label = uploaded_lift_tests.name
             st.success(f"Loaded {len(lift_tests):,} lift-test rows from {uploaded_lift_tests.name}.")
 
-lift_factor_table = calibration_factors(lift_tests)
-apply_incrementality_calibration = st.checkbox("Apply selected lift-test calibration", value=False)
+evidence_quality = assess_lift_test_evidence(lift_tests)
+use_approved_only = st.checkbox("Use only approved evidence for calibration", value=True)
+calibration_lift_tests = approved_lift_tests(lift_tests) if use_approved_only else lift_tests
+if calibration_lift_tests.empty:
+    st.warning("No approved evidence is available for calibration. Review approval statuses or disable the filter.")
+    lift_factor_table = calibration_factors(lift_tests)
+else:
+    lift_factor_table = calibration_factors(calibration_lift_tests)
+apply_incrementality_calibration = st.checkbox(
+    "Apply selected lift-test calibration",
+    value=False,
+    disabled=calibration_lift_tests.empty,
+)
 st.caption(f"Active experiment evidence: {evidence_label}.")
 
 calibration_left, calibration_right = st.columns((1.05, 1))
 with calibration_left:
-    st.markdown("**Lift-test readouts**")
-    lift_display = lift_tests.copy()
+    st.markdown("**Evidence quality review**")
+    lift_display = evidence_quality.copy()
     for money_col in [
         "model_lift_gbp",
         "observed_lift_gbp",
@@ -946,6 +959,10 @@ with calibration_left:
             "model_lift_gbp",
             "observed_lift_gbp",
             "calibration_factor",
+            "approval_status",
+            "evidence_quality_score",
+            "quality_tier",
+            "review_flags",
         ]
         if column in lift_display.columns
     ]
@@ -980,9 +997,9 @@ with calibration_right:
 if apply_incrementality_calibration:
     calibrated_contribution = apply_lift_calibration(
         active_mmm_result.contribution_table,
-        lift_tests,
+        calibration_lift_tests,
     )
-    calibrated_intervals = apply_lift_calibration_to_intervals(uncertainty, lift_tests)
+    calibrated_intervals = apply_lift_calibration_to_intervals(uncertainty, calibration_lift_tests)
 
     calibrated_left, calibrated_right = st.columns((1, 1))
     with calibrated_left:

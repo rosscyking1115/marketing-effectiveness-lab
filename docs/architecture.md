@@ -13,7 +13,8 @@ flowchart LR
     B --> F["MMM Foundations"]
     F --> G["Contribution and ROI"]
     F --> H["Uncertainty Intervals"]
-    M["Lift-Test CSV Upload"] --> I["Experiment Calibration"]
+    M["Lift-Test CSV Upload"] --> N["Evidence Governance"]
+    N --> I["Experiment Calibration"]
     G --> I
     H --> I
     F --> J["Response Curves"]
@@ -28,7 +29,7 @@ flowchart LR
 - `src/marketing_effectiveness_lab/modeling.py` handles baseline econometrics.
 - `src/marketing_effectiveness_lab/mmm.py` handles MMM-style adstock, saturation, contribution, and response curves.
 - `src/marketing_effectiveness_lab/uncertainty.py` handles coefficient simulation for contribution and prediction intervals.
-- `src/marketing_effectiveness_lab/calibration.py` handles lift-test templates, upload validation, and experiment calibration.
+- `src/marketing_effectiveness_lab/calibration.py` handles lift-test templates, upload validation, evidence governance, and experiment calibration.
 - `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning.
 - `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation.
 - `app/streamlit_app.py` renders the analyst dashboard.

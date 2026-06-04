@@ -50,6 +50,7 @@ The dashboard provides:
 - Uncertainty intervals
 - Incrementality calibration diagnostics
 - Lift-test evidence upload and validation
+- Evidence quality review and approved-only calibration
 - Budget scenario planning
 - Executive summary draft
 
@@ -67,7 +68,7 @@ The dashboard provides:
 
 The current MMM foundation model is deterministic. It uses channel-specific adstock and saturation parameters, then fits an OLS model on transformed media features and controls.
 
-The project now includes parameter search, coefficient uncertainty simulation, demo lift-test calibration, and real-data-ready lift-test CSV upload. This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
+The project now includes parameter search, coefficient uncertainty simulation, demo lift-test calibration, real-data-ready lift-test CSV upload, and evidence governance. This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
 
 ## Future Enhancements
 

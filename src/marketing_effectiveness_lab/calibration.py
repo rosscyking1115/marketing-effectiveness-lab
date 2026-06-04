@@ -27,9 +27,12 @@ OPTIONAL_LIFT_TEST_COLUMNS = [
     "end_date",
     "market",
     "confidence_level",
+    "approval_status",
     "owner",
     "source_notes",
 ]
+
+APPROVED_STATUSES = {"approved", "approved for calibration"}
 
 
 def demo_lift_test_calibrations(mmm_result: MmmModelResult) -> pd.DataFrame:
@@ -89,6 +92,7 @@ def demo_lift_test_calibrations(mmm_result: MmmModelResult) -> pd.DataFrame:
                 "observed_lift_gbp": observed_lift,
                 "observed_lift_lower_gbp": max(observed_lift - interval, 0.0),
                 "observed_lift_upper_gbp": observed_lift + interval,
+                "approval_status": "Approved",
             }
         )
 
@@ -115,6 +119,7 @@ def lift_test_template_dataframe() -> pd.DataFrame:
                 "observed_lift_lower_gbp": 200000,
                 "observed_lift_upper_gbp": 280000,
                 "confidence_level": 0.90,
+                "approval_status": "Approved",
                 "owner": "Marketing analytics",
                 "source_notes": "Matched regions using pre-period revenue and spend.",
             },
@@ -131,6 +136,7 @@ def lift_test_template_dataframe() -> pd.DataFrame:
                 "observed_lift_lower_gbp": 160000,
                 "observed_lift_upper_gbp": 250000,
                 "confidence_level": 0.90,
+                "approval_status": "Approved",
                 "owner": "Growth team",
                 "source_notes": "Platform conversion-lift readout reconciled to revenue.",
             },
@@ -162,6 +168,57 @@ def validate_lift_test_csv_text(csv_text: str) -> tuple[pd.DataFrame | None, lis
             lift_tests["observed_lift_gbp"] / lift_tests["model_lift_gbp"]
         )
     return lift_tests, []
+
+
+def assess_lift_test_evidence(lift_tests: pd.DataFrame) -> pd.DataFrame:
+    """Score lift-test evidence quality and generate review flags."""
+
+    errors = validate_lift_tests(lift_tests)
+    if errors:
+        raise ValueError(" ".join(errors))
+
+    assessed = _coerce_lift_test_types(lift_tests).copy()
+    if "calibration_factor" not in assessed.columns:
+        assessed["calibration_factor"] = assessed["observed_lift_gbp"] / assessed["model_lift_gbp"]
+
+    assessed["interval_width_pct"] = (
+        (assessed["observed_lift_upper_gbp"] - assessed["observed_lift_lower_gbp"])
+        / assessed["observed_lift_gbp"]
+    ).clip(lower=0)
+    assessed["metadata_completeness"] = _metadata_completeness(assessed)
+
+    duration_score = (assessed["weeks"] / 6).clip(upper=1.0)
+    precision_score = (1 - assessed["interval_width_pct"] / 0.80).clip(lower=0.0, upper=1.0)
+    calibration_score = (1 - (assessed["calibration_factor"] - 1).abs() / 1.25).clip(
+        lower=0.0,
+        upper=1.0,
+    )
+    assessed["evidence_quality_score"] = (
+        100
+        * (
+            0.30 * duration_score
+            + 0.35 * precision_score
+            + 0.20 * assessed["metadata_completeness"]
+            + 0.15 * calibration_score
+        )
+    ).round(1)
+    assessed["quality_tier"] = assessed["evidence_quality_score"].map(_quality_tier)
+    assessed["review_flags"] = assessed.apply(_review_flags, axis=1)
+    assessed["approval_status"] = assessed.get("approval_status", "Needs review")
+    assessed["approved_for_calibration"] = assessed["approval_status"].map(_is_approved_status)
+
+    return assessed.sort_values(
+        ["approved_for_calibration", "evidence_quality_score"],
+        ascending=[False, False],
+    ).reset_index(drop=True)
+
+
+def approved_lift_tests(lift_tests: pd.DataFrame) -> pd.DataFrame:
+    """Return only evidence rows approved for calibration, preserving fallback behavior."""
+
+    assessed = assess_lift_test_evidence(lift_tests)
+    approved = assessed[assessed["approved_for_calibration"]].copy()
+    return approved.reset_index(drop=True)
 
 
 def validate_lift_tests(lift_tests: pd.DataFrame) -> list[str]:
@@ -206,6 +263,9 @@ def validate_lift_tests(lift_tests: pd.DataFrame) -> list[str]:
     if "confidence_level" in lift_tests.columns:
         if ((lift_tests["confidence_level"] <= 0) | (lift_tests["confidence_level"] >= 1)).any():
             errors.append("confidence_level must be greater than 0 and less than 1.")
+    if "approval_status" in lift_tests.columns:
+        if lift_tests["approval_status"].isna().any():
+            errors.append("approval_status contains missing values.")
 
     return errors
 
@@ -336,4 +396,45 @@ def _coerce_lift_test_types(lift_tests: pd.DataFrame) -> pd.DataFrame:
     for column in ["start_date", "end_date"]:
         if column in typed.columns:
             typed[column] = pd.to_datetime(typed[column], errors="coerce").dt.strftime("%Y-%m-%d")
+    if "approval_status" in typed.columns:
+        typed["approval_status"] = typed["approval_status"].fillna("").astype(str).str.strip()
     return typed
+
+
+def _metadata_completeness(lift_tests: pd.DataFrame) -> pd.Series:
+    metadata_columns = [
+        column
+        for column in ["test_name", "start_date", "end_date", "market", "owner", "source_notes"]
+        if column in lift_tests.columns
+    ]
+    if not metadata_columns:
+        return pd.Series(0.0, index=lift_tests.index)
+    present = lift_tests[metadata_columns].notna() & (lift_tests[metadata_columns].astype(str) != "")
+    return present.mean(axis=1)
+
+
+def _quality_tier(score: float) -> str:
+    if score >= 80:
+        return "Strong"
+    if score >= 60:
+        return "Usable"
+    return "Needs review"
+
+
+def _review_flags(row: pd.Series) -> str:
+    flags = []
+    if row["weeks"] < 4:
+        flags.append("Short test")
+    if row["interval_width_pct"] > 0.60:
+        flags.append("Wide interval")
+    if row["calibration_factor"] < 0.50 or row["calibration_factor"] > 1.75:
+        flags.append("Large MMM mismatch")
+    if row["metadata_completeness"] < 0.50:
+        flags.append("Sparse metadata")
+    if not flags:
+        return "No major flags"
+    return "; ".join(flags)
+
+
+def _is_approved_status(status: object) -> bool:
+    return str(status).strip().lower() in APPROVED_STATUSES
