@@ -23,7 +23,8 @@ The lab is designed around the way marketing effectiveness work happens in pract
 7. Quantify uncertainty with intervals and a lightweight Bayesian posterior layer.
 8. Calibrate contribution estimates with governed lift-test evidence.
 9. Compare profit-aware budget scenarios and constrained allocation recommendations.
-10. Produce stakeholder-ready summaries and caveats.
+10. Score recommendation readiness before stakeholder review.
+11. Produce stakeholder-ready summaries and caveats.
 
 ## Current Outputs
 
@@ -39,6 +40,7 @@ The interactive dashboard provides:
 - Connector templates, weekly assembly, and source diagnostics
 - Profit-aware scenario planning and constrained budget optimization
 - Downloadable model-run report for review and lightweight audit trails
+- Recommendation readiness scoring for model, evidence, profit, spend, and history checks
 - Executive summary draft for stakeholder communication
 
 ## Technical Stack

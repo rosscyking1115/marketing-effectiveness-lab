@@ -38,6 +38,7 @@ stakeholder communication.
 - Lift-test evidence upload, governance, calibration, and experiment-informed priors
 - Profit-aware scenario planning and constrained budget optimization
 - Executive summary generation with stakeholder caveats
+- Recommendation readiness scoring for stakeholder review governance
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -70,6 +71,7 @@ Useful docs:
 - `docs/phase-18-source-diagnostics.md` - source coverage and data-quality diagnostics for assembled connector data
 - `docs/phase-19-expanded-connectors.md` - display, affiliate, influencer, and external-control connector coverage
 - `docs/phase-20-model-run-reporting.md` - downloadable model-run report for review workflows
+- `docs/phase-21-recommendation-readiness.md` - recommendation readiness gates for budget decisions
 
 ## Quick Start
 

@@ -8,6 +8,7 @@ import pandas as pd
 
 from marketing_effectiveness_lab.analytics import KpiSummary
 from marketing_effectiveness_lab.budget import BudgetScenarioResult
+from marketing_effectiveness_lab.governance import RecommendationReadiness
 from marketing_effectiveness_lab.mmm import MmmModelResult
 
 
@@ -128,6 +129,7 @@ def build_model_run_report(
     row_count: int,
     first_week: str,
     last_week: str,
+    recommendation_readiness: RecommendationReadiness | None = None,
 ) -> str:
     """Create a deterministic markdown report for review and lightweight audit trails."""
 
@@ -197,6 +199,30 @@ def build_model_run_report(
             f"- Estimated weekly profit change: {_gbp(scenario_summary['weekly_profit_change_gbp'])}",
             f"- Proposed profit ROI: {scenario_summary['proposed_profit_roi']:,.1f}x",
             "",
+        ]
+    )
+
+    if recommendation_readiness is not None:
+        lines.extend(
+            [
+                "## Recommendation Readiness",
+                "",
+                f"- Status: {recommendation_readiness.status}",
+                f"- Score: {recommendation_readiness.score:,.1f}/100",
+                "",
+                "| Check | Status | Detail |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for check in recommendation_readiness.checks.to_dict("records"):
+            lines.append(f"| {check['check']} | {check['status']} | {check['detail']} |")
+        if recommendation_readiness.required_actions:
+            lines.extend(["", "Required actions before approval:"])
+            lines.extend(f"- {action}" for action in recommendation_readiness.required_actions)
+        lines.append("")
+
+    lines.extend(
+        [
             "## Recommendation",
             "",
             executive_summary.recommendation,

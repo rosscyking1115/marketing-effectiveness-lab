@@ -8,6 +8,7 @@ from marketing_effectiveness_lab.budget import (
     roi_weighted_allocation,
 )
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
+from marketing_effectiveness_lab.governance import assess_recommendation_readiness
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
 from marketing_effectiveness_lab.reporting import build_executive_summary, build_model_run_report
 
@@ -69,6 +70,12 @@ def test_model_run_report_contains_review_sections() -> None:
     current = current_weekly_spend(df, lookback_weeks=13)
     scenario = evaluate_budget_scenario(df, mmm_result, current, lookback_weeks=13)
     summary = build_executive_summary(kpis, mmm_result, scenario)
+    readiness = assess_recommendation_readiness(
+        mmm_result,
+        scenario,
+        weekly_rows=len(prepared),
+        evidence_quality=None,
+    )
 
     report = build_model_run_report(
         kpis,
@@ -80,6 +87,7 @@ def test_model_run_report_contains_review_sections() -> None:
         row_count=len(prepared),
         first_week=str(prepared["week_start"].min().date()),
         last_week=str(prepared["week_start"].max().date()),
+        recommendation_readiness=readiness,
     )
 
     assert report.startswith("# Marketing Effectiveness Model Run Report")
@@ -87,5 +95,6 @@ def test_model_run_report_contains_review_sections() -> None:
     assert "- Data source: Demo data" in report
     assert "## Model Diagnostics" in report
     assert "## Budget Scenario" in report
+    assert "## Recommendation Readiness" in report
     assert "## Review Notes" in report
     assert "not a production approval record" in report

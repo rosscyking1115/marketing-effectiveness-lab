@@ -49,6 +49,7 @@ from marketing_effectiveness_lab.data.diagnostics import assembled_weekly_diagno
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
+from marketing_effectiveness_lab.governance import assess_recommendation_readiness
 from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.reporting import build_executive_summary, build_model_run_report
@@ -1681,6 +1682,26 @@ with st.expander("Caveats for stakeholder communication"):
     for caveat in executive_summary.caveats:
         st.write(f"- {caveat}")
 
+recommendation_readiness = assess_recommendation_readiness(
+    active_mmm_result,
+    scenario,
+    weekly_rows=len(selected_df),
+    evidence_quality=evidence_quality,
+)
+st.markdown("**Recommendation readiness**")
+readiness_cols = st.columns(2)
+readiness_cols[0].metric("Review status", recommendation_readiness.status)
+readiness_cols[1].metric("Readiness score", f"{recommendation_readiness.score:,.1f}/100")
+st.dataframe(
+    recommendation_readiness.checks,
+    use_container_width=True,
+    hide_index=True,
+)
+if recommendation_readiness.required_actions:
+    with st.expander("Required actions before approval"):
+        for action in recommendation_readiness.required_actions:
+            st.write(f"- {action}")
+
 model_run_report = build_model_run_report(
     kpis,
     active_mmm_result,
@@ -1691,6 +1712,7 @@ model_run_report = build_model_run_report(
     row_count=len(selected_df),
     first_week=str(selected_df["week_start"].min().date()),
     last_week=str(selected_df["week_start"].max().date()),
+    recommendation_readiness=recommendation_readiness,
 )
 st.download_button(
     "Download model run report",
