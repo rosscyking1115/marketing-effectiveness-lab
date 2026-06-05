@@ -15,8 +15,11 @@ flowchart LR
     F --> H["Uncertainty Intervals"]
     M["Lift-Test CSV Upload"] --> N["Evidence Governance"]
     N --> I["Experiment Calibration"]
+    N --> O["Bayesian Priors"]
     G --> I
     H --> I
+    F --> P["Bayesian Posterior Layer"]
+    O --> P
     F --> J["Response Curves"]
     J --> K["Profit-Aware Budget Scenario Planner"]
     K --> L["Executive Summary"]
@@ -29,6 +32,7 @@ flowchart LR
 - `src/marketing_effectiveness_lab/modeling.py` handles baseline econometrics.
 - `src/marketing_effectiveness_lab/mmm.py` handles MMM-style adstock, saturation, contribution, and response curves.
 - `src/marketing_effectiveness_lab/uncertainty.py` handles coefficient simulation for contribution and prediction intervals.
+- `src/marketing_effectiveness_lab/bayesian.py` handles Bayesian posterior draws, experiment-informed priors, and posterior predictive intervals.
 - `src/marketing_effectiveness_lab/calibration.py` handles lift-test templates, upload validation, evidence governance, and experiment calibration.
 - `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning and profit-aware scenario diagnostics.
 - `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation.

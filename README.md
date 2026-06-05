@@ -12,7 +12,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 13: Profit-aware scenario planning.
+Phase 14: Bayesian MMM foundations.
 
 The project currently includes:
 
@@ -33,8 +33,10 @@ The project currently includes:
 - Lift-test CSV template and upload validation
 - Evidence quality scoring, review flags, and approved-only calibration
 - Gross-margin-adjusted profit planning for budget scenarios
+- Bayesian posterior contribution, ROI, and holdout prediction intervals
+- Experiment-informed media priors from approved lift-test evidence
 
-The next major modeling phase is Bayesian MMM with posterior diagnostics and experiment-informed priors.
+The next major modeling phase is constrained budget optimization with posterior-aware planning.
 
 ## Project Shape
 
@@ -52,6 +54,7 @@ Useful docs:
 - `docs/phase-11-experiment-evidence-upload.md` - real-data-ready experiment evidence upload
 - `docs/phase-12-evidence-governance.md` - lift-test quality review and approval filtering
 - `docs/phase-13-profit-aware-planning.md` - margin-aware budget scenario planning
+- `docs/phase-14-bayesian-mmm-foundations.md` - Bayesian posterior layer and experiment-informed priors
 
 ## Quick Start
 

@@ -17,6 +17,7 @@ from marketing_effectiveness_lab.analytics import (
     summarize_kpis,
     weekly_spend_long,
 )
+from marketing_effectiveness_lab.bayesian import fit_bayesian_mmm
 from marketing_effectiveness_lab.budget import (
     allocation_from_shares,
     current_weekly_spend,
@@ -1083,6 +1084,205 @@ else:
 st.caption(
     "This calibration layer is diagnostic. The current budget planner still uses the active MMM response curves; "
     "future phases can feed experiment-calibrated priors into Bayesian MMM."
+)
+
+st.divider()
+st.subheader("Bayesian MMM Foundations")
+st.markdown(
+    '<p class="mel-caption">Posterior layer over the active MMM design matrix. '
+    "Approved lift-test evidence can inform media priors before drawing posterior contribution "
+    "and predictive intervals.</p>",
+    unsafe_allow_html=True,
+)
+
+bayesian_left_control, bayesian_right_control = st.columns((1, 1))
+with bayesian_left_control:
+    bayesian_draws = st.slider("Bayesian posterior draws", 100, 1200, 600, 100)
+with bayesian_right_control:
+    use_experiment_priors = st.checkbox(
+        "Use selected experiment evidence as Bayesian priors",
+        value=True,
+        disabled=calibration_lift_tests.empty,
+    )
+
+bayesian_lift_tests = (
+    calibration_lift_tests if use_experiment_priors and not calibration_lift_tests.empty else None
+)
+bayesian_result = fit_bayesian_mmm(
+    active_mmm_result,
+    lift_tests=bayesian_lift_tests,
+    draws=bayesian_draws,
+    seed=42,
+)
+
+bayes_metric_cols = st.columns(5)
+bayes_metric_cols[0].metric("Posterior draws", integer(bayesian_result.diagnostics["draw_count"]))
+bayes_metric_cols[1].metric(
+    "Holdout coverage",
+    percent(bayesian_result.diagnostics["holdout_coverage"]),
+)
+bayes_metric_cols[2].metric(
+    "Posterior MAPE",
+    percent(bayesian_result.diagnostics["holdout_mape"]),
+)
+bayes_metric_cols[3].metric(
+    "Posterior sigma",
+    gbp(bayesian_result.diagnostics["posterior_sigma_mean_gbp"]),
+)
+bayes_metric_cols[4].metric(
+    "Experiment priors",
+    integer(bayesian_result.diagnostics["experiment_informed_priors"]),
+)
+
+bayesian_left, bayesian_right = st.columns((1.1, 1))
+with bayesian_left:
+    bayesian_contribution_df = bayesian_result.contribution_intervals.sort_values(
+        "contribution_mean_gbp"
+    )
+    bayesian_interval_fig = go.Figure()
+    bayesian_interval_fig.add_trace(
+        go.Bar(
+            x=bayesian_contribution_df["contribution_mean_gbp"],
+            y=bayesian_contribution_df["channel"],
+            orientation="h",
+            name="Posterior mean",
+            marker={"color": "#4b6f9c"},
+            error_x={
+                "type": "data",
+                "symmetric": False,
+                "array": bayesian_contribution_df["contribution_upper_gbp"]
+                - bayesian_contribution_df["contribution_mean_gbp"],
+                "arrayminus": bayesian_contribution_df["contribution_mean_gbp"]
+                - bayesian_contribution_df["contribution_lower_gbp"],
+            },
+        )
+    )
+    bayesian_interval_fig.update_layout(
+        title="Bayesian contribution posterior intervals",
+        height=410,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        xaxis_title="Contribution GBP",
+        yaxis_title=None,
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        showlegend=False,
+    )
+    st.plotly_chart(bayesian_interval_fig, use_container_width=True)
+
+with bayesian_right:
+    bayesian_prediction = bayesian_result.prediction_intervals.copy()
+    bayesian_prediction_fig = go.Figure()
+    bayesian_prediction_fig.add_trace(
+        go.Scatter(
+            x=bayesian_prediction["week_start"],
+            y=bayesian_prediction["posterior_prediction_upper_gbp"],
+            mode="lines",
+            line={"width": 0},
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    bayesian_prediction_fig.add_trace(
+        go.Scatter(
+            x=bayesian_prediction["week_start"],
+            y=bayesian_prediction["posterior_prediction_lower_gbp"],
+            mode="lines",
+            fill="tonexty",
+            fillcolor="rgba(75, 111, 156, 0.18)",
+            line={"width": 0},
+            name="Posterior interval",
+        )
+    )
+    bayesian_prediction_fig.add_trace(
+        go.Scatter(
+            x=bayesian_prediction["week_start"],
+            y=bayesian_prediction["revenue_gbp"],
+            mode="lines+markers",
+            name="Actual holdout",
+            line={"color": "#1f2933", "width": 2},
+        )
+    )
+    bayesian_prediction_fig.add_trace(
+        go.Scatter(
+            x=bayesian_prediction["week_start"],
+            y=bayesian_prediction["posterior_prediction_mean_gbp"],
+            mode="lines",
+            name="Posterior mean",
+            line={"color": "#4b6f9c", "width": 2},
+        )
+    )
+    bayesian_prediction_fig.update_layout(
+        title="Bayesian holdout posterior predictive interval",
+        height=410,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        yaxis_title="Revenue GBP",
+        xaxis_title=None,
+        legend_orientation="h",
+        legend_y=1.08,
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+    )
+    st.plotly_chart(bayesian_prediction_fig, use_container_width=True)
+
+bayesian_tables_left, bayesian_tables_right = st.columns((1.1, 1))
+with bayesian_tables_left:
+    bayesian_display = bayesian_result.contribution_intervals.copy()
+    for money_col in [
+        "contribution_mean_gbp",
+        "contribution_lower_gbp",
+        "contribution_upper_gbp",
+    ]:
+        bayesian_display[money_col] = bayesian_display[money_col].map(gbp)
+    for roi_col in ["roi_mean", "roi_lower", "roi_upper"]:
+        bayesian_display[roi_col] = bayesian_display[roi_col].map(x_value)
+    st.markdown("**Bayesian contribution table**")
+    st.dataframe(
+        bayesian_display[
+            [
+                "channel",
+                "prior_source",
+                "contribution_mean_gbp",
+                "contribution_lower_gbp",
+                "contribution_upper_gbp",
+                "roi_mean",
+                "roi_lower",
+                "roi_upper",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with bayesian_tables_right:
+    media_prior_display = bayesian_result.coefficient_summary[
+        bayesian_result.coefficient_summary["channel"] != ""
+    ].copy()
+    media_prior_display["prior_mean"] = media_prior_display["prior_mean"].map(lambda x: f"{x:,.0f}")
+    media_prior_display["posterior_mean"] = media_prior_display["posterior_mean"].map(
+        lambda x: f"{x:,.0f}"
+    )
+    media_prior_display["probability_positive"] = media_prior_display["probability_positive"].map(
+        percent
+    )
+    st.markdown("**Media coefficient priors**")
+    st.dataframe(
+        media_prior_display[
+            [
+                "channel",
+                "prior_source",
+                "prior_mean",
+                "posterior_mean",
+                "probability_positive",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+st.info(
+    "This Bayesian layer samples coefficients and residual variance for the active transformed MMM "
+    "features. It is a posterior foundation, not yet a full Bayesian sampler over adstock and "
+    "saturation parameters."
 )
 
 st.divider()
