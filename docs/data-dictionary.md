@@ -64,6 +64,19 @@ The connector assembly pipeline treats Shopify/ecommerce as the reconciled outco
 
 Display, affiliates, and influencer spend default to `0` until those connector contracts are added. Consumer confidence and inflation default to neutral `0` placeholders unless supplied in a future controls connector.
 
+## Assembly Diagnostics
+
+The connector assembly workflow now reports pre-modeling diagnostics:
+
+- Weekly schema validation status.
+- Weekly history sufficiency for the current holdout workflow.
+- Outcome quality for revenue and orders.
+- Customer-count anomalies.
+- Active media channel coverage.
+- Organic search coverage.
+- Explicit zero-default channel notes.
+- Source coverage by connector.
+
 ## Validation Rules
 
 - `week_start` must be a Monday date.

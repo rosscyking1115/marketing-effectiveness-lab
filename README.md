@@ -12,7 +12,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 17: Weekly connector assembly pipeline.
+Phase 18: Source diagnostics for assembled connector data.
 
 The project currently includes:
 
@@ -38,8 +38,9 @@ The project currently includes:
 - Constrained budget optimization for profit or contribution objectives
 - Connector templates and validation for GA4, Google Ads, Meta Ads, Shopify/ecommerce, and CRM exports
 - Connector assembly that maps validated exports into the weekly MMM-ready dataset
+- Source diagnostics for assembled connector data before modeling
 
-The next major product phase is richer source diagnostics for assembled connector data.
+The next major product phase is richer connector coverage, such as display, affiliate, influencer, and external control inputs.
 
 ## Project Shape
 
@@ -61,6 +62,7 @@ Useful docs:
 - `docs/phase-15-constrained-budget-optimization.md` - constrained profit and contribution allocation
 - `docs/phase-16-real-data-connectors.md` - connector templates for common marketing and commerce exports
 - `docs/phase-17-weekly-assembly-pipeline.md` - assembly pipeline from connector exports to the weekly MMM schema
+- `docs/phase-18-source-diagnostics.md` - source coverage and data-quality diagnostics for assembled connector data
 
 ## Quick Start
 

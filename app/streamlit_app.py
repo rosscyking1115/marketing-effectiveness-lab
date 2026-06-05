@@ -45,6 +45,7 @@ from marketing_effectiveness_lab.data.connectors import (
     connector_template_csv,
     validate_connector_csv_text,
 )
+from marketing_effectiveness_lab.data.diagnostics import assembled_weekly_diagnostics
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
@@ -172,6 +173,19 @@ def assemble_connector_uploads(csv_text_by_connector: dict[str, str]) -> WeeklyA
     return assemble_connector_csv_texts(csv_text_by_connector)
 
 
+@st.cache_data(show_spinner=False)
+def diagnose_assembled_weekly_data(
+    weekly_dataset: pd.DataFrame,
+    source_summary: pd.DataFrame,
+    validation_errors: list[str],
+) -> pd.DataFrame:
+    return assembled_weekly_diagnostics(
+        weekly_dataset,
+        source_summary,
+        validation_errors,
+    )
+
+
 def select_dataset() -> tuple[pd.DataFrame, str]:
     with st.sidebar:
         st.header("Data source")
@@ -252,6 +266,18 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
                     use_container_width=True,
                     hide_index=True,
                 )
+
+            assembly_diagnostics = diagnose_assembled_weekly_data(
+                assembly_result.weekly_dataset,
+                assembly_result.source_summary,
+                assembly_result.validation_errors,
+            )
+            st.markdown("**Assembly diagnostics**")
+            st.dataframe(
+                assembly_diagnostics,
+                use_container_width=True,
+                hide_index=True,
+            )
 
             if assembly_result.validation_errors:
                 st.error("Connector assembly failed validation.")

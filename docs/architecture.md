@@ -7,7 +7,8 @@ The current project is a local analytics product prototype.
 ```mermaid
 flowchart LR
     R["Connector CSV Templates"] --> S["Weekly Assembly Pipeline"]
-    S --> A["Demo or Real Weekly Data"]
+    S --> T["Source Diagnostics"]
+    T --> A["Demo or Real Weekly Data"]
     A --> B["Schema Validation"]
     B --> C["Analyst Metrics"]
     C --> D["Streamlit Dashboard"]
@@ -33,6 +34,7 @@ flowchart LR
 - `src/marketing_effectiveness_lab/data/` handles data generation and schema checks.
 - `src/marketing_effectiveness_lab/data/connectors.py` handles connector templates and validation for common marketing exports.
 - `src/marketing_effectiveness_lab/data/assembly.py` handles connector-to-weekly assembly for the MMM schema.
+- `src/marketing_effectiveness_lab/data/diagnostics.py` handles source coverage and quality checks for assembled connector data.
 - `src/marketing_effectiveness_lab/analytics.py` handles dashboard metrics and diagnostics.
 - `src/marketing_effectiveness_lab/modeling.py` handles baseline econometrics.
 - `src/marketing_effectiveness_lab/mmm.py` handles MMM-style adstock, saturation, contribution, and response curves.
