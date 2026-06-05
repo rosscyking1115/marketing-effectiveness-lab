@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture | Marketing Effectiveness Lab</title>
+    <meta
+      name="description"
+      content="Architecture overview for the Marketing Effectiveness Lab portfolio project."
+    />
+    <link rel="stylesheet" href="assets/site-pages.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="shell" aria-label="Main navigation">
+        <a class="brand" href="index.html">Marketing Effectiveness Lab</a>
+        <div class="nav-links">
+          <a href="case-study.html">Case Study</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="data-contract.html">Data Contract</a>
+          <a href="https://github.com/rosscyking1115/marketing-effectiveness-lab">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="shell page-hero">
+        <div class="eyebrow">Architecture</div>
+        <h1>A transparent analytics product path from data contracts to budget decisions.</h1>
+        <p class="lead">
+          The project is structured as a reusable Python package plus a Streamlit analyst interface,
+          with clear boundaries between source validation, model diagnostics, evidence calibration,
+          and commercial planning.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app/">
+            Open Interactive App
+          </a>
+          <a class="button" href="data-contract.html">View Data Contract</a>
+        </div>
+      </div>
+
+      <section>
+        <div class="shell">
+          <h2>Current Workflow</h2>
+          <div class="flow">
+            <div class="flow-card">
+              <h3>Source Contracts</h3>
+              <p class="muted">Weekly schema, connector templates, CSV validation, and source diagnostics.</p>
+            </div>
+            <div class="flow-card blue">
+              <h3>Modeling Layer</h3>
+              <p class="muted">Baseline econometrics, MMM transformations, holdouts, uncertainty, and Bayesian priors.</p>
+            </div>
+            <div class="flow-card coral">
+              <h3>Evidence Layer</h3>
+              <p class="muted">Lift-test uploads, quality scoring, approved-only calibration, and experiment-informed priors.</p>
+            </div>
+            <div class="flow-card gold">
+              <h3>Planning Layer</h3>
+              <p class="muted">Response curves, profit-aware scenarios, constrained optimization, and executive summaries.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Reusable Code Structure</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Responsibility</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>data/connectors.py</code></td>
+                  <td>Connector templates and validation for GA4, Google Ads, Meta Ads, ecommerce, and CRM exports.</td>
+                </tr>
+                <tr>
+                  <td><code>data/assembly.py</code></td>
+                  <td>Connector-to-weekly assembly into the MMM-ready schema.</td>
+                </tr>
+                <tr>
+                  <td><code>data/diagnostics.py</code></td>
+                  <td>Source coverage and data-quality checks for assembled connector data.</td>
+                </tr>
+                <tr>
+                  <td><code>analytics.py</code></td>
+                  <td>Dashboard KPIs, channel summaries, promotion summaries, and readiness checks.</td>
+                </tr>
+                <tr>
+                  <td><code>modeling.py</code></td>
+                  <td>Baseline econometric model and holdout diagnostics.</td>
+                </tr>
+                <tr>
+                  <td><code>mmm.py</code></td>
+                  <td>Adstock, saturation, MMM foundation model, contribution, ROI, and response curves.</td>
+                </tr>
+                <tr>
+                  <td><code>uncertainty.py</code> and <code>bayesian.py</code></td>
+                  <td>Coefficient simulation, posterior intervals, priors, and predictive diagnostics.</td>
+                </tr>
+                <tr>
+                  <td><code>calibration.py</code></td>
+                  <td>Lift-test templates, evidence governance, and experiment calibration.</td>
+                </tr>
+                <tr>
+                  <td><code>budget.py</code></td>
+                  <td>Budget scenarios, gross-margin planning, and constrained allocation optimization.</td>
+                </tr>
+                <tr>
+                  <td><code>reporting.py</code></td>
+                  <td>Deterministic executive summary generation with caveats.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell grid two">
+          <div>
+            <h2>Deployment Shape</h2>
+            <div class="timeline">
+              <div class="step">
+                <div>
+                  <h3>GitHub Pages</h3>
+                  <p class="muted">Static portfolio site served from the <code>docs/</code> folder.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h3>Streamlit Community Cloud</h3>
+                  <p class="muted">Interactive dashboard entrypoint at <code>streamlit_app.py</code>.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h3>GitHub Actions</h3>
+                  <p class="muted">Automated Ruff linting and Pytest checks on push and pull request.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="callout">
+            <h2>Production Roadmap</h2>
+            <p>
+              A production version would add authentication, role-based access, storage policy,
+              audit logs, warehouse connectors, model tracking, dependency scanning, and signed
+              release provenance before handling private company data.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Future Product Architecture</h2>
+          <div class="flow">
+            <div class="flow-card">
+              <h3>Warehouse Imports</h3>
+              <p class="muted">BigQuery, Snowflake, Postgres, or governed CSV ingestion.</p>
+            </div>
+            <div class="flow-card blue">
+              <h3>Feature Pipeline</h3>
+              <p class="muted">dbt marts, Dagster orchestration, validation, and data versioning.</p>
+            </div>
+            <div class="flow-card coral">
+              <h3>Model Jobs</h3>
+              <p class="muted">Scheduled MMM runs, calibration records, model registry, and artifacts.</p>
+            </div>
+            <div class="flow-card gold">
+              <h3>Web App and API</h3>
+              <p class="muted">FastAPI, Next.js, RBAC, scenario exports, and audit logs.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">Architecture designed to show production awareness without hiding prototype boundaries.</div>
+    </footer>
+  </body>
+</html>

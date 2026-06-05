@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data Contract | Marketing Effectiveness Lab</title>
+    <meta
+      name="description"
+      content="Data contract, connector templates, and validation rules for the Marketing Effectiveness Lab."
+    />
+    <link rel="stylesheet" href="assets/site-pages.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="shell" aria-label="Main navigation">
+        <a class="brand" href="index.html">Marketing Effectiveness Lab</a>
+        <div class="nav-links">
+          <a href="case-study.html">Case Study</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="data-contract.html">Data Contract</a>
+          <a href="https://github.com/rosscyking1115/marketing-effectiveness-lab">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="shell page-hero">
+        <div class="eyebrow">Data Contract</div>
+        <h1>Governed weekly inputs for marketing effectiveness modeling.</h1>
+        <p class="lead">
+          The lab is built around explicit schemas rather than loose spreadsheets. Weekly marketing
+          data, platform exports, source diagnostics, and final MMM-ready tables are validated before
+          dashboarding or modeling.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app/">
+            Open Interactive App
+          </a>
+          <a class="button" href="case-study.html">Read Case Study</a>
+        </div>
+      </div>
+
+      <section>
+        <div class="shell grid">
+          <article class="card metric">
+            <small>Primary Grain</small>
+            <strong>Weekly</strong>
+            <p>Monday week-start dates with continuous, unique weekly rows.</p>
+          </article>
+          <article class="card metric">
+            <small>Outcome Source</small>
+            <strong>Ecommerce</strong>
+            <p>Shopify or equivalent order export reconciles revenue and orders.</p>
+          </article>
+          <article class="card metric">
+            <small>Validation</small>
+            <strong>In memory</strong>
+            <p>Current prototype parses uploaded CSVs without persisting private files.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Weekly MMM Schema</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code>week_start</code></td><td>Monday date for the reporting week.</td></tr>
+                <tr><td><code>revenue_gbp</code></td><td>Weekly ecommerce revenue in GBP.</td></tr>
+                <tr><td><code>orders</code></td><td>Weekly ecommerce orders.</td></tr>
+                <tr><td><code>new_customers</code></td><td>Weekly first-time customers.</td></tr>
+                <tr><td><code>average_order_value_gbp</code></td><td>Weekly average order value in GBP.</td></tr>
+                <tr><td><code>paid_search_spend_gbp</code></td><td>Weekly paid search media spend in GBP.</td></tr>
+                <tr><td><code>paid_social_spend_gbp</code></td><td>Weekly paid social media spend in GBP.</td></tr>
+                <tr><td><code>display_spend_gbp</code></td><td>Weekly display media spend in GBP.</td></tr>
+                <tr><td><code>affiliates_spend_gbp</code></td><td>Weekly affiliate channel spend in GBP.</td></tr>
+                <tr><td><code>email_spend_gbp</code></td><td>Weekly email or CRM campaign spend in GBP.</td></tr>
+                <tr><td><code>influencer_spend_gbp</code></td><td>Weekly influencer marketing spend in GBP.</td></tr>
+                <tr><td><code>organic_search_sessions</code></td><td>Weekly organic search sessions.</td></tr>
+                <tr><td><code>promotion_depth_pct</code></td><td>Average weekly promotional discount depth.</td></tr>
+                <tr><td><code>promotion_flag</code></td><td>Whether a major promotion ran that week.</td></tr>
+                <tr><td><code>holiday_flag</code></td><td>Whether the week contains a major UK retail holiday period.</td></tr>
+                <tr><td><code>season_spring_summer</code></td><td>Spring/summer seasonal collection flag.</td></tr>
+                <tr><td><code>season_autumn_winter</code></td><td>Autumn/winter seasonal collection flag.</td></tr>
+                <tr><td><code>consumer_confidence_index</code></td><td>Consumer confidence control placeholder.</td></tr>
+                <tr><td><code>inflation_rate_pct</code></td><td>Inflation control placeholder.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Connector Templates</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>GA4</h3>
+              <p>Traffic, users, purchases, purchase revenue, and organic source/medium sessions.</p>
+            </article>
+            <article class="card">
+              <h3>Google Ads</h3>
+              <p>Campaign, campaign type, cost, impressions, clicks, conversions, and conversion value.</p>
+            </article>
+            <article class="card">
+              <h3>Meta Ads</h3>
+              <p>Campaign, objective, spend, reach, impressions, link clicks, purchases, and purchase value.</p>
+            </article>
+            <article class="card">
+              <h3>Shopify or Ecommerce</h3>
+              <p>Gross sales, discounts, returns, net sales, orders, new-customer orders, and AOV.</p>
+            </article>
+            <article class="card">
+              <h3>CRM and Lifecycle</h3>
+              <p>Sends, delivered, opens, clicks, orders, revenue, and platform or incentive cost.</p>
+            </article>
+            <article class="card">
+              <h3>Future Connectors</h3>
+              <p>Display, affiliates, influencer, and external macro controls are planned as next inputs.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Assembly Mapping</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Output Fields</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Shopify or ecommerce</td>
+                  <td><code>revenue_gbp</code>, <code>orders</code>, <code>new_customers</code>, <code>average_order_value_gbp</code>, promotion fields, season defaults, holiday defaults</td>
+                </tr>
+                <tr>
+                  <td>Google Ads</td>
+                  <td><code>paid_search_spend_gbp</code></td>
+                </tr>
+                <tr>
+                  <td>Meta Ads</td>
+                  <td><code>paid_social_spend_gbp</code></td>
+                </tr>
+                <tr>
+                  <td>CRM and lifecycle</td>
+                  <td><code>email_spend_gbp</code></td>
+                </tr>
+                <tr>
+                  <td>GA4</td>
+                  <td><code>organic_search_sessions</code> from organic source/medium rows</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell grid two">
+          <div>
+            <h2>Validation Rules</h2>
+            <div class="timeline">
+              <div class="step"><div><h3>Week Starts</h3><p class="muted">Dates must be Mondays, unique, and continuous.</p></div></div>
+              <div class="step"><div><h3>Required Fields</h3><p class="muted">All required schema or connector columns must be present.</p></div></div>
+              <div class="step"><div><h3>Numeric Values</h3><p class="muted">Numeric columns must parse cleanly and non-negative fields cannot be below zero.</p></div></div>
+              <div class="step"><div><h3>Flags</h3><p class="muted">Promotion, holiday, and season flags must be binary.</p></div></div>
+            </div>
+          </div>
+          <div class="callout">
+            <h2>Source Diagnostics</h2>
+            <p>
+              The connector workflow reports weekly history, schema status, outcome quality, media
+              channel coverage, organic availability, zero-default channels, and connector coverage
+              before the dataset is used for modeling.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">Data contract designed for transparent modeling and practical replacement with real exports.</div>
+    </footer>
+  </body>
+</html>

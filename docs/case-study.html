@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Case Study | Marketing Effectiveness Lab</title>
+    <meta
+      name="description"
+      content="Case study for a marketing effectiveness and MMM portfolio project in UK fashion ecommerce."
+    />
+    <link rel="stylesheet" href="assets/site-pages.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="shell" aria-label="Main navigation">
+        <a class="brand" href="index.html">Marketing Effectiveness Lab</a>
+        <div class="nav-links">
+          <a href="case-study.html">Case Study</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="data-contract.html">Data Contract</a>
+          <a href="https://github.com/rosscyking1115/marketing-effectiveness-lab">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="shell page-hero">
+        <div class="eyebrow">Commercial Data Science Case Study</div>
+        <h1>Estimating marketing impact and budget trade-offs for fashion ecommerce.</h1>
+        <p class="lead">
+          A UK fashion retailer needs a credible way to connect marketing spend, incrementality
+          evidence, uncertainty, and commercial planning. This lab turns that measurement problem
+          into a working analyst dashboard and reusable Python package.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app/">
+            Open Interactive App
+          </a>
+          <a class="button" href="architecture.html">View Architecture</a>
+        </div>
+      </div>
+
+      <section>
+        <div class="shell grid">
+          <article class="card metric">
+            <small>Business Setting</small>
+            <strong>UK fashion ecommerce</strong>
+            <p>Paid, owned, organic, promotion, and ecommerce sources.</p>
+          </article>
+          <article class="card metric">
+            <small>Core Methods</small>
+            <strong>MMM and incrementality</strong>
+            <p>Econometrics, adstock, saturation, priors, calibration, and uncertainty.</p>
+          </article>
+          <article class="card metric">
+            <small>Decision Output</small>
+            <strong>Budget planning</strong>
+            <p>Profit-aware scenarios, constrained optimization, and executive summaries.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell grid two">
+          <div>
+            <h2>Business Context</h2>
+            <p class="muted">
+              The retailer wants to understand how paid and owned marketing channels contribute to
+              revenue, new-customer growth, and profit. The team needs more than channel correlation:
+              it needs a defensible workflow for estimating incremental contribution while accounting
+              for seasonality, promotions, carryover, diminishing returns, and experiment evidence.
+            </p>
+          </div>
+          <div class="callout">
+            <h3>Measurement Question</h3>
+            <p>
+              How should a fashion ecommerce brand allocate weekly marketing budget across channels
+              while accounting for data quality, uncertainty, experiment calibration, and practical
+              business constraints?
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Product Workflow</h2>
+          <div class="timeline">
+            <div class="step">
+              <div>
+                <h3>Validate Source Data</h3>
+                <p class="muted">
+                  Check weekly marketing schema and upstream connector exports before modeling.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Assemble Weekly Dataset</h3>
+                <p class="muted">
+                  Map ecommerce, GA4, paid media, and CRM exports into an MMM-ready weekly table.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Diagnose Readiness</h3>
+                <p class="muted">
+                  Review source coverage, history length, outcome quality, and channel availability.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Model Incremental Impact</h3>
+                <p class="muted">
+                  Fit baseline econometrics, MMM-style response curves, Bayesian intervals, and
+                  experiment-informed calibration.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Plan Budget Scenarios</h3>
+                <p class="muted">
+                  Compare gross-margin-aware budget options and constrained allocation recommendations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Current Outputs</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Analyst Dashboard</h3>
+              <p>Revenue, orders, new customers, media spend, channel mix, promotions, and readiness checks.</p>
+            </article>
+            <article class="card">
+              <h3>Modeling Diagnostics</h3>
+              <p>Holdout performance, contribution, ROI, response curves, uncertainty, and Bayesian summaries.</p>
+            </article>
+            <article class="card">
+              <h3>Evidence and Governance</h3>
+              <p>Lift-test uploads, quality scoring, approved-only calibration, and experiment-informed priors.</p>
+            </article>
+            <article class="card">
+              <h3>Connector Workflow</h3>
+              <p>Templates, validation, weekly assembly, source diagnostics, and downloadable assembled CSVs.</p>
+            </article>
+            <article class="card">
+              <h3>Commercial Planning</h3>
+              <p>Profit-aware scenarios, channel constraints, allocation optimization, and planning caveats.</p>
+            </article>
+            <article class="card">
+              <h3>Stakeholder Summary</h3>
+              <p>Automated executive summary language designed for review rather than blind recommendation.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell grid two">
+          <div>
+            <h2>Technical Stack</h2>
+            <div class="pill-row">
+              <span class="pill">Python</span>
+              <span class="pill">Pandas</span>
+              <span class="pill">Statsmodels</span>
+              <span class="pill">Plotly</span>
+              <span class="pill">Streamlit</span>
+              <span class="pill">Pytest</span>
+              <span class="pill">Ruff</span>
+              <span class="pill">uv</span>
+              <span class="pill">GitHub Actions</span>
+            </div>
+          </div>
+          <div>
+            <h2>Data Notes</h2>
+            <p class="muted">
+              The included dataset is generated deterministically for portfolio use. It is not ASOS
+              data and does not copy any private brand data. Uploaded files are parsed in memory in
+              the current Streamlit version.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">Built for marketing, commercial, product, and retail data science roles.</div>
+    </footer>
+  </body>
+</html>
