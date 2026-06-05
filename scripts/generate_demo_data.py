@@ -5,7 +5,6 @@ from pathlib import Path
 
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "demo"
 

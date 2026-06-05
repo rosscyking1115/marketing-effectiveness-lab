@@ -10,8 +10,11 @@ import statsmodels.api as sm
 from statsmodels.regression.linear_model import RegressionResultsWrapper
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-from marketing_effectiveness_lab.analytics import CHANNEL_LABELS, prepare_weekly_frame, spend_columns
-
+from marketing_effectiveness_lab.analytics import (
+    CHANNEL_LABELS,
+    prepare_weekly_frame,
+    spend_columns,
+)
 
 CONTROL_COLUMNS = [
     "trend",

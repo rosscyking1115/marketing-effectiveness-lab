@@ -1,8 +1,8 @@
 # Marketing Effectiveness Lab
 
-An end-to-end marketing effectiveness and MMM project for a UK fashion ecommerce scenario.
+A portfolio-ready marketing effectiveness platform for a UK fashion ecommerce scenario, covering analytics, econometrics, MMM, incrementality evidence, connector data quality, and budget optimization.
 
-The lab is designed as a serious technical portfolio project with a future product path: data foundation, econometrics, marketing mix modeling, causal validation, budget optimization, and executive decision support.
+The project is built to show the workflow expected from a commercial or marketing data scientist: define a business measurement problem, validate the data contract, model channel impact, quantify uncertainty, calibrate with experiments, and translate outputs into budget decisions.
 
 ## Live Project
 
@@ -10,37 +10,20 @@ The lab is designed as a serious technical portfolio project with a future produ
 - Interactive dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
 - GitHub repo: <https://github.com/rosscyking1115/marketing-effectiveness-lab>
 
-## Current Phase
+## What It Demonstrates
 
-Phase 18: Source diagnostics for assembled connector data.
+- Data contracts for weekly marketing, ecommerce, web analytics, paid media, and CRM exports
+- Connector assembly from validated source exports into an MMM-ready weekly dataset
+- Source diagnostics for coverage, missing channels, outcome quality, and modeling readiness
+- Analyst dashboarding for revenue, spend, promotions, channel mix, and correlations
+- Baseline econometrics with time-aware holdout validation
+- MMM-style adstock, saturation, contribution, ROI, and response curves
+- Uncertainty intervals and a lightweight Bayesian posterior layer
+- Lift-test evidence upload, governance, calibration, and experiment-informed priors
+- Profit-aware scenario planning and constrained budget optimization
+- Executive summary generation with stakeholder caveats
 
-The project currently includes:
-
-- A documented weekly marketing dataset
-- Schema validation
-- Analyst dashboarding
-- Baseline econometric modeling
-- Time-aware holdout diagnostics
-- MMM-style adstock and saturation transformations
-- Directional contribution and ROI estimates
-- Response curves
-- Budget scenario planning
-- Executive summary generation
-- CSV template download and upload validation
-- Calibrated MMM adstock/saturation search
-- Contribution, ROI, and holdout prediction intervals
-- Demo lift-test calibration for contribution, ROI, and uncertainty diagnostics
-- Lift-test CSV template and upload validation
-- Evidence quality scoring, review flags, and approved-only calibration
-- Gross-margin-adjusted profit planning for budget scenarios
-- Bayesian posterior contribution, ROI, and holdout prediction intervals
-- Experiment-informed media priors from approved lift-test evidence
-- Constrained budget optimization for profit or contribution objectives
-- Connector templates and validation for GA4, Google Ads, Meta Ads, Shopify/ecommerce, and CRM exports
-- Connector assembly that maps validated exports into the weekly MMM-ready dataset
-- Source diagnostics for assembled connector data before modeling
-
-The next major product phase is richer connector coverage, such as display, affiliate, influencer, and external control inputs.
+The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would add richer connector coverage for display, affiliate, influencer, and external control inputs.
 
 ## Project Shape
 
@@ -54,6 +37,7 @@ Useful docs:
 - `docs/case-study.md` - business case study
 - `docs/architecture.md` - current and future architecture
 - `docs/production-security-roadmap.md` - security and production roadmap
+- `docs/data-dictionary.md` - weekly schema, connector templates, and assembly mapping
 - `docs/phase-10-incrementality-calibration.md` - lift-test calibration workflow
 - `docs/phase-11-experiment-evidence-upload.md` - real-data-ready experiment evidence upload
 - `docs/phase-12-evidence-governance.md` - lift-test quality review and approval filtering
@@ -90,6 +74,12 @@ Run the test suite:
 
 ```powershell
 uv run --group dev pytest
+```
+
+Run lint checks:
+
+```powershell
+uv run --group dev ruff check .
 ```
 
 ## Deployment

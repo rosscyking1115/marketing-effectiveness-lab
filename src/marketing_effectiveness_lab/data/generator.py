@@ -170,9 +170,11 @@ def generate_weekly_demo_data(seed: int = 42) -> tuple[pd.DataFrame, dict[str, o
         "grain": "weekly",
         "media_specs": media_specs,
         "notes": [
-            "Revenue includes baseline demand, seasonality, promotions, macro controls, organic demand, and media effects.",
+            "Revenue includes baseline demand, seasonality, promotions, macro controls, "
+            "organic demand, and media effects.",
             "Media effects are generated with geometric adstock and Hill-style saturation.",
-            "Ground truth is included for model validation during development and should not be used as a production assumption.",
+            "Ground truth is included for model validation during development and should "
+            "not be used as a production assumption.",
         ],
         "schema": schema_as_records(),
     }
@@ -209,4 +211,3 @@ def generate_and_validate(output_dir: Path, seed: int = 42) -> pd.DataFrame:
 
     write_outputs(df, ground_truth, output_dir)
     return df
-

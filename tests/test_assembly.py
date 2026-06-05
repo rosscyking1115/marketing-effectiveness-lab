@@ -6,7 +6,10 @@ from marketing_effectiveness_lab.data.assembly import (
     assemble_connector_csv_texts,
     assemble_weekly_dataset_from_connectors,
 )
-from marketing_effectiveness_lab.data.connectors import connector_template_csv, connector_template_dataframe
+from marketing_effectiveness_lab.data.connectors import (
+    connector_template_csv,
+    connector_template_dataframe,
+)
 from marketing_effectiveness_lab.data.schema import REQUIRED_COLUMNS
 
 

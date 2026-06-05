@@ -9,7 +9,6 @@ import pandas as pd
 from marketing_effectiveness_lab.analytics import CHANNEL_LABELS
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 
-
 ZERO_DEFAULT_CHANNELS = {
     "display_spend_gbp": "Display",
     "affiliates_spend_gbp": "Affiliates",

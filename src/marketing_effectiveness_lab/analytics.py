@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-
 CHANNEL_LABELS = {
     "paid_search_spend_gbp": "Paid search",
     "paid_social_spend_gbp": "Paid social",

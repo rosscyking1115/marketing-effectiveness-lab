@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from marketing_effectiveness_lab.data.schema import SPEND_COLUMNS, validate_weekly_dataset
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
+from marketing_effectiveness_lab.data.schema import SPEND_COLUMNS, validate_weekly_dataset
 
 
 def test_generated_demo_data_matches_schema() -> None:

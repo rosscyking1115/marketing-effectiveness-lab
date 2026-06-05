@@ -6,7 +6,6 @@ import runpy
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_PATH = PROJECT_ROOT / "src"
 APP_PATH = PROJECT_ROOT / "app" / "streamlit_app.py"

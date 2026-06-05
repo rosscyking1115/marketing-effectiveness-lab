@@ -10,7 +10,6 @@ from marketing_effectiveness_lab.analytics import CHANNEL_LABELS
 from marketing_effectiveness_lab.mmm import MmmModelResult
 from marketing_effectiveness_lab.uncertainty import MmmUncertaintyResult
 
-
 REQUIRED_LIFT_TEST_COLUMNS = {
     "channel",
     "experiment_type",

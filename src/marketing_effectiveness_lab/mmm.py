@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.regression.linear_model import RegressionResultsWrapper
 
-from marketing_effectiveness_lab.analytics import CHANNEL_LABELS, prepare_weekly_frame, spend_columns
+from marketing_effectiveness_lab.analytics import (
+    CHANNEL_LABELS,
+    prepare_weekly_frame,
+    spend_columns,
+)
 from marketing_effectiveness_lab.modeling import _mape
-
 
 DEFAULT_MEDIA_PARAMETERS = {
     "paid_search_spend_gbp": {"adstock_decay": 0.25, "half_saturation": 92_000.0, "slope": 1.35},

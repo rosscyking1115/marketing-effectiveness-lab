@@ -5,8 +5,8 @@ import pytest
 
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
 from marketing_effectiveness_lab.mmm import (
-    calibrate_mmm_parameters,
     DEFAULT_MEDIA_PARAMETERS,
+    calibrate_mmm_parameters,
     fit_mmm_foundation_model,
     geometric_adstock,
     hill_saturation,

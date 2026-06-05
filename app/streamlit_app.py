@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from marketing_effectiveness_lab import budget as budget_tools
 from marketing_effectiveness_lab.analytics import (
     CHANNEL_LABELS,
     channel_summary,
@@ -18,7 +19,6 @@ from marketing_effectiveness_lab.analytics import (
     weekly_spend_long,
 )
 from marketing_effectiveness_lab.bayesian import fit_bayesian_mmm
-from marketing_effectiveness_lab import budget as budget_tools
 from marketing_effectiveness_lab.budget import (
     allocation_from_shares,
     current_weekly_spend,
@@ -49,11 +49,10 @@ from marketing_effectiveness_lab.data.diagnostics import assembled_weekly_diagno
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
-from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
+from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.reporting import build_executive_summary
 from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "demo" / "fashion_retail_weekly.csv"
@@ -1445,7 +1444,13 @@ st.markdown(
 
 planner_left, planner_right = st.columns((0.9, 1.25))
 with planner_left:
-    lookback_weeks = st.slider("Current spend lookback", 4, 26, 13, help="Latest weeks used to estimate current weekly spend.")
+    lookback_weeks = st.slider(
+        "Current spend lookback",
+        4,
+        26,
+        13,
+        help="Latest weeks used to estimate current weekly spend.",
+    )
     current_spend = current_weekly_spend(df, lookback_weeks=lookback_weeks)
     current_total_budget = sum(current_spend.values())
     budget_multiplier = st.slider("Weekly budget multiplier", 0.70, 1.30, 1.00, 0.05)

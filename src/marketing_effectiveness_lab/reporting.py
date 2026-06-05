@@ -57,12 +57,21 @@ def build_executive_summary(
 
     highlights = [
         f"Total selected revenue is {_gbp(kpis.revenue_gbp)} with blended ROAS of {kpis.blended_roas:,.1f}x.",
-        f"{top_channel['channel']} has the largest estimated media contribution at {_gbp(top_channel['estimated_contribution_gbp'])}.",
-        f"The scenario changes weekly spend by {_pct(spend_change_pct)} and estimated weekly contribution by {_gbp(scenario_lift)}.",
+        (
+            f"{top_channel['channel']} has the largest estimated media contribution at "
+            f"{_gbp(top_channel['estimated_contribution_gbp'])}."
+        ),
+        (
+            f"The scenario changes weekly spend by {_pct(spend_change_pct)} and estimated "
+            f"weekly contribution by {_gbp(scenario_lift)}."
+        ),
         f"Estimated weekly contribution profit changes by {_gbp(scenario_profit_lift)}."
         if scenario_profit_lift is not None
         else "Profit-aware planning is not enabled for this scenario.",
-        f"MMM foundation holdout MAPE is {_pct(mmm_result.metrics['test_mape'])}, useful for directional planning but not final budget approval.",
+        (
+            f"MMM foundation holdout MAPE is {_pct(mmm_result.metrics['test_mape'])}, "
+            "useful for directional planning but not final budget approval."
+        ),
     ]
 
     if scenario_profit_lift is not None and scenario_profit_lift > 0:
@@ -94,7 +103,10 @@ def build_executive_summary(
     caveats = [
         "Scenario outputs use deterministic MMM foundation response curves, not Bayesian uncertainty.",
         "Contribution estimates are directional and should be calibrated with experiments where possible.",
-        "Profit metrics use a gross margin assumption and do not yet include inventory, channel capacity, or brand constraints.",
+        (
+            "Profit metrics use a gross margin assumption and do not yet include inventory, "
+            "channel capacity, or brand constraints."
+        ),
     ]
 
     return ExecutiveSummary(

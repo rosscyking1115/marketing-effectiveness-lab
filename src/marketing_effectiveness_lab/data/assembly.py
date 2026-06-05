@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import pandas as pd
 
@@ -13,7 +13,6 @@ from marketing_effectiveness_lab.data.connectors import (
     validate_connector_frame,
 )
 from marketing_effectiveness_lab.data.schema import REQUIRED_COLUMNS, validate_weekly_dataset
-
 
 CONTROL_DEFAULTS = {
     "consumer_confidence_index": 0.0,

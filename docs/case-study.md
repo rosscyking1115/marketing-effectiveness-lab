@@ -2,95 +2,73 @@
 
 ## Business Context
 
-A UK fashion ecommerce retailer wants to understand how paid and owned marketing channels contribute to revenue.
+A UK fashion ecommerce retailer needs to understand how paid and owned marketing channels contribute to revenue, new-customer growth, and profit. The business invests across paid search, paid social, display, affiliates, email, influencers, organic demand, and promotions.
 
-The business uses several acquisition and retention channels:
+The commercial question is not only which channels correlate with revenue. The team needs a defensible workflow for estimating incremental contribution, understanding uncertainty, and comparing budget scenarios without ignoring seasonality, promotions, carryover, diminishing returns, and experiment evidence.
 
-- Paid search
-- Paid social
-- Display
-- Affiliates
-- Email
-- Influencer marketing
-- Organic search
-- Promotions
+## Measurement Question
 
-The commercial team wants to know which channels are driving incremental value, where diminishing returns may exist, and how budget could be reallocated.
+How should a fashion ecommerce brand allocate weekly marketing budget across channels to improve commercial outcomes while accounting for data quality, uncertainty, experiment calibration, and practical business constraints?
 
-## Core Question
+## Product Workflow
 
-How should a UK fashion ecommerce brand allocate weekly marketing budget across channels to improve revenue while accounting for seasonality, promotions, carryover, diminishing returns, and uncertainty?
+The lab is designed around the way marketing effectiveness work happens in practice:
 
-## Approach
-
-The project is built in phases:
-
-1. Create a realistic weekly marketing dataset and validation schema.
-2. Build an analyst dashboard for trends, channel mix, and MMM readiness.
-3. Fit a baseline econometric model with time-aware holdout validation.
-4. Add MMM-style adstock and saturation transformations.
-5. Estimate directional channel contribution and ROI.
-6. Build a budget scenario planner.
-7. Generate executive-ready summary text and caveats.
-8. Add uncertainty intervals and experiment calibration diagnostics.
+1. Validate the weekly marketing schema and upstream connector exports.
+2. Assemble ecommerce, GA4, paid media, and CRM exports into a weekly MMM-ready dataset.
+3. Diagnose source coverage, history length, outcome quality, and channel availability before modeling.
+4. Explore revenue, spend, promotions, channel mix, correlations, and MMM readiness in an analyst dashboard.
+5. Fit transparent baseline econometrics with a time-aware holdout.
+6. Add MMM-style adstock, saturation, response curves, contribution, and ROI.
+7. Quantify uncertainty with intervals and a lightweight Bayesian posterior layer.
+8. Calibrate contribution estimates with governed lift-test evidence.
+9. Compare profit-aware budget scenarios and constrained allocation recommendations.
+10. Produce stakeholder-ready summaries and caveats.
 
 ## Current Outputs
 
-The dashboard provides:
+The interactive dashboard provides:
 
-- Revenue and media spend trends
-- Channel spend mix
-- Promotion comparison
-- MMM readiness checks
-- Correlation scan
-- Baseline econometric diagnostics
-- MMM foundation diagnostics
-- Estimated contribution and ROI
-- Response curves
-- Uncertainty intervals
-- Incrementality calibration diagnostics
-- Lift-test evidence upload and validation
-- Evidence quality review and approved-only calibration
-- Profit-aware budget scenario planning
-- Budget scenario planning
-- Executive summary draft
+- Revenue, order, new-customer, and media-spend KPIs
+- Channel spend mix and promotion diagnostics
+- MMM readiness checks and correlation scans
+- Baseline econometric diagnostics with holdout performance
+- MMM foundation diagnostics, response curves, contribution, and ROI
+- Uncertainty intervals and Bayesian posterior diagnostics
+- Lift-test upload, evidence quality review, and approved-only calibration
+- Connector templates, weekly assembly, and source diagnostics
+- Profit-aware scenario planning and constrained budget optimization
+- Executive summary draft for stakeholder communication
 
 ## Technical Stack
 
-- Python
-- Pandas and NumPy
-- Statsmodels
-- Plotly
-- Streamlit
-- Pytest
-- uv
+- Python package code under `src/`
+- Pandas and NumPy for data contracts, assembly, and analytics
+- Statsmodels for transparent econometric baselines
+- Plotly and Streamlit for the analyst-facing app
+- Pytest and Ruff for automated quality checks
+- uv for reproducible dependency management
+- GitHub Actions, Streamlit Community Cloud, and GitHub Pages for deployment
 
 ## Modeling Notes
 
-The current MMM foundation model is deterministic. It uses channel-specific adstock and saturation parameters, then fits an OLS model on transformed media features and controls.
+The project intentionally keeps the modeling transparent. The MMM foundation uses channel-specific adstock and saturation transformations, then fits a regression model with controls for trend, seasonality, promotion, organic demand, and macro placeholders.
 
-The project now includes parameter search, coefficient uncertainty simulation, demo lift-test calibration, real-data-ready lift-test CSV upload, evidence governance, and profit-aware scenario planning. This is useful for directional scenario planning, but it is not yet a full Bayesian MMM.
+The Bayesian layer adds posterior uncertainty over the active MMM design matrix and can use approved lift-test evidence as media priors. It is suitable for portfolio demonstration and directional planning, while the documentation clearly separates this from a full production Bayesian MMM sampler over all adstock and saturation parameters.
 
-## Future Enhancements
+## Data Notes
 
-High-value next steps:
+The included dataset is generated from deterministic code for portfolio and development use. It is not ASOS data and does not copy any private brand data. The app can also validate uploaded weekly datasets or assemble connector exports that follow the documented contracts.
 
-- Calibrated parameter search for adstock and saturation
-- Bayesian MMM with PyMC-Marketing or Meridian
-- Experiment registry with approval workflow
-- Profit-aware optimization
-- Posterior credible intervals for contribution and ROI
-- Profit-aware budget optimization
-- Real data import templates
-- Production API and user authentication
+Uploaded files are parsed in memory in the current Streamlit version. A production version should add authentication, storage policy, audit logging, secrets management, and warehouse integrations before handling private company data.
 
 ## Portfolio Positioning
 
-This project is suitable for roles in:
+This project is aimed at roles such as:
 
-- Marketing data science
-- Commercial data science
-- Product analytics
-- Retail analytics
-- Marketing effectiveness consulting
-- Econometrics and causal inference
+- Marketing Data Scientist
+- Commercial Data Scientist
+- Product or Growth Analyst
+- Retail Analytics Specialist
+- Marketing Effectiveness Consultant
+- Econometrics or Causal Inference Analyst

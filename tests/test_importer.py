@@ -4,7 +4,11 @@ from io import StringIO
 
 import pandas as pd
 
-from marketing_effectiveness_lab.data.importer import load_weekly_csv, template_csv, validate_csv_text
+from marketing_effectiveness_lab.data.importer import (
+    load_weekly_csv,
+    template_csv,
+    validate_csv_text,
+)
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 
 
