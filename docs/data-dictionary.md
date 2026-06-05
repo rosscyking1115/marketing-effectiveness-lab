@@ -48,7 +48,21 @@ The app also provides validation templates for common upstream exports:
 - Shopify or ecommerce orders export
 - CRM and lifecycle export
 
-These templates do not call external APIs. They define safe CSV contracts for exports that can later be assembled into the weekly MMM dataset.
+These templates do not call external APIs. They define safe CSV contracts for exports that can be assembled into the weekly MMM dataset.
+
+## Weekly Assembly Mapping
+
+The connector assembly pipeline treats Shopify/ecommerce as the reconciled outcome source and maps optional marketing exports onto that weekly spine:
+
+| Connector | Weekly MMM fields |
+| --- | --- |
+| Shopify/ecommerce | `revenue_gbp`, `orders`, `new_customers`, `average_order_value_gbp`, `promotion_depth_pct`, `promotion_flag`, seasonal and holiday defaults |
+| Google Ads | `paid_search_spend_gbp` |
+| Meta Ads | `paid_social_spend_gbp` |
+| CRM and lifecycle | `email_spend_gbp` |
+| GA4 | `organic_search_sessions` from organic source/medium rows |
+
+Display, affiliates, and influencer spend default to `0` until those connector contracts are added. Consumer confidence and inflation default to neutral `0` placeholders unless supplied in a future controls connector.
 
 ## Validation Rules
 

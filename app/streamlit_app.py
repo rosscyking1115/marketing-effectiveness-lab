@@ -35,13 +35,17 @@ from marketing_effectiveness_lab.calibration import (
     lift_test_template_csv,
     validate_lift_test_csv_text,
 )
-from marketing_effectiveness_lab.data.generator import generate_and_validate
+from marketing_effectiveness_lab.data.assembly import (
+    WeeklyAssemblyResult,
+    assemble_connector_csv_texts,
+)
 from marketing_effectiveness_lab.data.connectors import (
     CONNECTOR_SPECS,
     connector_schema_dataframe,
     connector_template_csv,
     validate_connector_csv_text,
 )
+from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
@@ -163,10 +167,19 @@ def parse_connector_csv(
     return validate_connector_csv_text(connector_key, csv_text)
 
 
+@st.cache_data(show_spinner=False)
+def assemble_connector_uploads(csv_text_by_connector: dict[str, str]) -> WeeklyAssemblyResult:
+    return assemble_connector_csv_texts(csv_text_by_connector)
+
+
 def select_dataset() -> tuple[pd.DataFrame, str]:
     with st.sidebar:
         st.header("Data source")
-        source = st.radio("Dataset", ["Demo data", "Upload CSV"], horizontal=True)
+        source = st.radio(
+            "Dataset",
+            ["Demo data", "Upload CSV", "Connector assembly"],
+            horizontal=False,
+        )
         st.download_button(
             "Download CSV template",
             data=template_csv(rows=12),
@@ -212,6 +225,63 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
                     st.success(
                         f"Validated {len(connector_df):,} rows for {selected_connector_label}."
                     )
+
+        if source == "Connector assembly":
+            st.markdown("**Assemble MMM dataset**")
+            st.caption("Upload Shopify/ecommerce plus optional platform exports.")
+            connector_csv_texts = {}
+            for spec in CONNECTOR_SPECS:
+                assembly_upload = st.file_uploader(
+                    spec.label,
+                    type=["csv"],
+                    key=f"assembly_upload_{spec.key}",
+                )
+                if assembly_upload is not None:
+                    connector_csv_texts[spec.key] = assembly_upload.getvalue().decode(
+                        "utf-8-sig"
+                    )
+
+            if not connector_csv_texts:
+                st.info("Upload connector CSVs to assemble the weekly MMM dataset.")
+                st.stop()
+
+            assembly_result = assemble_connector_uploads(connector_csv_texts)
+            if not assembly_result.source_summary.empty:
+                st.dataframe(
+                    assembly_result.source_summary,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            if assembly_result.validation_errors:
+                st.error("Connector assembly failed validation.")
+                for error in assembly_result.validation_errors:
+                    st.write(f"- {error}")
+                if not assembly_result.weekly_dataset.empty:
+                    st.download_button(
+                        "Download assembled CSV for review",
+                        data=assembly_result.weekly_dataset.to_csv(index=False),
+                        file_name="assembled_marketing_effectiveness_weekly.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                    )
+                st.stop()
+
+            st.success(f"Assembled {len(assembly_result.weekly_dataset):,} weekly rows.")
+            st.download_button(
+                "Download assembled weekly CSV",
+                data=assembly_result.weekly_dataset.to_csv(index=False),
+                file_name="assembled_marketing_effectiveness_weekly.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+            if len(assembly_result.weekly_dataset) <= 56:
+                st.warning("MMM views need at least 57 weekly rows after assembly.")
+                st.stop()
+            return (
+                prepare_weekly_frame(assembly_result.weekly_dataset),
+                "Connector assembly",
+            )
 
         if source == "Upload CSV":
             uploaded_file = st.file_uploader("Upload weekly marketing CSV", type=["csv"])
