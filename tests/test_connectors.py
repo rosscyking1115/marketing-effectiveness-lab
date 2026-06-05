@@ -17,7 +17,17 @@ from marketing_effectiveness_lab.data.connectors import (
 def test_connector_catalog_lists_available_templates() -> None:
     catalog = connector_catalog()
 
-    assert {"ga4", "google_ads", "meta_ads", "shopify", "crm"} == set(catalog["key"])
+    assert {
+        "ga4",
+        "google_ads",
+        "meta_ads",
+        "shopify",
+        "crm",
+        "display_ads",
+        "affiliates",
+        "influencer",
+        "external_controls",
+    } == set(catalog["key"])
     assert catalog["required_columns"].min() > 0
 
 

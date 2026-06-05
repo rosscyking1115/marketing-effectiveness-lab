@@ -28,7 +28,7 @@ stakeholder communication.
 
 ## What It Demonstrates
 
-- Data contracts for weekly marketing, ecommerce, web analytics, paid media, and CRM exports
+- Data contracts for weekly marketing, ecommerce, web analytics, paid media, CRM, affiliate, influencer, display, and external-control exports
 - Connector assembly from validated source exports into an MMM-ready weekly dataset
 - Source diagnostics for coverage, missing channels, outcome quality, and modeling readiness
 - Analyst dashboarding for revenue, spend, promotions, channel mix, and correlations
@@ -39,7 +39,7 @@ stakeholder communication.
 - Profit-aware scenario planning and constrained budget optimization
 - Executive summary generation with stakeholder caveats
 
-The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would add richer connector coverage for display, affiliate, influencer, and external control inputs.
+The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
 ## Project Shape
 
@@ -68,6 +68,7 @@ Useful docs:
 - `docs/phase-16-real-data-connectors.md` - connector templates for common marketing and commerce exports
 - `docs/phase-17-weekly-assembly-pipeline.md` - assembly pipeline from connector exports to the weekly MMM schema
 - `docs/phase-18-source-diagnostics.md` - source coverage and data-quality diagnostics for assembled connector data
+- `docs/phase-19-expanded-connectors.md` - display, affiliate, influencer, and external-control connector coverage
 
 ## Quick Start
 

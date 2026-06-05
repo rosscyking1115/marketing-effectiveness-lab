@@ -16,7 +16,17 @@ from marketing_effectiveness_lab.data.schema import REQUIRED_COLUMNS
 def test_connector_templates_assemble_to_weekly_schema() -> None:
     csv_texts = {
         connector_key: connector_template_csv(connector_key)
-        for connector_key in ["ga4", "google_ads", "meta_ads", "shopify", "crm"]
+        for connector_key in [
+            "ga4",
+            "google_ads",
+            "meta_ads",
+            "shopify",
+            "crm",
+            "display_ads",
+            "affiliates",
+            "influencer",
+            "external_controls",
+        ]
     }
 
     result = assemble_connector_csv_texts(csv_texts)
@@ -27,13 +37,22 @@ def test_connector_templates_assemble_to_weekly_schema() -> None:
     assert result.weekly_dataset["paid_search_spend_gbp"].sum() == 73_000
     assert result.weekly_dataset["paid_social_spend_gbp"].sum() == 73_000
     assert result.weekly_dataset["email_spend_gbp"].sum() == 5_700
+    assert result.weekly_dataset["display_spend_gbp"].sum() == 30_700
+    assert result.weekly_dataset["affiliates_spend_gbp"].sum() == 9_750
+    assert result.weekly_dataset["influencer_spend_gbp"].sum() == 27_600
     assert result.weekly_dataset["organic_search_sessions"].sum() == 145_000
+    assert result.weekly_dataset["consumer_confidence_index"].tolist() == [-18.0, -17.5]
+    assert result.weekly_dataset["inflation_rate_pct"].tolist() == [3.9, 3.8]
     assert set(result.source_summary["connector"]) == {
         "GA4 traffic and conversion export",
         "Google Ads weekly export",
         "Meta Ads weekly export",
         "Shopify or ecommerce orders export",
         "CRM and lifecycle export",
+        "Display ads weekly export",
+        "Affiliate network weekly export",
+        "Influencer weekly export",
+        "External controls weekly export",
     }
 
 
@@ -91,3 +110,22 @@ def test_assembly_accepts_raw_numeric_strings() -> None:
 
     assert result.validation_errors == []
     assert pd.api.types.is_numeric_dtype(result.weekly_dataset["revenue_gbp"])
+
+
+def test_assembly_maps_optional_channel_and_control_connectors() -> None:
+    result = assemble_weekly_dataset_from_connectors(
+        {
+            "shopify": connector_template_dataframe("shopify"),
+            "display_ads": connector_template_dataframe("display_ads"),
+            "affiliates": connector_template_dataframe("affiliates"),
+            "influencer": connector_template_dataframe("influencer"),
+            "external_controls": connector_template_dataframe("external_controls"),
+        }
+    )
+
+    assert result.validation_errors == []
+    assert result.weekly_dataset["display_spend_gbp"].tolist() == [16_500, 14_200]
+    assert result.weekly_dataset["affiliates_spend_gbp"].tolist() == [5_770, 3_980]
+    assert result.weekly_dataset["influencer_spend_gbp"].tolist() == [15_000, 12_600]
+    assert result.weekly_dataset["consumer_confidence_index"].tolist() == [-18.0, -17.5]
+    assert result.weekly_dataset["inflation_rate_pct"].tolist() == [3.9, 3.8]

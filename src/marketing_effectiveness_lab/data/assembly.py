@@ -110,25 +110,37 @@ def assemble_weekly_dataset_from_connectors(
         on="week_start",
         how="left",
     )
+    weekly = weekly.merge(
+        _weekly_sum(valid_frames.get("display_ads"), "display_spend_gbp", "spend_gbp"),
+        on="week_start",
+        how="left",
+    )
+    weekly = weekly.merge(_affiliate_cost(valid_frames.get("affiliates")), on="week_start", how="left")
+    weekly = weekly.merge(_influencer_cost(valid_frames.get("influencer")), on="week_start", how="left")
     weekly = weekly.merge(_organic_sessions(valid_frames.get("ga4")), on="week_start", how="left")
+    weekly = weekly.merge(_external_controls(valid_frames.get("external_controls")), on="week_start", how="left")
 
     for column in [
         "paid_search_spend_gbp",
         "paid_social_spend_gbp",
         "email_spend_gbp",
+        "display_spend_gbp",
+        "affiliates_spend_gbp",
+        "influencer_spend_gbp",
         "organic_search_sessions",
     ]:
         weekly[column] = weekly[column].fillna(0.0)
 
-    weekly["display_spend_gbp"] = 0.0
-    weekly["affiliates_spend_gbp"] = 0.0
-    weekly["influencer_spend_gbp"] = 0.0
     weekly["promotion_flag"] = (weekly["promotion_depth_pct"] >= 5).astype(int)
     weekly["holiday_flag"] = weekly["week_start"].dt.month.isin([11, 12]).astype(int)
     weekly["season_spring_summer"] = weekly["week_start"].dt.month.between(3, 8).astype(int)
     weekly["season_autumn_winter"] = (1 - weekly["season_spring_summer"]).astype(int)
-    weekly["consumer_confidence_index"] = float(controls["consumer_confidence_index"])
-    weekly["inflation_rate_pct"] = float(controls["inflation_rate_pct"])
+    weekly["consumer_confidence_index"] = weekly["consumer_confidence_index"].fillna(
+        float(controls["consumer_confidence_index"])
+    )
+    weekly["inflation_rate_pct"] = weekly["inflation_rate_pct"].fillna(
+        float(controls["inflation_rate_pct"])
+    )
 
     ordered_columns = [column.name for column in REQUIRED_COLUMNS]
     weekly = weekly[ordered_columns].sort_values("week_start").reset_index(drop=True)
@@ -194,6 +206,53 @@ def _organic_sessions(frame: pd.DataFrame | None) -> pd.DataFrame:
         .sum()
         .rename(columns={"sessions": "organic_search_sessions"})
     )
+
+
+def _affiliate_cost(frame: pd.DataFrame | None) -> pd.DataFrame:
+    if frame is None:
+        return pd.DataFrame(
+            {"week_start": pd.Series(dtype="datetime64[ns]"), "affiliates_spend_gbp": []}
+        )
+    affiliate = frame.copy()
+    affiliate["total_affiliate_cost_gbp"] = affiliate["commission_gbp"] + affiliate["network_fee_gbp"]
+    return (
+        affiliate.groupby("week_start", as_index=False)["total_affiliate_cost_gbp"]
+        .sum()
+        .rename(columns={"total_affiliate_cost_gbp": "affiliates_spend_gbp"})
+    )
+
+
+def _influencer_cost(frame: pd.DataFrame | None) -> pd.DataFrame:
+    if frame is None:
+        return pd.DataFrame(
+            {"week_start": pd.Series(dtype="datetime64[ns]"), "influencer_spend_gbp": []}
+        )
+    influencer = frame.copy()
+    influencer["total_influencer_cost_gbp"] = (
+        influencer["fee_gbp"] + influencer["usage_rights_gbp"] + influencer["paid_boost_gbp"]
+    )
+    return (
+        influencer.groupby("week_start", as_index=False)["total_influencer_cost_gbp"]
+        .sum()
+        .rename(columns={"total_influencer_cost_gbp": "influencer_spend_gbp"})
+    )
+
+
+def _external_controls(frame: pd.DataFrame | None) -> pd.DataFrame:
+    columns = [
+        "week_start",
+        "consumer_confidence_index",
+        "inflation_rate_pct",
+    ]
+    if frame is None:
+        return pd.DataFrame(
+            {
+                "week_start": pd.Series(dtype="datetime64[ns]"),
+                "consumer_confidence_index": [],
+                "inflation_rate_pct": [],
+            }
+        )
+    return frame.groupby("week_start", as_index=False)[columns[1:]].mean()
 
 
 def _coerce_for_assembly(frame: pd.DataFrame) -> pd.DataFrame:

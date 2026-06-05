@@ -122,8 +122,20 @@
               <p>Sends, delivered, opens, clicks, orders, revenue, and platform or incentive cost.</p>
             </article>
             <article class="card">
-              <h3>Future Connectors</h3>
-              <p>Display, affiliates, influencer, and external macro controls are planned as next inputs.</p>
+              <h3>Display</h3>
+              <p>Campaign, platform, spend, impressions, clicks, and view-through or click-through conversions.</p>
+            </article>
+            <article class="card">
+              <h3>Affiliates</h3>
+              <p>Partner, attributed orders, revenue, commission, and network fees.</p>
+            </article>
+            <article class="card">
+              <h3>Influencer</h3>
+              <p>Creator fees, usage rights, paid boosting, impressions, engagements, tracked orders, and revenue.</p>
+            </article>
+            <article class="card">
+              <h3>External Controls</h3>
+              <p>Consumer confidence and inflation controls aligned to the weekly modeling grain.</p>
             </article>
           </div>
         </div>
@@ -160,6 +172,22 @@
                 <tr>
                   <td>GA4</td>
                   <td><code>organic_search_sessions</code> from organic source/medium rows</td>
+                </tr>
+                <tr>
+                  <td>Display ads</td>
+                  <td><code>display_spend_gbp</code></td>
+                </tr>
+                <tr>
+                  <td>Affiliates</td>
+                  <td><code>affiliates_spend_gbp</code> from commission plus network fees</td>
+                </tr>
+                <tr>
+                  <td>Influencer</td>
+                  <td><code>influencer_spend_gbp</code> from creator fees, usage rights, and paid boosting</td>
+                </tr>
+                <tr>
+                  <td>External controls</td>
+                  <td><code>consumer_confidence_index</code>, <code>inflation_rate_pct</code></td>
                 </tr>
               </tbody>
             </table>

@@ -147,7 +147,7 @@ def _default_channel_rows(weekly: pd.DataFrame) -> list[dict[str, str]]:
                 _row(
                     f"{label} connector",
                     "Info",
-                    f"{label} spend is currently defaulted to zero until a source connector is added.",
+                    f"{label} spend is zero; upload a source connector if this channel was active.",
                 )
             )
     return rows

@@ -15,8 +15,9 @@ It provides:
 - Connector CSV validation before assembly.
 - Shopify/ecommerce as the reconciled revenue and order source.
 - Weekly aggregation by Monday `week_start`.
-- Channel spend mapping for Google Ads, Meta Ads, and CRM.
+- Channel spend mapping for Google Ads, Meta Ads, CRM, display, affiliates, and influencer.
 - Organic search session mapping from GA4 source/medium rows.
+- External control mapping for consumer confidence and inflation.
 - Promotion depth derived from ecommerce discounts and gross sales.
 - Holiday and season flags derived from the weekly date.
 - Final validation against the same weekly schema used by uploaded CSVs and demo data.
@@ -32,6 +33,10 @@ An analyst can upload:
 - Google Ads weekly export.
 - Meta Ads weekly export.
 - CRM and lifecycle export.
+- Display ads weekly export.
+- Affiliate network weekly export.
+- Influencer weekly export.
+- External controls weekly export.
 
 The app then:
 
@@ -52,8 +57,10 @@ The app then:
 | Meta Ads `spend_gbp` | `paid_social_spend_gbp` |
 | CRM `cost_gbp` | `email_spend_gbp` |
 | GA4 organic source/medium sessions | `organic_search_sessions` |
-
-Display, affiliates, and influencer spend remain explicit zero defaults until those source contracts are added.
+| Display ads `spend_gbp` | `display_spend_gbp` |
+| Affiliate `commission_gbp` plus `network_fee_gbp` | `affiliates_spend_gbp` |
+| Influencer `fee_gbp`, `usage_rights_gbp`, and `paid_boost_gbp` | `influencer_spend_gbp` |
+| External controls | `consumer_confidence_index`, `inflation_rate_pct` |
 
 ## Why This Matters
 

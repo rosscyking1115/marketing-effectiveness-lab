@@ -47,6 +47,10 @@ The app also provides validation templates for common upstream exports:
 - Meta Ads weekly export
 - Shopify or ecommerce orders export
 - CRM and lifecycle export
+- Display ads weekly export
+- Affiliate network weekly export
+- Influencer weekly export
+- External controls weekly export
 
 These templates do not call external APIs. They define safe CSV contracts for exports that can be assembled into the weekly MMM dataset.
 
@@ -61,8 +65,12 @@ The connector assembly pipeline treats Shopify/ecommerce as the reconciled outco
 | Meta Ads | `paid_social_spend_gbp` |
 | CRM and lifecycle | `email_spend_gbp` |
 | GA4 | `organic_search_sessions` from organic source/medium rows |
+| Display ads | `display_spend_gbp` |
+| Affiliates | `affiliates_spend_gbp` from commission plus network fees |
+| Influencer | `influencer_spend_gbp` from creator fees, usage rights, and paid boosting |
+| External controls | `consumer_confidence_index`, `inflation_rate_pct` |
 
-Display, affiliates, and influencer spend default to `0` until those connector contracts are added. Consumer confidence and inflation default to neutral `0` placeholders unless supplied in a future controls connector.
+Missing channel connectors default to `0` for the relevant spend field. Missing external controls default to neutral `0` placeholders.
 
 ## Assembly Diagnostics
 
