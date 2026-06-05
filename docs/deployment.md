@@ -1,5 +1,11 @@
 # Deployment Guide
 
+Live project links:
+
+- Portfolio site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
+- Interactive dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
+- GitHub repo: <https://github.com/rosscyking1115/marketing-effectiveness-lab>
+
 ## Streamlit Community Cloud
 
 Use these settings in the deploy form:
@@ -7,7 +13,7 @@ Use these settings in the deploy form:
 - Repository: `rosscyking1115/marketing-effectiveness-lab`
 - Branch: `main`
 - Main file path: `streamlit_app.py`
-- App URL suggestion: `marketing-effectiveness-lab`
+- App URL: `marketing-effectiveness-lab`
 - Python version: `3.12`
 
 The root `streamlit_app.py` file launches the dashboard in `app/streamlit_app.py` and adds `src/` to the Python path for deployment reliability.

@@ -4,6 +4,12 @@ An end-to-end marketing effectiveness and MMM project for a UK fashion ecommerce
 
 The lab is designed as a serious technical portfolio project with a future product path: data foundation, econometrics, marketing mix modeling, causal validation, budget optimization, and executive decision support.
 
+## Live Project
+
+- Portfolio site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
+- Interactive dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
+- GitHub repo: <https://github.com/rosscyking1115/marketing-effectiveness-lab>
+
 ## Current Phase
 
 Phase 13: Profit-aware scenario planning.
@@ -77,12 +83,16 @@ uv run --group dev pytest
 
 ## Deployment
 
+Live Streamlit app:
+
+- <https://marketing-effectiveness-lab.streamlit.app/>
+
 Streamlit Community Cloud settings:
 
 - Repository: `rosscyking1115/marketing-effectiveness-lab`
 - Branch: `main`
 - Main file path: `streamlit_app.py`
-- Suggested app URL: `marketing-effectiveness-lab`
+- App URL: `marketing-effectiveness-lab`
 
 GitHub Pages can host the static portfolio site from the `/docs` folder. Use it as the case-study website and link visitors to the Streamlit app for the interactive experience.
 
