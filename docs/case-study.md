@@ -15,7 +15,7 @@ How should a fashion ecommerce brand allocate weekly marketing budget across cha
 The lab is designed around the way marketing effectiveness work happens in practice:
 
 1. Validate the weekly marketing schema and upstream connector exports.
-2. Assemble ecommerce, GA4, paid media, and CRM exports into a weekly MMM-ready dataset.
+2. Assemble ecommerce, GA4, paid media, CRM, affiliate, influencer, display, and control exports into a weekly MMM-ready dataset.
 3. Diagnose source coverage, history length, outcome quality, and channel availability before modeling.
 4. Explore revenue, spend, promotions, channel mix, correlations, and MMM readiness in an analyst dashboard.
 5. Fit transparent baseline econometrics with a time-aware holdout.
@@ -38,6 +38,7 @@ The interactive dashboard provides:
 - Lift-test upload, evidence quality review, and approved-only calibration
 - Connector templates, weekly assembly, and source diagnostics
 - Profit-aware scenario planning and constrained budget optimization
+- Downloadable model-run report for review and lightweight audit trails
 - Executive summary draft for stakeholder communication
 
 ## Technical Stack

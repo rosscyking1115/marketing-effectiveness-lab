@@ -51,7 +51,7 @@ from marketing_effectiveness_lab.data.importer import template_csv, validate_csv
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
 from marketing_effectiveness_lab.modeling import fit_baseline_model
-from marketing_effectiveness_lab.reporting import build_executive_summary
+from marketing_effectiveness_lab.reporting import build_executive_summary, build_model_run_report
 from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -1680,3 +1680,26 @@ with summary_cols[1]:
 with st.expander("Caveats for stakeholder communication"):
     for caveat in executive_summary.caveats:
         st.write(f"- {caveat}")
+
+model_run_report = build_model_run_report(
+    kpis,
+    active_mmm_result,
+    scenario,
+    executive_summary,
+    data_source_label=data_source_label,
+    model_label=active_mmm_label,
+    row_count=len(selected_df),
+    first_week=str(selected_df["week_start"].min().date()),
+    last_week=str(selected_df["week_start"].max().date()),
+)
+st.download_button(
+    "Download model run report",
+    data=model_run_report,
+    file_name="marketing_effectiveness_model_run_report.md",
+    mime="text/markdown",
+    use_container_width=True,
+)
+st.caption(
+    "The report is generated from the current dashboard state for review. "
+    "Production approval would still require authentication, persistence, and audit logging."
+)

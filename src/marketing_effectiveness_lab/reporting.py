@@ -117,6 +117,110 @@ def build_executive_summary(
     )
 
 
+def build_model_run_report(
+    kpis: KpiSummary,
+    mmm_result: MmmModelResult,
+    scenario: BudgetScenarioResult,
+    executive_summary: ExecutiveSummary,
+    *,
+    data_source_label: str,
+    model_label: str,
+    row_count: int,
+    first_week: str,
+    last_week: str,
+) -> str:
+    """Create a deterministic markdown report for review and lightweight audit trails."""
+
+    top_channels = mmm_result.contribution_table.sort_values(
+        "estimated_contribution_gbp",
+        ascending=False,
+    ).head(3)
+    scenario_summary = scenario.summary
+
+    lines = [
+        "# Marketing Effectiveness Model Run Report",
+        "",
+        "## Executive Summary",
+        "",
+        executive_summary.headline,
+        "",
+        "## Run Context",
+        "",
+        f"- Data source: {data_source_label}",
+        f"- Modeling window: {first_week} to {last_week}",
+        f"- Weekly rows: {row_count:,}",
+        f"- Active response model: {model_label}",
+        f"- Holdout weeks: {mmm_result.metrics['holdout_weeks']:,.0f}",
+        "",
+        "## KPI Snapshot",
+        "",
+        f"- Revenue: {_gbp(kpis.revenue_gbp)}",
+        f"- Media spend: {_gbp(kpis.media_spend_gbp)}",
+        f"- Blended ROAS: {kpis.blended_roas:,.1f}x",
+        f"- Orders: {kpis.orders:,.0f}",
+        f"- New customers: {kpis.new_customers:,.0f}",
+        "",
+        "## Model Diagnostics",
+        "",
+        f"- Train R-squared: {mmm_result.metrics['train_r_squared']:,.3f}",
+        f"- Train MAPE: {_pct(mmm_result.metrics['train_mape'])}",
+        f"- Holdout MAPE: {_pct(mmm_result.metrics['test_mape'])}",
+        f"- Holdout RMSE: {_gbp(mmm_result.metrics['test_rmse_gbp'])}",
+        "",
+        "## Top Estimated Media Contributions",
+        "",
+        "| Channel | Contribution | Spend | ROI |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+
+    for channel in top_channels.to_dict("records"):
+        lines.append(
+            "| "
+            f"{channel['channel']} | "
+            f"{_gbp(channel['estimated_contribution_gbp'])} | "
+            f"{_gbp(channel['spend_gbp'])} | "
+            f"{channel['estimated_roi']:,.1f}x |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Budget Scenario",
+            "",
+            f"- Current weekly spend: {_gbp(scenario_summary['current_weekly_spend_gbp'])}",
+            f"- Proposed weekly spend: {_gbp(scenario_summary['proposed_weekly_spend_gbp'])}",
+            f"- Weekly spend change: {_gbp(scenario_summary['weekly_spend_change_gbp'])}",
+            (
+                "- Estimated weekly contribution change: "
+                f"{_gbp(scenario_summary['weekly_contribution_change_gbp'])}"
+            ),
+            f"- Estimated weekly profit change: {_gbp(scenario_summary['weekly_profit_change_gbp'])}",
+            f"- Proposed profit ROI: {scenario_summary['proposed_profit_roi']:,.1f}x",
+            "",
+            "## Recommendation",
+            "",
+            executive_summary.recommendation,
+            "",
+            "## Caveats",
+            "",
+        ]
+    )
+
+    lines.extend(f"- {caveat}" for caveat in executive_summary.caveats)
+    lines.extend(
+        [
+            "",
+            "## Review Notes",
+            "",
+            "- This report is generated deterministically from the current dashboard state.",
+            "- It is suitable for analyst review, stakeholder discussion, and portfolio inspection.",
+            "- It is not a production approval record until authentication, persistence, and audit logging are added.",
+        ]
+    )
+
+    return "\n".join(lines) + "\n"
+
+
 def _top_channel(contribution_table: pd.DataFrame) -> pd.Series:
     return contribution_table.sort_values("estimated_contribution_gbp", ascending=False).iloc[0]
 

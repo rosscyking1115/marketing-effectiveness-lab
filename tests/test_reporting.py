@@ -9,7 +9,7 @@ from marketing_effectiveness_lab.budget import (
 )
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
-from marketing_effectiveness_lab.reporting import build_executive_summary
+from marketing_effectiveness_lab.reporting import build_executive_summary, build_model_run_report
 
 
 def test_executive_summary_contains_business_sections() -> None:
@@ -59,3 +59,33 @@ def test_negative_scenario_summary_warns_against_advancing() -> None:
     assert scenario.summary["weekly_contribution_change_gbp"] < 0
     assert "weaker" in summary.headline.lower()
     assert "do not advance" in summary.recommendation.lower()
+
+
+def test_model_run_report_contains_review_sections() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    scenario = evaluate_budget_scenario(df, mmm_result, current, lookback_weeks=13)
+    summary = build_executive_summary(kpis, mmm_result, scenario)
+
+    report = build_model_run_report(
+        kpis,
+        mmm_result,
+        scenario,
+        summary,
+        data_source_label="Demo data",
+        model_label="MMM foundation",
+        row_count=len(prepared),
+        first_week=str(prepared["week_start"].min().date()),
+        last_week=str(prepared["week_start"].max().date()),
+    )
+
+    assert report.startswith("# Marketing Effectiveness Model Run Report")
+    assert "## Run Context" in report
+    assert "- Data source: Demo data" in report
+    assert "## Model Diagnostics" in report
+    assert "## Budget Scenario" in report
+    assert "## Review Notes" in report
+    assert "not a production approval record" in report

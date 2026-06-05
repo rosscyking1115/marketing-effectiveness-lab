@@ -69,6 +69,7 @@ Useful docs:
 - `docs/phase-17-weekly-assembly-pipeline.md` - assembly pipeline from connector exports to the weekly MMM schema
 - `docs/phase-18-source-diagnostics.md` - source coverage and data-quality diagnostics for assembled connector data
 - `docs/phase-19-expanded-connectors.md` - display, affiliate, influencer, and external-control connector coverage
+- `docs/phase-20-model-run-reporting.md` - downloadable model-run report for review workflows
 
 ## Quick Start
 

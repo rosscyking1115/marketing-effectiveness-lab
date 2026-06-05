@@ -32,7 +32,7 @@ flowchart LR
 ## Code Structure
 
 - `src/marketing_effectiveness_lab/data/` handles data generation and schema checks.
-- `src/marketing_effectiveness_lab/data/connectors.py` handles connector templates and validation for common marketing exports.
+- `src/marketing_effectiveness_lab/data/connectors.py` handles connector templates and validation for commerce, analytics, paid media, CRM, affiliate, influencer, display, and external-control exports.
 - `src/marketing_effectiveness_lab/data/assembly.py` handles connector-to-weekly assembly for the MMM schema.
 - `src/marketing_effectiveness_lab/data/diagnostics.py` handles source coverage and quality checks for assembled connector data.
 - `src/marketing_effectiveness_lab/analytics.py` handles dashboard metrics and diagnostics.
@@ -42,7 +42,7 @@ flowchart LR
 - `src/marketing_effectiveness_lab/bayesian.py` handles Bayesian posterior draws, experiment-informed priors, and posterior predictive intervals.
 - `src/marketing_effectiveness_lab/calibration.py` handles lift-test templates, upload validation, evidence governance, and experiment calibration.
 - `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning, constrained allocation optimization, and profit-aware scenario diagnostics.
-- `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation.
+- `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation and downloadable model-run reports.
 - `app/streamlit_app.py` renders the analyst dashboard.
 - `tests/` covers reusable logic.
 
