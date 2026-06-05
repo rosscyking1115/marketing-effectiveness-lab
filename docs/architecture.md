@@ -43,7 +43,7 @@ flowchart LR
 - `src/marketing_effectiveness_lab/calibration.py` handles lift-test templates, upload validation, evidence governance, and experiment calibration.
 - `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning, constrained allocation optimization, and profit-aware scenario diagnostics.
 - `src/marketing_effectiveness_lab/governance.py` handles recommendation readiness gates for model fit, profit impact, spend movement, history, and evidence.
-- `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation and downloadable model-run reports.
+- `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation, downloadable model-run reports, and machine-readable run manifests.
 - `app/streamlit_app.py` renders the analyst dashboard.
 - `tests/` covers reusable logic.
 

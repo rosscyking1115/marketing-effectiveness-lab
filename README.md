@@ -39,6 +39,7 @@ stakeholder communication.
 - Profit-aware scenario planning and constrained budget optimization
 - Executive summary generation with stakeholder caveats
 - Recommendation readiness scoring for stakeholder review governance
+- Machine-readable model-run manifest for reproducibility and future artifact tracking
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -72,6 +73,7 @@ Useful docs:
 - `docs/phase-19-expanded-connectors.md` - display, affiliate, influencer, and external-control connector coverage
 - `docs/phase-20-model-run-reporting.md` - downloadable model-run report for review workflows
 - `docs/phase-21-recommendation-readiness.md` - recommendation readiness gates for budget decisions
+- `docs/phase-22-run-manifest.md` - machine-readable model-run manifest for reproducibility
 
 ## Quick Start
 

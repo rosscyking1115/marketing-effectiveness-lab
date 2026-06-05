@@ -31,6 +31,8 @@ The downloaded markdown file is generated from the current dashboard state and c
 - Portfolio inspection.
 - A future model-run tracking workflow.
 
+Phase 22 extends this with a machine-readable JSON manifest for reproducibility and artifact tracking.
+
 ## Why This Matters
 
 This moves the project closer to how marketing measurement work is used in practice. The model output is no longer only something viewed in the dashboard; it can be packaged into a reviewable artifact with assumptions and caveats attached.

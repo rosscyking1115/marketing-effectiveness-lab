@@ -52,7 +52,12 @@ from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.governance import assess_recommendation_readiness
 from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
 from marketing_effectiveness_lab.modeling import fit_baseline_model
-from marketing_effectiveness_lab.reporting import build_executive_summary, build_model_run_report
+from marketing_effectiveness_lab.reporting import (
+    build_executive_summary,
+    build_model_run_manifest,
+    build_model_run_report,
+    model_run_manifest_json,
+)
 from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -1714,13 +1719,35 @@ model_run_report = build_model_run_report(
     last_week=str(selected_df["week_start"].max().date()),
     recommendation_readiness=recommendation_readiness,
 )
-st.download_button(
-    "Download model run report",
-    data=model_run_report,
-    file_name="marketing_effectiveness_model_run_report.md",
-    mime="text/markdown",
-    use_container_width=True,
+model_run_manifest = build_model_run_manifest(
+    kpis,
+    active_mmm_result,
+    scenario,
+    executive_summary,
+    data_source_label=data_source_label,
+    model_label=active_mmm_label,
+    row_count=len(selected_df),
+    first_week=str(selected_df["week_start"].min().date()),
+    last_week=str(selected_df["week_start"].max().date()),
+    recommendation_readiness=recommendation_readiness,
 )
+download_report_col, download_manifest_col = st.columns(2)
+with download_report_col:
+    st.download_button(
+        "Download model run report",
+        data=model_run_report,
+        file_name="marketing_effectiveness_model_run_report.md",
+        mime="text/markdown",
+        use_container_width=True,
+    )
+with download_manifest_col:
+    st.download_button(
+        "Download run manifest",
+        data=model_run_manifest_json(model_run_manifest),
+        file_name="marketing_effectiveness_model_run_manifest.json",
+        mime="application/json",
+        use_container_width=True,
+    )
 st.caption(
     "The report is generated from the current dashboard state for review. "
     "Production approval would still require authentication, persistence, and audit logging."

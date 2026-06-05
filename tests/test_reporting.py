@@ -10,7 +10,12 @@ from marketing_effectiveness_lab.budget import (
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
 from marketing_effectiveness_lab.governance import assess_recommendation_readiness
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
-from marketing_effectiveness_lab.reporting import build_executive_summary, build_model_run_report
+from marketing_effectiveness_lab.reporting import (
+    build_executive_summary,
+    build_model_run_manifest,
+    build_model_run_report,
+    model_run_manifest_json,
+)
 
 
 def test_executive_summary_contains_business_sections() -> None:
@@ -98,3 +103,54 @@ def test_model_run_report_contains_review_sections() -> None:
     assert "## Recommendation Readiness" in report
     assert "## Review Notes" in report
     assert "not a production approval record" in report
+
+
+def test_model_run_manifest_is_stable_and_machine_readable() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    scenario = evaluate_budget_scenario(df, mmm_result, current, lookback_weeks=13)
+    summary = build_executive_summary(kpis, mmm_result, scenario)
+    readiness = assess_recommendation_readiness(
+        mmm_result,
+        scenario,
+        weekly_rows=len(prepared),
+        evidence_quality=None,
+    )
+
+    manifest = build_model_run_manifest(
+        kpis,
+        mmm_result,
+        scenario,
+        summary,
+        data_source_label="Demo data",
+        model_label="MMM foundation",
+        row_count=len(prepared),
+        first_week=str(prepared["week_start"].min().date()),
+        last_week=str(prepared["week_start"].max().date()),
+        recommendation_readiness=readiness,
+    )
+    duplicate_manifest = build_model_run_manifest(
+        kpis,
+        mmm_result,
+        scenario,
+        summary,
+        data_source_label="Demo data",
+        model_label="MMM foundation",
+        row_count=len(prepared),
+        first_week=str(prepared["week_start"].min().date()),
+        last_week=str(prepared["week_start"].max().date()),
+        recommendation_readiness=readiness,
+    )
+
+    assert manifest["schema_version"] == "1.0"
+    assert manifest["run_id"] == duplicate_manifest["run_id"]
+    assert manifest["run_context"]["data_source"] == "Demo data"
+    assert "recommendation_readiness" in manifest
+    assert len(manifest["top_media_contributions"]) > 0
+
+    manifest_json = model_run_manifest_json(manifest)
+    assert manifest_json.endswith("\n")
+    assert '"run_id"' in manifest_json

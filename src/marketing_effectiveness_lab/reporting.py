@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 
 import pandas as pd
@@ -247,6 +249,76 @@ def build_model_run_report(
     return "\n".join(lines) + "\n"
 
 
+def build_model_run_manifest(
+    kpis: KpiSummary,
+    mmm_result: MmmModelResult,
+    scenario: BudgetScenarioResult,
+    executive_summary: ExecutiveSummary,
+    *,
+    data_source_label: str,
+    model_label: str,
+    row_count: int,
+    first_week: str,
+    last_week: str,
+    recommendation_readiness: RecommendationReadiness | None = None,
+) -> dict[str, object]:
+    """Create a deterministic machine-readable model-run manifest."""
+
+    payload: dict[str, object] = {
+        "schema_version": "1.0",
+        "run_context": {
+            "data_source": data_source_label,
+            "modeling_window": {
+                "first_week": first_week,
+                "last_week": last_week,
+                "weekly_rows": row_count,
+            },
+            "active_model": model_label,
+            "holdout_weeks": int(mmm_result.metrics["holdout_weeks"]),
+        },
+        "kpis": {
+            "revenue_gbp": _round_float(kpis.revenue_gbp),
+            "media_spend_gbp": _round_float(kpis.media_spend_gbp),
+            "blended_roas": _round_float(kpis.blended_roas),
+            "orders": _round_float(kpis.orders),
+            "new_customers": _round_float(kpis.new_customers),
+        },
+        "model_diagnostics": {
+            "train_r_squared": _round_float(mmm_result.metrics["train_r_squared"], digits=6),
+            "train_mape": _round_float(mmm_result.metrics["train_mape"], digits=6),
+            "holdout_mape": _round_float(mmm_result.metrics["test_mape"], digits=6),
+            "holdout_rmse_gbp": _round_float(mmm_result.metrics["test_rmse_gbp"]),
+        },
+        "scenario_summary": {
+            key: _json_safe_float(value)
+            for key, value in sorted(scenario.summary.items())
+        },
+        "top_media_contributions": _manifest_contributions(mmm_result.contribution_table),
+        "executive_summary": {
+            "headline": executive_summary.headline,
+            "recommendation": executive_summary.recommendation,
+            "caveats": executive_summary.caveats,
+        },
+    }
+
+    if recommendation_readiness is not None:
+        payload["recommendation_readiness"] = {
+            "status": recommendation_readiness.status,
+            "score": recommendation_readiness.score,
+            "checks": recommendation_readiness.checks.to_dict("records"),
+            "required_actions": recommendation_readiness.required_actions,
+        }
+
+    payload["run_id"] = _manifest_run_id(payload)
+    return payload
+
+
+def model_run_manifest_json(manifest: dict[str, object]) -> str:
+    """Serialize a model-run manifest as stable pretty JSON."""
+
+    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+
+
 def _top_channel(contribution_table: pd.DataFrame) -> pd.Series:
     return contribution_table.sort_values("estimated_contribution_gbp", ascending=False).iloc[0]
 
@@ -263,3 +335,36 @@ def _gbp(value: float) -> str:
 
 def _pct(value: float) -> str:
     return f"{value * 100:,.1f}%"
+
+
+def _manifest_contributions(contribution_table: pd.DataFrame) -> list[dict[str, object]]:
+    top_channels = contribution_table.sort_values(
+        "estimated_contribution_gbp",
+        ascending=False,
+    ).head(6)
+    return [
+        {
+            "channel": str(row["channel"]),
+            "spend_gbp": _round_float(row["spend_gbp"]),
+            "estimated_contribution_gbp": _round_float(row["estimated_contribution_gbp"]),
+            "estimated_roi": _round_float(row["estimated_roi"], digits=6),
+            "contribution_share": _round_float(row["contribution_share"], digits=6),
+        }
+        for row in top_channels.to_dict("records")
+    ]
+
+
+def _manifest_run_id(payload: dict[str, object]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _round_float(value: object, digits: int = 2) -> float:
+    return round(float(value), digits)
+
+
+def _json_safe_float(value: object) -> float | None:
+    numeric_value = float(value)
+    if pd.isna(numeric_value):
+        return None
+    return _round_float(numeric_value)

@@ -41,6 +41,7 @@ The interactive dashboard provides:
 - Profit-aware scenario planning and constrained budget optimization
 - Downloadable model-run report for review and lightweight audit trails
 - Recommendation readiness scoring for model, evidence, profit, spend, and history checks
+- Machine-readable run manifest for reproducible model-run review
 - Executive summary draft for stakeholder communication
 
 ## Technical Stack
