@@ -18,6 +18,13 @@ class BudgetScenarioResult:
     channel_table: pd.DataFrame
 
 
+@dataclass(frozen=True)
+class BudgetOptimizationResult:
+    allocation: dict[str, float]
+    diagnostics: pd.DataFrame
+    summary: dict[str, float]
+
+
 def current_weekly_spend(df: pd.DataFrame, lookback_weeks: int = 13) -> dict[str, float]:
     """Return average weekly spend by channel over the latest lookback window."""
 
@@ -187,6 +194,107 @@ def roi_weighted_allocation(
     return {column: total_budget_gbp * (weight / weight_total) for column, weight in weights.items()}
 
 
+def optimize_budget_allocation(
+    current_spend: Mapping[str, float],
+    mmm_result: MmmModelResult,
+    total_budget_gbp: float,
+    objective: str = "profit",
+    gross_margin_rate: float = 0.52,
+    min_share: float = 0.02,
+    max_share: float = 0.45,
+    steps: int = 240,
+) -> BudgetOptimizationResult:
+    """Recommend a constrained weekly allocation using marginal response curves."""
+
+    if total_budget_gbp <= 0:
+        raise ValueError("total_budget_gbp must be positive.")
+    if objective not in {"profit", "contribution"}:
+        raise ValueError("objective must be either 'profit' or 'contribution'.")
+    if not 0 <= gross_margin_rate <= 1:
+        raise ValueError("gross_margin_rate must be between 0 and 1.")
+    if min_share < 0 or max_share <= 0 or min_share > max_share:
+        raise ValueError("min_share and max_share must be non-negative and ordered.")
+    if steps <= 0:
+        raise ValueError("steps must be positive.")
+
+    channels = list(current_spend)
+    min_spend = {column: total_budget_gbp * min_share for column in channels}
+    max_spend = {column: total_budget_gbp * max_share for column in channels}
+    min_total = sum(min_spend.values())
+    max_total = sum(max_spend.values())
+    if min_total > total_budget_gbp + 1e-6:
+        raise ValueError("Minimum share constraints exceed the total budget.")
+    if max_total < total_budget_gbp - 1e-6:
+        raise ValueError("Maximum share constraints cannot absorb the total budget.")
+
+    allocation = min_spend.copy()
+    remaining_budget = total_budget_gbp - min_total
+    increment = total_budget_gbp / steps
+
+    while remaining_budget > 1e-6:
+        increment_value = min(increment, remaining_budget)
+        best_column: str | None = None
+        best_gain = -float("inf")
+
+        for column in channels:
+            if allocation[column] + increment_value > max_spend[column] + 1e-6:
+                continue
+            gain = _objective_value(
+                allocation[column] + increment_value,
+                column,
+                mmm_result,
+                objective=objective,
+                gross_margin_rate=gross_margin_rate,
+            ) - _objective_value(
+                allocation[column],
+                column,
+                mmm_result,
+                objective=objective,
+                gross_margin_rate=gross_margin_rate,
+            )
+            if gain > best_gain:
+                best_gain = gain
+                best_column = column
+
+        if best_column is None:
+            best_column = min(channels, key=lambda column: allocation[column])
+            increment_value = min(increment_value, max_spend[best_column] - allocation[best_column])
+            if increment_value <= 1e-6:
+                break
+
+        allocation[best_column] += increment_value
+        remaining_budget -= increment_value
+
+    allocation = _rebalance_rounding_residual(allocation, max_spend, total_budget_gbp)
+    diagnostics = _optimization_diagnostics(
+        current_spend,
+        allocation,
+        mmm_result,
+        objective=objective,
+        gross_margin_rate=gross_margin_rate,
+        min_spend=min_spend,
+        max_spend=max_spend,
+    )
+    summary = {
+        "total_budget_gbp": total_budget_gbp,
+        "objective": objective,
+        "gross_margin_rate": gross_margin_rate,
+        "min_share": min_share,
+        "max_share": max_share,
+        "steps": float(steps),
+        "optimized_objective_value_gbp": float(diagnostics["optimized_objective_gbp"].sum()),
+        "current_mix_objective_value_gbp": float(diagnostics["current_mix_objective_gbp"].sum()),
+        "objective_lift_gbp": float(diagnostics["objective_lift_gbp"].sum()),
+        "channels_at_min": float((diagnostics["constraint_status"] == "At minimum").sum()),
+        "channels_at_max": float((diagnostics["constraint_status"] == "At maximum").sum()),
+    }
+    return BudgetOptimizationResult(
+        allocation=allocation,
+        diagnostics=diagnostics,
+        summary=summary,
+    )
+
+
 def _normalized_shares(
     current_spend: Mapping[str, float],
     shares: Mapping[str, float],
@@ -201,3 +309,95 @@ def _normalized_shares(
         current_total = sum(current_spend.values())
         return {column: spend / current_total for column, spend in current_spend.items()}
     return {column: share / total for column, share in clipped.items()}
+
+
+def _objective_value(
+    spend_gbp: float,
+    spend_column: str,
+    mmm_result: MmmModelResult,
+    objective: str,
+    gross_margin_rate: float,
+) -> float:
+    contribution = response_for_weekly_spend(spend_gbp, spend_column, mmm_result)
+    if objective == "contribution":
+        return contribution
+    return contribution * gross_margin_rate - spend_gbp
+
+
+def _rebalance_rounding_residual(
+    allocation: dict[str, float],
+    max_spend: Mapping[str, float],
+    total_budget_gbp: float,
+) -> dict[str, float]:
+    residual = total_budget_gbp - sum(allocation.values())
+    if abs(residual) <= 1e-6:
+        return allocation
+
+    adjusted = allocation.copy()
+    if residual > 0:
+        for column in sorted(adjusted, key=lambda key: max_spend[key] - adjusted[key], reverse=True):
+            capacity = max_spend[column] - adjusted[column]
+            addition = min(residual, capacity)
+            adjusted[column] += addition
+            residual -= addition
+            if residual <= 1e-6:
+                break
+    else:
+        largest_column = max(adjusted, key=adjusted.get)
+        adjusted[largest_column] += residual
+    return adjusted
+
+
+def _optimization_diagnostics(
+    current_spend: Mapping[str, float],
+    allocation: Mapping[str, float],
+    mmm_result: MmmModelResult,
+    objective: str,
+    gross_margin_rate: float,
+    min_spend: Mapping[str, float],
+    max_spend: Mapping[str, float],
+) -> pd.DataFrame:
+    current_total = sum(current_spend.values())
+    optimized_total = sum(allocation.values())
+    rows = []
+    for column, optimized_spend in allocation.items():
+        current_mix_spend = optimized_total * (
+            current_spend[column] / current_total if current_total else 1 / len(allocation)
+        )
+        optimized_objective = _objective_value(
+            optimized_spend,
+            column,
+            mmm_result,
+            objective=objective,
+            gross_margin_rate=gross_margin_rate,
+        )
+        current_mix_objective = _objective_value(
+            current_mix_spend,
+            column,
+            mmm_result,
+            objective=objective,
+            gross_margin_rate=gross_margin_rate,
+        )
+        if optimized_spend <= min_spend[column] + 1e-6:
+            constraint_status = "At minimum"
+        elif optimized_spend >= max_spend[column] - 1e-6:
+            constraint_status = "At maximum"
+        else:
+            constraint_status = "Flexible"
+
+        rows.append(
+            {
+                "channel": CHANNEL_LABELS[column],
+                "spend_column": column,
+                "current_mix_weekly_spend_gbp": current_mix_spend,
+                "optimized_weekly_spend_gbp": optimized_spend,
+                "optimized_share": optimized_spend / optimized_total if optimized_total else 0.0,
+                "min_weekly_spend_gbp": min_spend[column],
+                "max_weekly_spend_gbp": max_spend[column],
+                "current_mix_objective_gbp": current_mix_objective,
+                "optimized_objective_gbp": optimized_objective,
+                "objective_lift_gbp": optimized_objective - current_mix_objective,
+                "constraint_status": constraint_status,
+            }
+        )
+    return pd.DataFrame(rows).sort_values("optimized_weekly_spend_gbp", ascending=False)

@@ -22,6 +22,7 @@ flowchart LR
     O --> P
     F --> J["Response Curves"]
     J --> K["Profit-Aware Budget Scenario Planner"]
+    K --> Q["Constrained Budget Optimizer"]
     K --> L["Executive Summary"]
 ```
 
@@ -34,7 +35,7 @@ flowchart LR
 - `src/marketing_effectiveness_lab/uncertainty.py` handles coefficient simulation for contribution and prediction intervals.
 - `src/marketing_effectiveness_lab/bayesian.py` handles Bayesian posterior draws, experiment-informed priors, and posterior predictive intervals.
 - `src/marketing_effectiveness_lab/calibration.py` handles lift-test templates, upload validation, evidence governance, and experiment calibration.
-- `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning and profit-aware scenario diagnostics.
+- `src/marketing_effectiveness_lab/budget.py` handles budget scenario planning, constrained allocation optimization, and profit-aware scenario diagnostics.
 - `src/marketing_effectiveness_lab/reporting.py` handles deterministic executive summary generation.
 - `app/streamlit_app.py` renders the analyst dashboard.
 - `tests/` covers reusable logic.

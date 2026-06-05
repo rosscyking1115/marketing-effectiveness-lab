@@ -22,6 +22,7 @@ from marketing_effectiveness_lab.budget import (
     allocation_from_shares,
     current_weekly_spend,
     evaluate_budget_scenario,
+    optimize_budget_allocation,
     roi_weighted_allocation,
 )
 from marketing_effectiveness_lab.calibration import (
@@ -1310,7 +1311,7 @@ with planner_left:
     proposed_total_budget = current_total_budget * budget_multiplier
     allocation_profile = st.radio(
         "Allocation profile",
-        ["Current mix", "ROI-weighted tilt", "Manual shares"],
+        ["Current mix", "ROI-weighted tilt", "Optimized allocation", "Manual shares"],
         horizontal=False,
     )
 
@@ -1322,6 +1323,34 @@ with planner_left:
             proposed_total_budget,
             tilt_strength=tilt_strength,
         )
+        optimization_result = None
+    elif allocation_profile == "Optimized allocation":
+        optimization_objective_label = st.radio(
+            "Optimization objective",
+            ["Profit after media", "Contribution revenue"],
+            horizontal=False,
+        )
+        min_channel_share = st.slider("Minimum channel share", 0.00, 0.15, 0.02, 0.01)
+        max_channel_share = st.slider("Maximum channel share", 0.20, 0.70, 0.45, 0.01)
+        optimization_objective = (
+            "profit"
+            if optimization_objective_label == "Profit after media"
+            else "contribution"
+        )
+        try:
+            optimization_result = optimize_budget_allocation(
+                current_spend,
+                active_mmm_result,
+                proposed_total_budget,
+                objective=optimization_objective,
+                gross_margin_rate=gross_margin_rate,
+                min_share=min_channel_share,
+                max_share=max_channel_share,
+            )
+            proposed_spend = optimization_result.allocation
+        except ValueError as exc:
+            st.error(str(exc))
+            st.stop()
     elif allocation_profile == "Manual shares":
         st.markdown("**Manual channel shares**")
         current_shares = {
@@ -1340,12 +1369,14 @@ with planner_left:
             )
         proposed_spend = allocation_from_shares(current_spend, manual_shares, proposed_total_budget)
         st.caption("Manual shares are normalized to sum to 100%.")
+        optimization_result = None
     else:
         proposed_spend = allocation_from_shares(
             current_spend,
             {column: spend for column, spend in current_spend.items()},
             proposed_total_budget,
         )
+        optimization_result = None
 
 scenario = evaluate_budget_scenario(
     df,
@@ -1434,6 +1465,39 @@ st.info(
     f"Profit metrics assume a {gross_margin_rate * 100:,.0f}% gross margin. "
     "It is suitable for directional planning, not final budget approval."
 )
+
+if optimization_result is not None:
+    st.markdown("**Optimization diagnostics**")
+    opt_diag = optimization_result.diagnostics.copy()
+    for money_col in [
+        "current_mix_weekly_spend_gbp",
+        "optimized_weekly_spend_gbp",
+        "min_weekly_spend_gbp",
+        "max_weekly_spend_gbp",
+        "current_mix_objective_gbp",
+        "optimized_objective_gbp",
+        "objective_lift_gbp",
+    ]:
+        opt_diag[money_col] = opt_diag[money_col].map(gbp)
+    opt_diag["optimized_share"] = opt_diag["optimized_share"].map(percent)
+    st.dataframe(
+        opt_diag[
+            [
+                "channel",
+                "optimized_share",
+                "current_mix_weekly_spend_gbp",
+                "optimized_weekly_spend_gbp",
+                "objective_lift_gbp",
+                "constraint_status",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.caption(
+        "The optimizer uses greedy marginal response steps with min/max channel share constraints. "
+        "It is designed for transparent directional planning."
+    )
 
 st.divider()
 st.subheader("Executive Summary Draft")

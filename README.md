@@ -12,7 +12,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 14: Bayesian MMM foundations.
+Phase 15: Constrained budget optimization.
 
 The project currently includes:
 
@@ -35,8 +35,9 @@ The project currently includes:
 - Gross-margin-adjusted profit planning for budget scenarios
 - Bayesian posterior contribution, ROI, and holdout prediction intervals
 - Experiment-informed media priors from approved lift-test evidence
+- Constrained budget optimization for profit or contribution objectives
 
-The next major modeling phase is constrained budget optimization with posterior-aware planning.
+The next major modeling phase is posterior-aware optimization and stronger real-data connector templates.
 
 ## Project Shape
 
@@ -55,6 +56,7 @@ Useful docs:
 - `docs/phase-12-evidence-governance.md` - lift-test quality review and approval filtering
 - `docs/phase-13-profit-aware-planning.md` - margin-aware budget scenario planning
 - `docs/phase-14-bayesian-mmm-foundations.md` - Bayesian posterior layer and experiment-informed priors
+- `docs/phase-15-constrained-budget-optimization.md` - constrained profit and contribution allocation
 
 ## Quick Start
 
