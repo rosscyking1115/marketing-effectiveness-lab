@@ -56,7 +56,10 @@ from marketing_effectiveness_lab.reporting import (
     build_executive_summary,
     build_model_run_manifest,
     build_model_run_report,
+    compare_model_run_manifests,
+    model_run_manifest_comparison_csv,
     model_run_manifest_json,
+    parse_model_run_manifest_json,
 )
 from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
 
@@ -1748,6 +1751,83 @@ with download_manifest_col:
         mime="application/json",
         use_container_width=True,
     )
+
+with st.expander("Compare saved run manifests"):
+    st.caption(
+        "Upload manifests downloaded from different scenario settings to compare readiness, "
+        "model quality, and commercial impact."
+    )
+    manifest_uploads = st.file_uploader(
+        "Run manifest JSON files",
+        type=["json"],
+        accept_multiple_files=True,
+        key="manifest_comparison_uploads",
+    )
+    if manifest_uploads:
+        parsed_manifests = []
+        manifest_errors = []
+        for manifest_upload in manifest_uploads:
+            try:
+                parsed_manifests.append(
+                    parse_model_run_manifest_json(
+                        manifest_upload.getvalue().decode("utf-8-sig")
+                    )
+                )
+            except ValueError as exc:
+                manifest_errors.append(f"{manifest_upload.name}: {exc}")
+
+        if manifest_errors:
+            st.error("One or more uploaded manifests could not be read.")
+            for error in manifest_errors:
+                st.write(f"- {error}")
+
+        if parsed_manifests:
+            manifest_comparison = compare_model_run_manifests(parsed_manifests)
+            comparison_display = manifest_comparison.copy()
+            comparison_display["holdout_mape"] = comparison_display["holdout_mape"].map(percent)
+            comparison_display["readiness_score"] = comparison_display["readiness_score"].map(
+                lambda value: f"{value:,.1f}/100"
+            )
+            for money_col in [
+                "current_weekly_spend_gbp",
+                "proposed_weekly_spend_gbp",
+                "weekly_spend_change_gbp",
+                "weekly_contribution_change_gbp",
+                "weekly_profit_change_gbp",
+            ]:
+                comparison_display[money_col] = comparison_display[money_col].map(gbp)
+            comparison_display["proposed_profit_roi"] = comparison_display[
+                "proposed_profit_roi"
+            ].map(x_value)
+            comparison_display["weekly_rows"] = comparison_display["weekly_rows"].map(integer)
+            st.dataframe(
+                comparison_display[
+                    [
+                        "comparison_rank",
+                        "run_id",
+                        "readiness_status",
+                        "readiness_score",
+                        "weekly_profit_change_gbp",
+                        "proposed_profit_roi",
+                        "holdout_mape",
+                        "top_contribution_channel",
+                        "data_source",
+                        "active_model",
+                    ]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.download_button(
+                "Download comparison CSV",
+                data=model_run_manifest_comparison_csv(manifest_comparison),
+                file_name="marketing_effectiveness_manifest_comparison.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+    else:
+        st.info("Download manifests from a few scenario settings, then upload them here.")
+
 st.caption(
     "The report is generated from the current dashboard state for review. "
     "Production approval would still require authentication, persistence, and audit logging."

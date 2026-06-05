@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import pandas as pd
@@ -319,6 +320,62 @@ def model_run_manifest_json(manifest: dict[str, object]) -> str:
     return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
 
 
+def parse_model_run_manifest_json(manifest_json: str) -> dict[str, object]:
+    """Parse and validate a model-run manifest JSON payload."""
+
+    try:
+        payload = json.loads(manifest_json)
+    except json.JSONDecodeError as exc:
+        msg = f"Manifest JSON is invalid: {exc.msg}."
+        raise ValueError(msg) from exc
+
+    if not isinstance(payload, dict):
+        msg = "Manifest JSON must decode to an object."
+        raise ValueError(msg)
+
+    required_fields = [
+        "schema_version",
+        "run_id",
+        "run_context",
+        "model_diagnostics",
+        "scenario_summary",
+    ]
+    missing = [field for field in required_fields if field not in payload]
+    if missing:
+        msg = f"Manifest is missing required field(s): {', '.join(missing)}."
+        raise ValueError(msg)
+
+    if payload["schema_version"] != "1.0":
+        msg = f"Unsupported manifest schema version: {payload['schema_version']}."
+        raise ValueError(msg)
+
+    return payload
+
+
+def compare_model_run_manifests(manifests: Sequence[Mapping[str, object]]) -> pd.DataFrame:
+    """Build a ranked scenario comparison table from model-run manifests."""
+
+    if not manifests:
+        msg = "At least one manifest is required for comparison."
+        raise ValueError(msg)
+
+    records = [_manifest_comparison_record(manifest, index) for index, manifest in enumerate(manifests)]
+    comparison = pd.DataFrame(records)
+    comparison = comparison.sort_values(
+        by=["readiness_score", "weekly_profit_change_gbp", "holdout_mape"],
+        ascending=[False, False, True],
+        na_position="last",
+    ).reset_index(drop=True)
+    comparison.insert(0, "comparison_rank", range(1, len(comparison) + 1))
+    return comparison
+
+
+def model_run_manifest_comparison_csv(comparison: pd.DataFrame) -> str:
+    """Serialize a manifest comparison table as CSV."""
+
+    return comparison.to_csv(index=False)
+
+
 def _top_channel(contribution_table: pd.DataFrame) -> pd.Series:
     return contribution_table.sort_values("estimated_contribution_gbp", ascending=False).iloc[0]
 
@@ -357,6 +414,63 @@ def _manifest_contributions(contribution_table: pd.DataFrame) -> list[dict[str, 
 def _manifest_run_id(payload: dict[str, object]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _manifest_comparison_record(
+    manifest: Mapping[str, object],
+    index: int,
+) -> dict[str, object]:
+    run_context = _mapping_value(manifest, "run_context")
+    modeling_window = _mapping_value(run_context, "modeling_window")
+    diagnostics = _mapping_value(manifest, "model_diagnostics")
+    scenario = _mapping_value(manifest, "scenario_summary")
+    readiness = _mapping_value(manifest, "recommendation_readiness")
+    summary = _mapping_value(manifest, "executive_summary")
+    top_media = manifest.get("top_media_contributions")
+    top_channel = ""
+    if isinstance(top_media, list) and top_media and isinstance(top_media[0], Mapping):
+        top_channel = str(top_media[0].get("channel", ""))
+
+    first_week = str(modeling_window.get("first_week", ""))
+    last_week = str(modeling_window.get("last_week", ""))
+    modeling_period = f"{first_week} to {last_week}" if first_week and last_week else ""
+
+    return {
+        "run_id": str(manifest.get("run_id", f"uploaded_manifest_{index + 1}")),
+        "data_source": str(run_context.get("data_source", "")),
+        "active_model": str(run_context.get("active_model", "")),
+        "modeling_period": modeling_period,
+        "weekly_rows": _optional_float(modeling_window.get("weekly_rows")),
+        "holdout_mape": _optional_float(diagnostics.get("holdout_mape")),
+        "readiness_status": str(readiness.get("status", "")),
+        "readiness_score": _optional_float(readiness.get("score")),
+        "current_weekly_spend_gbp": _optional_float(scenario.get("current_weekly_spend_gbp")),
+        "proposed_weekly_spend_gbp": _optional_float(scenario.get("proposed_weekly_spend_gbp")),
+        "weekly_spend_change_gbp": _optional_float(scenario.get("weekly_spend_change_gbp")),
+        "weekly_contribution_change_gbp": _optional_float(
+            scenario.get("weekly_contribution_change_gbp")
+        ),
+        "weekly_profit_change_gbp": _optional_float(scenario.get("weekly_profit_change_gbp")),
+        "proposed_profit_roi": _optional_float(scenario.get("proposed_profit_roi")),
+        "top_contribution_channel": top_channel,
+        "headline": str(summary.get("headline", "")),
+    }
+
+
+def _mapping_value(payload: Mapping[str, object], key: str) -> Mapping[str, object]:
+    value = payload.get(key)
+    if isinstance(value, Mapping):
+        return value
+    return {}
+
+
+def _optional_float(value: object) -> float | None:
+    if value is None:
+        return None
+    numeric_value = float(value)
+    if pd.isna(numeric_value):
+        return None
+    return numeric_value
 
 
 def _round_float(value: object, digits: int = 2) -> float:
