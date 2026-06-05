@@ -36,6 +36,12 @@ from marketing_effectiveness_lab.calibration import (
     validate_lift_test_csv_text,
 )
 from marketing_effectiveness_lab.data.generator import generate_and_validate
+from marketing_effectiveness_lab.data.connectors import (
+    CONNECTOR_SPECS,
+    connector_schema_dataframe,
+    connector_template_csv,
+    validate_connector_csv_text,
+)
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.modeling import fit_baseline_model
@@ -149,6 +155,14 @@ def parse_uploaded_csv(csv_text: str) -> tuple[pd.DataFrame | None, list[str]]:
     return prepare_weekly_frame(parsed), []
 
 
+@st.cache_data(show_spinner=False)
+def parse_connector_csv(
+    connector_key: str,
+    csv_text: str,
+) -> tuple[pd.DataFrame | None, list[str]]:
+    return validate_connector_csv_text(connector_key, csv_text)
+
+
 def select_dataset() -> tuple[pd.DataFrame, str]:
     with st.sidebar:
         st.header("Data source")
@@ -160,6 +174,44 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
             mime="text/csv",
             use_container_width=True,
         )
+        with st.expander("Connector templates"):
+            connector_labels = {spec.label: spec.key for spec in CONNECTOR_SPECS}
+            selected_connector_label = st.selectbox(
+                "Export type",
+                options=list(connector_labels),
+            )
+            selected_connector_key = connector_labels[selected_connector_label]
+            st.download_button(
+                "Download connector template",
+                data=connector_template_csv(selected_connector_key),
+                file_name=f"{selected_connector_key}_weekly_template.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+            st.dataframe(
+                connector_schema_dataframe(selected_connector_key),
+                use_container_width=True,
+                hide_index=True,
+            )
+            connector_upload = st.file_uploader(
+                "Validate connector CSV",
+                type=["csv"],
+                key=f"{selected_connector_key}_connector_upload",
+            )
+            if connector_upload is not None:
+                connector_csv_text = connector_upload.getvalue().decode("utf-8-sig")
+                connector_df, connector_errors = parse_connector_csv(
+                    selected_connector_key,
+                    connector_csv_text,
+                )
+                if connector_errors or connector_df is None:
+                    st.error("Connector CSV failed validation.")
+                    for error in connector_errors:
+                        st.write(f"- {error}")
+                else:
+                    st.success(
+                        f"Validated {len(connector_df):,} rows for {selected_connector_label}."
+                    )
 
         if source == "Upload CSV":
             uploaded_file = st.file_uploader("Upload weekly marketing CSV", type=["csv"])

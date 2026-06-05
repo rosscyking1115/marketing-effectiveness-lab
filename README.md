@@ -12,7 +12,7 @@ The lab is designed as a serious technical portfolio project with a future produ
 
 ## Current Phase
 
-Phase 15: Constrained budget optimization.
+Phase 16: Real-data connector templates.
 
 The project currently includes:
 
@@ -36,8 +36,9 @@ The project currently includes:
 - Bayesian posterior contribution, ROI, and holdout prediction intervals
 - Experiment-informed media priors from approved lift-test evidence
 - Constrained budget optimization for profit or contribution objectives
+- Connector templates and validation for GA4, Google Ads, Meta Ads, Shopify/ecommerce, and CRM exports
 
-The next major modeling phase is posterior-aware optimization and stronger real-data connector templates.
+The next major modeling phase is turning connector exports into an automated weekly MMM assembly workflow.
 
 ## Project Shape
 
@@ -57,6 +58,7 @@ Useful docs:
 - `docs/phase-13-profit-aware-planning.md` - margin-aware budget scenario planning
 - `docs/phase-14-bayesian-mmm-foundations.md` - Bayesian posterior layer and experiment-informed priors
 - `docs/phase-15-constrained-budget-optimization.md` - constrained profit and contribution allocation
+- `docs/phase-16-real-data-connectors.md` - connector templates for common marketing and commerce exports
 
 ## Quick Start
 

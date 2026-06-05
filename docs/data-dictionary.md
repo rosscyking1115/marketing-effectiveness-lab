@@ -38,6 +38,18 @@ The schema is intentionally close to what a real business could provide through 
 
 The dashboard can also accept uploaded CSV files that follow this schema. Uploaded files are parsed in memory in the current prototype.
 
+## Connector Templates
+
+The app also provides validation templates for common upstream exports:
+
+- GA4 traffic and conversion export
+- Google Ads weekly export
+- Meta Ads weekly export
+- Shopify or ecommerce orders export
+- CRM and lifecycle export
+
+These templates do not call external APIs. They define safe CSV contracts for exports that can later be assembled into the weekly MMM dataset.
+
 ## Validation Rules
 
 - `week_start` must be a Monday date.
