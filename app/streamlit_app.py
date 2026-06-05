@@ -18,11 +18,11 @@ from marketing_effectiveness_lab.analytics import (
     weekly_spend_long,
 )
 from marketing_effectiveness_lab.bayesian import fit_bayesian_mmm
+from marketing_effectiveness_lab import budget as budget_tools
 from marketing_effectiveness_lab.budget import (
     allocation_from_shares,
     current_weekly_spend,
     evaluate_budget_scenario,
-    optimize_budget_allocation,
     roi_weighted_allocation,
 )
 from marketing_effectiveness_lab.calibration import (
@@ -49,6 +49,7 @@ DATA_PATH = PROJECT_ROOT / "data" / "demo" / "fashion_retail_weekly.csv"
 DEMO_OUTPUT_DIR = PROJECT_ROOT / "data" / "demo"
 
 PAGE_TITLE = "Marketing Effectiveness Lab"
+optimize_budget_allocation = getattr(budget_tools, "optimize_budget_allocation", None)
 
 
 st.set_page_config(
@@ -1325,32 +1326,41 @@ with planner_left:
         )
         optimization_result = None
     elif allocation_profile == "Optimized allocation":
-        optimization_objective_label = st.radio(
-            "Optimization objective",
-            ["Profit after media", "Contribution revenue"],
-            horizontal=False,
-        )
-        min_channel_share = st.slider("Minimum channel share", 0.00, 0.15, 0.02, 0.01)
-        max_channel_share = st.slider("Maximum channel share", 0.20, 0.70, 0.45, 0.01)
-        optimization_objective = (
-            "profit"
-            if optimization_objective_label == "Profit after media"
-            else "contribution"
-        )
-        try:
-            optimization_result = optimize_budget_allocation(
+        if optimize_budget_allocation is None:
+            st.warning("The optimizer is unavailable while the app environment refreshes.")
+            proposed_spend = allocation_from_shares(
                 current_spend,
-                active_mmm_result,
+                {column: spend for column, spend in current_spend.items()},
                 proposed_total_budget,
-                objective=optimization_objective,
-                gross_margin_rate=gross_margin_rate,
-                min_share=min_channel_share,
-                max_share=max_channel_share,
             )
-            proposed_spend = optimization_result.allocation
-        except ValueError as exc:
-            st.error(str(exc))
-            st.stop()
+            optimization_result = None
+        else:
+            optimization_objective_label = st.radio(
+                "Optimization objective",
+                ["Profit after media", "Contribution revenue"],
+                horizontal=False,
+            )
+            min_channel_share = st.slider("Minimum channel share", 0.00, 0.15, 0.02, 0.01)
+            max_channel_share = st.slider("Maximum channel share", 0.20, 0.70, 0.45, 0.01)
+            optimization_objective = (
+                "profit"
+                if optimization_objective_label == "Profit after media"
+                else "contribution"
+            )
+            try:
+                optimization_result = optimize_budget_allocation(
+                    current_spend,
+                    active_mmm_result,
+                    proposed_total_budget,
+                    objective=optimization_objective,
+                    gross_margin_rate=gross_margin_rate,
+                    min_share=min_channel_share,
+                    max_share=max_channel_share,
+                )
+                proposed_spend = optimization_result.allocation
+            except ValueError as exc:
+                st.error(str(exc))
+                st.stop()
     elif allocation_profile == "Manual shares":
         st.markdown("**Manual channel shares**")
         current_shares = {
