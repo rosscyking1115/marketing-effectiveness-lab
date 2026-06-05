@@ -10,6 +10,22 @@ The project is built to show the workflow expected from a commercial or marketin
 - Interactive dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
 - GitHub repo: <https://github.com/rosscyking1115/marketing-effectiveness-lab>
 
+## Reviewer Guide
+
+For a quick portfolio review:
+
+1. Open the portfolio site for the business framing and project narrative.
+2. Open the Streamlit dashboard and review the analyst KPIs, MMM diagnostics, experiment calibration, Bayesian intervals, and budget planner.
+3. Read the designed case-study pages:
+   - Case study: <https://rosscyking1115.github.io/marketing-effectiveness-lab/case-study.html>
+   - Architecture: <https://rosscyking1115.github.io/marketing-effectiveness-lab/architecture.html>
+   - Data contract: <https://rosscyking1115.github.io/marketing-effectiveness-lab/data-contract.html>
+4. Inspect the reusable package code in `src/marketing_effectiveness_lab/` and the test suite in `tests/`.
+
+The strongest signal is not a single model output. It is the end-to-end workflow: data contract,
+source validation, model diagnostics, incrementality evidence, uncertainty, optimization, and
+stakeholder communication.
+
 ## What It Demonstrates
 
 - Data contracts for weekly marketing, ecommerce, web analytics, paid media, and CRM exports
@@ -31,11 +47,16 @@ The current version is polished for portfolio use and intentionally transparent 
 - `src/marketing_effectiveness_lab/` - reusable Python package code
 - `scripts/` - runnable project scripts
 - `data/demo/` - generated demo data
+- `SECURITY.md` - public demo data policy and production security notes
+- `LICENSE` - MIT license for reuse and review
 
 Useful docs:
 
-- `docs/case-study.md` - business case study
-- `docs/architecture.md` - current and future architecture
+- `docs/case-study.html` - designed business case study page
+- `docs/architecture.html` - designed current and future architecture page
+- `docs/data-contract.html` - designed data contract page
+- `docs/case-study.md` - repo-native case study notes
+- `docs/architecture.md` - repo-native architecture notes
 - `docs/production-security-roadmap.md` - security and production roadmap
 - `docs/data-dictionary.md` - weekly schema, connector templates, and assembly mapping
 - `docs/phase-10-incrementality-calibration.md` - lift-test calibration workflow

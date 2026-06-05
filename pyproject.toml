@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Marketing effectiveness, MMM, causal inference, and budget optimisation lab for fashion ecommerce."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
 dependencies = [
     "numpy>=1.26",
     "pandas>=2.2",
