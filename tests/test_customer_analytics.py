@@ -3,6 +3,8 @@ from __future__ import annotations
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     cohort_retention,
+    crm_experiment_checklist,
+    crm_experiment_design,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
     customer_future_value_backtest,
@@ -222,3 +224,43 @@ def test_retention_segment_action_plan_combines_value_risk_and_crm_evidence() ->
         }
     )
     assert plan["recommended_action"].isin({"Run holdout test", "Retest offer before scaling"}).any()
+
+
+def test_crm_experiment_design_returns_launch_plan_and_checklist() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    testable_segment = plan[
+        plan["recommended_action"].isin({"Run holdout test", "Retest offer before scaling"})
+    ].iloc[0]
+
+    design = crm_experiment_design(
+        testable_segment,
+        baseline_conversion_rate=0.05,
+        minimum_detectable_lift=0.025,
+        test_duration_days=21,
+    )
+    checklist = crm_experiment_checklist(design)
+
+    assert design["contactable_customers"] == int(testable_segment["contactable_customers"])
+    assert design["treatment_customers"] + design["holdout_customers"] == design["contactable_customers"]
+    assert design["required_sample_per_group"] > 0
+    assert design["effective_sample_per_group"] <= design["holdout_customers"]
+    assert design["launch_readiness"] in {
+        "Ready to test",
+        "Directional pilot",
+        "Underpowered",
+        "Do not launch",
+    }
+    assert design["expected_incremental_margin_at_mde_gbp"] >= 0
+    assert set(checklist.columns) == {"check_area", "requirement", "status"}
+    assert len(checklist) == 5
+    assert checklist["status"].isin({"Ready", "Review", "Blocked"}).all()

@@ -38,6 +38,8 @@ from marketing_effectiveness_lab.calibration import (
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     cohort_retention,
+    crm_experiment_checklist,
+    crm_experiment_design,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
     customer_future_value_backtest,
@@ -1046,6 +1048,84 @@ with retention_right:
         use_container_width=True,
         hide_index=True,
     )
+
+st.markdown("**CRM experiment design**")
+experiment_candidates = retention_plan[
+    retention_plan["recommended_action"].isin(["Run holdout test", "Retest offer before scaling", "Scale tested CRM"])
+].copy()
+if experiment_candidates.empty:
+    st.info("No launchable CRM experiment segments are available under the current planning rules.")
+else:
+    experiment_candidates["segment_label"] = (
+        experiment_candidates["lapse_risk_band"]
+        + " / "
+        + experiment_candidates["lifecycle_segment"]
+        + " / "
+        + experiment_candidates["value_segment"]
+    )
+    selected_segment_label = st.selectbox(
+        "Select retention segment",
+        experiment_candidates["segment_label"].tolist(),
+        index=0,
+    )
+    selected_segment = experiment_candidates[
+        experiment_candidates["segment_label"] == selected_segment_label
+    ].iloc[0]
+    experiment_design = crm_experiment_design(
+        selected_segment,
+        baseline_conversion_rate=0.05,
+        minimum_detectable_lift=0.025,
+        test_duration_days=21,
+    )
+    checklist = crm_experiment_checklist(experiment_design)
+
+    experiment_cols = st.columns(4)
+    experiment_cols[0].metric("Launch readiness", str(experiment_design["launch_readiness"]))
+    experiment_cols[1].metric("Treatment audience", integer(experiment_design["treatment_customers"]))
+    experiment_cols[2].metric("Holdout audience", integer(experiment_design["holdout_customers"]))
+    experiment_cols[3].metric("Required per group", integer(experiment_design["required_sample_per_group"]))
+
+    experiment_left, experiment_right = st.columns((1.05, 1))
+    with experiment_left:
+        audience_mix = pd.DataFrame(
+            [
+                {"group": "Treatment", "customers": experiment_design["treatment_customers"]},
+                {"group": "Holdout", "customers": experiment_design["holdout_customers"]},
+            ]
+        )
+        audience_fig = px.bar(
+            audience_mix,
+            x="group",
+            y="customers",
+            color="group",
+            title="Proposed CRM test audience split",
+            labels={"group": "Group", "customers": "Customers"},
+            color_discrete_map={"Treatment": "#376f9f", "Holdout": "#9a7b3f"},
+        )
+        audience_fig.update_layout(
+            height=300,
+            margin={"l": 12, "r": 12, "t": 48, "b": 24},
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#ffffff",
+            showlegend=False,
+        )
+        st.plotly_chart(audience_fig, use_container_width=True)
+        st.caption(str(experiment_design["success_rule"]))
+
+    with experiment_right:
+        design_summary = pd.DataFrame(
+            [
+                ("Primary metric", experiment_design["primary_metric"]),
+                ("Guardrails", experiment_design["guardrail_metrics"]),
+                ("Baseline conversion", percent(experiment_design["baseline_conversion_rate"])),
+                ("Minimum detectable lift", percent(experiment_design["minimum_detectable_lift"])),
+                ("Test duration", f"{experiment_design['test_duration_days']} days"),
+                ("Expected margin at MDE", gbp(experiment_design["expected_incremental_margin_at_mde_gbp"])),
+            ],
+            columns=["field", "value"],
+        )
+        st.dataframe(design_summary, use_container_width=True, hide_index=True)
+        st.dataframe(checklist, use_container_width=True, hide_index=True)
 
 st.subheader("Correlation Scan")
 numeric_cols = [

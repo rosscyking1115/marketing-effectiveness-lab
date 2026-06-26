@@ -37,6 +37,7 @@ stakeholder communication.
 - Empirical CLV and lapse-risk baselines using customer margin, value windows, and segment backtests
 - CRM incrementality diagnostics using campaign target/holdout events and profit-aware readouts
 - Retention action planning that links lapse risk, expected margin, CRM evidence, holdouts, and incentive caps
+- CRM experiment design for selected retention segments with sample-size guidance and launch guardrails
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -51,6 +52,7 @@ stakeholder communication.
 - Explainable customer value and lapse-risk diagnostics for retention planning
 - Target-vs-holdout CRM lift testing with incremental margin, cost, and evidence status
 - Segment-level CRM retention recommendations for scale, holdout testing, retesting, suppression, and monitoring
+- Launch-ready CRM holdout test briefs with audience split, success metric, guardrails, and checklist
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -91,6 +93,7 @@ Useful docs:
 - `docs/phase-26-empirical-clv-lapse-risk.md` - empirical CLV and lapse-risk baseline methodology
 - `docs/phase-27-crm-incrementality.md` - target/holdout CRM incrementality diagnostics
 - `docs/phase-28-retention-action-planner.md` - retention segment action planning
+- `docs/phase-29-crm-experiment-design.md` - CRM holdout experiment design and launch checks
 
 ## Quick Start
 

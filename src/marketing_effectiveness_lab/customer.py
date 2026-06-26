@@ -505,6 +505,103 @@ def retention_segment_action_plan(
     ).reset_index(drop=True)
 
 
+def crm_experiment_design(
+    segment: pd.Series | dict[str, object],
+    *,
+    baseline_conversion_rate: float = 0.05,
+    minimum_detectable_lift: float = 0.025,
+    test_duration_days: int = 21,
+) -> dict[str, object]:
+    """Design a lightweight CRM holdout experiment for one retention segment."""
+
+    segment_data = dict(segment)
+    contactable_customers = int(segment_data["contactable_customers"])
+    holdout_rate = float(segment_data["recommended_holdout_rate"])
+    holdout_customers = int(round(contactable_customers * holdout_rate))
+    treatment_customers = max(contactable_customers - holdout_customers, 0)
+    required_per_group = _required_sample_per_group(
+        baseline_conversion_rate,
+        minimum_detectable_lift,
+    )
+    effective_sample_per_group = min(treatment_customers, holdout_customers)
+    launch_readiness = _experiment_launch_readiness(
+        str(segment_data["recommended_action"]),
+        contactable_customers,
+        effective_sample_per_group,
+        required_per_group,
+    )
+    expected_incremental_margin_per_conversion = max(
+        float(segment_data["avg_expected_future_margin_gbp"])
+        - float(segment_data["max_incentive_cost_per_customer_gbp"]),
+        0.0,
+    )
+    expected_incremental_conversions_at_mde = treatment_customers * minimum_detectable_lift
+
+    return {
+        "segment_label": (
+            f"{segment_data['lapse_risk_band']} / "
+            f"{segment_data['lifecycle_segment']} / "
+            f"{segment_data['value_segment']}"
+        ),
+        "recommended_action": segment_data["recommended_action"],
+        "launch_readiness": launch_readiness,
+        "contactable_customers": contactable_customers,
+        "treatment_customers": treatment_customers,
+        "holdout_customers": holdout_customers,
+        "recommended_holdout_rate": holdout_rate,
+        "required_sample_per_group": required_per_group,
+        "effective_sample_per_group": effective_sample_per_group,
+        "baseline_conversion_rate": baseline_conversion_rate,
+        "minimum_detectable_lift": minimum_detectable_lift,
+        "test_duration_days": test_duration_days,
+        "primary_metric": "Incremental gross margin per contacted customer",
+        "success_rule": (
+            "Scale only if treatment beats holdout on gross margin per customer "
+            "and unsubscribe/refund guardrails remain within tolerance."
+        ),
+        "guardrail_metrics": "Unsubscribe rate, refund rate, discount rate, gross margin rate",
+        "expected_incremental_conversions_at_mde": expected_incremental_conversions_at_mde,
+        "expected_incremental_margin_at_mde_gbp": (
+            expected_incremental_conversions_at_mde * expected_incremental_margin_per_conversion
+        ),
+    }
+
+
+def crm_experiment_checklist(design: dict[str, object]) -> pd.DataFrame:
+    """Return a launch checklist for a CRM holdout experiment design."""
+
+    readiness = str(design["launch_readiness"])
+    is_launchable = readiness in {"Ready to test", "Directional pilot"}
+    rows = [
+        (
+            "Audience",
+            "Lock segment definition and exclude customers in active tests",
+            "Ready" if int(design["contactable_customers"]) > 0 else "Blocked",
+        ),
+        (
+            "Randomization",
+            "Assign treatment and holdout before campaign delivery",
+            "Ready" if int(design["holdout_customers"]) > 0 else "Blocked",
+        ),
+        (
+            "Measurement",
+            "Use gross margin per contacted customer as the primary metric",
+            "Ready",
+        ),
+        (
+            "Guardrails",
+            "Track unsubscribe rate, refunds, discount rate, and margin rate",
+            "Ready",
+        ),
+        (
+            "Decision",
+            "Pre-commit to scale, retest, or suppress based on the success rule",
+            "Ready" if is_launchable else "Review",
+        ),
+    ]
+    return pd.DataFrame(rows, columns=["check_area", "requirement", "status"])
+
+
 def _customer_features_as_of(
     customers: pd.DataFrame,
     orders: pd.DataFrame,
@@ -677,3 +774,35 @@ def _max_incentive_cost_per_customer(segment: pd.Series) -> float:
     if action == "Retest offer before scaling":
         return round(max(min(expected_margin * 0.08, 6), 0), 2)
     return round(max(min(expected_margin * 0.06, 5), 0), 2)
+
+
+def _required_sample_per_group(
+    baseline_conversion_rate: float,
+    minimum_detectable_lift: float,
+) -> int:
+    baseline = float(min(max(baseline_conversion_rate, 0.001), 0.95))
+    lift = float(max(minimum_detectable_lift, 0.001))
+    treatment = float(min(baseline + lift, 0.999))
+    pooled = (baseline + treatment) / 2
+    z_alpha = 1.96
+    z_power = 0.84
+    numerator = (
+        z_alpha * math.sqrt(2 * pooled * (1 - pooled))
+        + z_power * math.sqrt(baseline * (1 - baseline) + treatment * (1 - treatment))
+    ) ** 2
+    return int(math.ceil(numerator / ((treatment - baseline) ** 2)))
+
+
+def _experiment_launch_readiness(
+    action: str,
+    contactable_customers: int,
+    effective_sample_per_group: int,
+    required_sample_per_group: int,
+) -> str:
+    if action in {"Monitor", "Suppress incentive", "No contactable audience"} or contactable_customers == 0:
+        return "Do not launch"
+    if effective_sample_per_group >= required_sample_per_group:
+        return "Ready to test"
+    if effective_sample_per_group >= max(30, required_sample_per_group * 0.25):
+        return "Directional pilot"
+    return "Underpowered"
