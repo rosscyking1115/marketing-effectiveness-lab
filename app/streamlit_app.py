@@ -38,6 +38,8 @@ from marketing_effectiveness_lab.calibration import (
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     cohort_retention,
+    crm_incrementality_portfolio,
+    crm_incrementality_summary,
     customer_future_value_backtest,
     customer_value_windows,
     lapse_value_segment_summary,
@@ -861,6 +863,91 @@ with clv_tables_right:
                 "expected_future_margin_gbp",
                 "mean_absolute_error_gbp",
                 "repeat_rate_in_horizon",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+st.markdown("**CRM incrementality diagnostics**")
+crm_lift = crm_incrementality_summary(
+    customer_tables["crm_campaigns"],
+    customer_tables["crm_events"],
+)
+crm_portfolio = crm_incrementality_portfolio(crm_lift)
+crm_metric_cols = st.columns(4)
+crm_metric_cols[0].metric("Campaigns tested", integer(crm_portfolio["campaigns"]))
+crm_metric_cols[1].metric("Positive readouts", integer(crm_portfolio["positive_campaigns"]))
+crm_metric_cols[2].metric(
+    "Incremental profit",
+    gbp(crm_portfolio["total_incremental_profit_gbp"]),
+)
+crm_metric_cols[3].metric("Weighted conversion lift", percent(crm_portfolio["weighted_conversion_lift"]))
+
+crm_left, crm_right = st.columns((1.05, 1))
+with crm_left:
+    crm_plot = crm_lift.sort_values("incremental_profit_gbp", ascending=False)
+    crm_fig = px.bar(
+        crm_plot,
+        x="campaign_name",
+        y="incremental_profit_gbp",
+        color="evidence_status",
+        title="Estimated incremental profit by CRM holdout test",
+        labels={
+            "campaign_name": "Campaign",
+            "incremental_profit_gbp": "Incremental profit GBP",
+            "evidence_status": "Evidence",
+        },
+        color_discrete_map={
+            "Positive": "#2f7d64",
+            "Review": "#9a7b3f",
+            "Negative": "#c65f4b",
+            "Needs more data": "#6f7482",
+        },
+    )
+    crm_fig.update_layout(
+        height=360,
+        margin={"l": 12, "r": 12, "t": 48, "b": 82},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        legend_orientation="h",
+        legend_y=1.1,
+    )
+    st.plotly_chart(crm_fig, use_container_width=True)
+
+with crm_right:
+    crm_display = crm_lift.copy()
+    for pct_col in [
+        "target_conversion_rate",
+        "holdout_conversion_rate",
+        "conversion_lift",
+        "conversion_lift_lower",
+        "conversion_lift_upper",
+        "unsubscribe_rate",
+    ]:
+        crm_display[pct_col] = crm_display[pct_col].map(percent)
+    for money_col in [
+        "incremental_margin_gbp",
+        "campaign_cost_gbp",
+        "incentive_cost_gbp",
+        "incremental_profit_gbp",
+    ]:
+        crm_display[money_col] = crm_display[money_col].map(gbp)
+    st.dataframe(
+        crm_display[
+            [
+                "campaign_name",
+                "channel",
+                "target_segment",
+                "target_customers",
+                "holdout_customers",
+                "target_conversion_rate",
+                "holdout_conversion_rate",
+                "conversion_lift",
+                "incremental_margin_gbp",
+                "incremental_profit_gbp",
+                "unsubscribe_rate",
+                "evidence_status",
             ]
         ],
         use_container_width=True,

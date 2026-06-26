@@ -3,6 +3,8 @@ from __future__ import annotations
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     cohort_retention,
+    crm_incrementality_portfolio,
+    crm_incrementality_summary,
     customer_future_value_backtest,
     customer_value_windows,
     lapse_value_segment_summary,
@@ -151,3 +153,37 @@ def test_lapse_value_segment_summary_preserves_customer_count() -> None:
     assert summary["expected_future_margin_gbp"].sum() >= 0
     assert summary["avg_lapse_risk_score"].between(0, 100).all()
     assert summary["contactable_rate"].between(0, 1).all()
+
+
+def test_crm_incrementality_summary_estimates_holdout_lift_and_profit() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+
+    summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+
+    assert len(summary) == len(tables["crm_campaigns"])
+    assert summary["target_customers"].gt(0).all()
+    assert summary["holdout_customers"].ge(0).all()
+    assert summary["holdout_customers"].gt(0).any()
+    assert summary["target_conversion_rate"].between(0, 1).all()
+    assert summary["holdout_conversion_rate"].between(0, 1).all()
+    assert summary["conversion_lift_lower"].le(summary["conversion_lift"]).all()
+    assert summary["conversion_lift_upper"].ge(summary["conversion_lift"]).all()
+    assert summary["unsubscribe_rate"].between(0, 1).all()
+    assert set(summary["evidence_status"]).issubset(
+        {"Positive", "Review", "Negative", "Needs more data"}
+    )
+
+
+def test_crm_incrementality_portfolio_rolls_up_campaign_diagnostics() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+
+    portfolio = crm_incrementality_portfolio(summary)
+
+    assert portfolio["campaigns"] == len(summary)
+    assert portfolio["positive_campaigns"] >= 0
+    assert portfolio["review_campaigns"] >= 0
+    assert isinstance(portfolio["total_incremental_profit_gbp"], float)
+    assert isinstance(portfolio["total_incremental_margin_gbp"], float)

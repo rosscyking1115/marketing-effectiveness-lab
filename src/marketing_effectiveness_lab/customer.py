@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import pandas as pd
@@ -342,6 +343,109 @@ def lapse_value_segment_summary(scored_customers: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
+def crm_incrementality_summary(crm_campaigns: pd.DataFrame, crm_events: pd.DataFrame) -> pd.DataFrame:
+    """Estimate CRM campaign lift and profit from target/holdout campaign events."""
+
+    rows: list[dict[str, object]] = []
+    for campaign in crm_campaigns.sort_values("start_date").to_dict("records"):
+        campaign_events = crm_events[crm_events["campaign_id"] == campaign["campaign_id"]]
+        target = campaign_events[campaign_events["treatment_group"] == "target"]
+        holdout = campaign_events[campaign_events["treatment_group"] == "holdout"]
+
+        target_customers = int(target["customer_id"].nunique())
+        holdout_customers = int(holdout["customer_id"].nunique())
+        sent_customers = int(target.loc[target["sent_flag"] == 1, "customer_id"].nunique())
+        target_conversions = int(target["converted_flag"].sum())
+        holdout_conversions = int(holdout["converted_flag"].sum())
+
+        target_conversion_rate = _safe_divide(target_conversions, target_customers)
+        holdout_conversion_rate = _safe_divide(holdout_conversions, holdout_customers)
+        has_measurement_groups = target_customers > 0 and holdout_customers > 0
+        conversion_lift = (
+            target_conversion_rate - holdout_conversion_rate if has_measurement_groups else 0.0
+        )
+        conversion_lift_lower, conversion_lift_upper = _conversion_lift_interval(
+            target_conversion_rate,
+            target_customers,
+            holdout_conversion_rate,
+            holdout_customers,
+        )
+
+        target_margin_per_customer = _safe_divide(float(target["gross_margin_gbp"].sum()), target_customers)
+        holdout_margin_per_customer = _safe_divide(
+            float(holdout["gross_margin_gbp"].sum()),
+            holdout_customers,
+        )
+        incremental_margin_per_customer_gbp = (
+            target_margin_per_customer - holdout_margin_per_customer if has_measurement_groups else 0.0
+        )
+        incremental_conversions = conversion_lift * target_customers
+        incremental_margin_gbp = incremental_margin_per_customer_gbp * target_customers
+        campaign_cost_gbp = float(campaign["campaign_cost_gbp"])
+        incentive_cost_gbp = sent_customers * float(campaign["incentive_cost_per_customer_gbp"])
+        incremental_profit_gbp = incremental_margin_gbp - campaign_cost_gbp - incentive_cost_gbp
+
+        rows.append(
+            {
+                "campaign_id": campaign["campaign_id"],
+                "campaign_name": campaign["campaign_name"],
+                "campaign_type": campaign["campaign_type"],
+                "channel": campaign["channel"],
+                "target_segment": campaign["target_segment"],
+                "start_date": campaign["start_date"],
+                "end_date": campaign["end_date"],
+                "target_customers": target_customers,
+                "holdout_customers": holdout_customers,
+                "sent_customers": sent_customers,
+                "target_conversion_rate": target_conversion_rate,
+                "holdout_conversion_rate": holdout_conversion_rate,
+                "conversion_lift": conversion_lift,
+                "conversion_lift_lower": conversion_lift_lower,
+                "conversion_lift_upper": conversion_lift_upper,
+                "incremental_conversions": incremental_conversions,
+                "target_margin_per_customer_gbp": target_margin_per_customer,
+                "holdout_margin_per_customer_gbp": holdout_margin_per_customer,
+                "incremental_margin_per_customer_gbp": incremental_margin_per_customer_gbp,
+                "incremental_margin_gbp": incremental_margin_gbp,
+                "campaign_cost_gbp": campaign_cost_gbp,
+                "incentive_cost_gbp": incentive_cost_gbp,
+                "incremental_profit_gbp": incremental_profit_gbp,
+                "incremental_profit_per_target_customer_gbp": _safe_divide(
+                    incremental_profit_gbp,
+                    target_customers,
+                ),
+                "unsubscribe_rate": _safe_divide(int(target["unsubscribe_flag"].sum()), sent_customers),
+                "evidence_status": _crm_evidence_status(
+                    target_customers,
+                    holdout_customers,
+                    conversion_lift_lower,
+                    conversion_lift_upper,
+                    incremental_profit_gbp,
+                ),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+def crm_incrementality_portfolio(summary: pd.DataFrame) -> dict[str, float | int]:
+    """Summarize portfolio-level CRM incrementality diagnostics."""
+
+    campaigns = int(len(summary))
+    return {
+        "campaigns": campaigns,
+        "positive_campaigns": int((summary["evidence_status"] == "Positive").sum()),
+        "review_campaigns": int(summary["evidence_status"].isin(["Review", "Needs more data"]).sum()),
+        "total_incremental_profit_gbp": float(summary["incremental_profit_gbp"].sum()),
+        "total_incremental_margin_gbp": float(summary["incremental_margin_gbp"].sum()),
+        "average_conversion_lift": float(summary["conversion_lift"].mean()) if campaigns else 0.0,
+        "weighted_conversion_lift": _safe_divide(
+            float((summary["conversion_lift"] * summary["target_customers"]).sum()),
+            float(summary["target_customers"].sum()),
+        ),
+    }
+
+
 def _customer_features_as_of(
     customers: pd.DataFrame,
     orders: pd.DataFrame,
@@ -404,3 +508,39 @@ def _lapse_risk_score(customer: pd.Series) -> float:
     discount_component = min(float(customer["discount_rate"]) * 20, 8)
     score = recency_component + frequency_component + value_component + discount_component
     return round(float(min(max(score, 0), 100)), 1)
+
+
+def _conversion_lift_interval(
+    target_rate: float,
+    target_customers: int,
+    holdout_rate: float,
+    holdout_customers: int,
+) -> tuple[float, float]:
+    if target_customers == 0 or holdout_customers == 0:
+        return 0.0, 0.0
+    standard_error = math.sqrt(
+        (target_rate * (1 - target_rate) / target_customers)
+        + (holdout_rate * (1 - holdout_rate) / holdout_customers)
+    )
+    lift = target_rate - holdout_rate
+    return lift - 1.96 * standard_error, lift + 1.96 * standard_error
+
+
+def _crm_evidence_status(
+    target_customers: int,
+    holdout_customers: int,
+    conversion_lift_lower: float,
+    conversion_lift_upper: float,
+    incremental_profit_gbp: float,
+) -> str:
+    if target_customers < 100 or holdout_customers < 30:
+        return "Needs more data"
+    if conversion_lift_lower > 0 and incremental_profit_gbp > 0:
+        return "Positive"
+    if conversion_lift_upper < 0 or incremental_profit_gbp < 0:
+        return "Negative"
+    return "Review"
+
+
+def _safe_divide(numerator: float, denominator: float) -> float:
+    return float(numerator / denominator) if denominator else 0.0
