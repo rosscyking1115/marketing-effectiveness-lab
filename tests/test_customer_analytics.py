@@ -4,6 +4,8 @@ from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     build_crm_experiment_artifact,
     cohort_retention,
+    compare_crm_experiment_artifacts,
+    crm_experiment_artifact_comparison_csv,
     crm_experiment_artifact_json,
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
@@ -14,6 +16,7 @@ from marketing_effectiveness_lab.customer import (
     customer_value_windows,
     lapse_value_segment_summary,
     new_vs_returning_summary,
+    parse_crm_experiment_artifact_json,
     prepare_customer_tables,
     retention_segment_action_plan,
     score_customer_lapse_value,
@@ -300,3 +303,40 @@ def test_crm_experiment_artifact_exports_json_and_markdown_brief() -> None:
     assert brief.startswith("# CRM Experiment Brief")
     assert "## Launch Checklist" in brief
     assert "not production approval" in brief
+
+
+def test_crm_experiment_artifact_comparison_ranks_saved_artifacts() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidates = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].head(4)
+
+    artifacts = []
+    for _, candidate in candidates.iterrows():
+        design = crm_experiment_design(candidate)
+        checklist = crm_experiment_checklist(design)
+        artifact = build_crm_experiment_artifact(candidate, design, checklist)
+        artifacts.append(parse_crm_experiment_artifact_json(crm_experiment_artifact_json(artifact)))
+
+    comparison = compare_crm_experiment_artifacts(artifacts)
+    comparison_csv = crm_experiment_artifact_comparison_csv(comparison)
+
+    assert len(comparison) == len(artifacts)
+    assert comparison["comparison_rank"].tolist() == list(range(1, len(artifacts) + 1))
+    assert comparison["priority_score"].is_monotonic_decreasing
+    assert comparison["artifact_id"].notna().all()
+    assert comparison["expected_incremental_margin_at_mde_gbp"].ge(0).all()
+    assert comparison_csv.startswith("comparison_rank,artifact_id")
+    assert "launch_readiness" in comparison_csv

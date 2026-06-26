@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import pandas as pd
@@ -672,6 +673,84 @@ def crm_experiment_artifact_json(artifact: dict[str, object]) -> str:
     return json.dumps(artifact, indent=2, sort_keys=True) + "\n"
 
 
+def parse_crm_experiment_artifact_json(artifact_json: str) -> dict[str, object]:
+    """Parse and validate a CRM experiment artifact JSON payload."""
+
+    try:
+        payload = json.loads(artifact_json)
+    except json.JSONDecodeError as exc:
+        msg = f"CRM experiment artifact JSON is invalid: {exc.msg}."
+        raise ValueError(msg) from exc
+
+    if not isinstance(payload, dict):
+        msg = "CRM experiment artifact JSON must decode to an object."
+        raise ValueError(msg)
+
+    required_fields = [
+        "schema_version",
+        "artifact_type",
+        "artifact_id",
+        "segment",
+        "experiment_design",
+        "checklist",
+    ]
+    missing = [field for field in required_fields if field not in payload]
+    if missing:
+        msg = f"CRM experiment artifact is missing required field(s): {', '.join(missing)}."
+        raise ValueError(msg)
+
+    if payload["schema_version"] != "1.0":
+        msg = f"Unsupported CRM experiment artifact schema version: {payload['schema_version']}."
+        raise ValueError(msg)
+
+    if payload["artifact_type"] != "crm_experiment_brief":
+        msg = f"Unsupported CRM experiment artifact type: {payload['artifact_type']}."
+        raise ValueError(msg)
+
+    if not isinstance(payload["segment"], dict) or not isinstance(payload["experiment_design"], dict):
+        msg = "CRM experiment artifact segment and experiment_design must be objects."
+        raise ValueError(msg)
+
+    if not isinstance(payload["checklist"], list):
+        msg = "CRM experiment artifact checklist must be a list."
+        raise ValueError(msg)
+
+    return payload
+
+
+def compare_crm_experiment_artifacts(artifacts: Sequence[Mapping[str, object]]) -> pd.DataFrame:
+    """Build a ranked comparison table from CRM experiment artifacts."""
+
+    if not artifacts:
+        msg = "At least one CRM experiment artifact is required for comparison."
+        raise ValueError(msg)
+
+    records = [
+        _crm_artifact_comparison_record(artifact, index)
+        for index, artifact in enumerate(artifacts)
+    ]
+    comparison = pd.DataFrame(records)
+    comparison = comparison.sort_values(
+        by=[
+            "priority_score",
+            "expected_incremental_margin_at_mde_gbp",
+            "risk_weighted_margin_gbp",
+            "contactable_customers",
+            "recommended_holdout_rate",
+        ],
+        ascending=[False, False, False, False, True],
+        na_position="last",
+    ).reset_index(drop=True)
+    comparison.insert(0, "comparison_rank", range(1, len(comparison) + 1))
+    return comparison
+
+
+def crm_experiment_artifact_comparison_csv(comparison: pd.DataFrame) -> str:
+    """Serialize a CRM experiment artifact comparison table as CSV."""
+
+    return comparison.to_csv(index=False)
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -948,6 +1027,75 @@ def _experiment_launch_readiness(
 def _experiment_artifact_id(payload: dict[str, object]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _crm_artifact_comparison_record(
+    artifact: Mapping[str, object],
+    index: int,
+) -> dict[str, object]:
+    segment = _mapping_value(artifact, "segment")
+    design = _mapping_value(artifact, "experiment_design")
+    readiness = str(design.get("launch_readiness", ""))
+    evidence_status = str(segment.get("crm_evidence_status", ""))
+    priority_score = (
+        _readiness_priority(readiness) * 25
+        + _evidence_priority(evidence_status) * 5
+        + min(_optional_float(design.get("expected_incremental_margin_at_mde_gbp")) / 1000, 10)
+    )
+
+    return {
+        "artifact_id": str(artifact.get("artifact_id", f"uploaded_artifact_{index + 1}")),
+        "segment_label": str(segment.get("segment_label", "")),
+        "recommended_action": str(segment.get("recommended_action", "")),
+        "launch_readiness": readiness,
+        "priority_score": round(float(priority_score), 2),
+        "crm_evidence_status": evidence_status,
+        "contactable_customers": _optional_float(segment.get("contactable_customers")),
+        "treatment_customers": _optional_float(design.get("treatment_customers")),
+        "holdout_customers": _optional_float(design.get("holdout_customers")),
+        "recommended_holdout_rate": _optional_float(design.get("recommended_holdout_rate")),
+        "required_sample_per_group": _optional_float(design.get("required_sample_per_group")),
+        "effective_sample_per_group": _optional_float(design.get("effective_sample_per_group")),
+        "expected_incremental_margin_at_mde_gbp": _optional_float(
+            design.get("expected_incremental_margin_at_mde_gbp")
+        ),
+        "expected_future_margin_gbp": _optional_float(segment.get("expected_future_margin_gbp")),
+        "risk_weighted_margin_gbp": _optional_float(segment.get("risk_weighted_margin_gbp")),
+        "primary_metric": str(design.get("primary_metric", "")),
+    }
+
+
+def _mapping_value(payload: Mapping[str, object], key: str) -> Mapping[str, object]:
+    value = payload.get(key)
+    if isinstance(value, Mapping):
+        return value
+    return {}
+
+
+def _readiness_priority(readiness: str) -> int:
+    return {
+        "Ready to test": 4,
+        "Directional pilot": 3,
+        "Underpowered": 2,
+        "Do not launch": 0,
+    }.get(readiness, 0)
+
+
+def _evidence_priority(evidence_status: str) -> int:
+    return {
+        "Positive": 3,
+        "Review": 2,
+        "Needs more data": 1,
+        "No prior test": 0,
+        "Negative": -1,
+    }.get(evidence_status, 0)
+
+
+def _optional_float(value: object) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
 
 
 def _round_float(value: object, digits: int = 2) -> float:

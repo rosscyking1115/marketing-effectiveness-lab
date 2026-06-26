@@ -39,6 +39,8 @@ from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     build_crm_experiment_artifact,
     cohort_retention,
+    compare_crm_experiment_artifacts,
+    crm_experiment_artifact_comparison_csv,
     crm_experiment_artifact_json,
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
@@ -49,6 +51,7 @@ from marketing_effectiveness_lab.customer import (
     customer_value_windows,
     lapse_value_segment_summary,
     new_vs_returning_summary,
+    parse_crm_experiment_artifact_json,
     prepare_customer_tables,
     retention_segment_action_plan,
     score_customer_lapse_value,
@@ -1152,6 +1155,87 @@ else:
             mime="application/json",
             use_container_width=True,
         )
+
+    with st.expander("Compare saved CRM experiment artifacts"):
+        st.caption(
+            "Upload CRM experiment JSON artifacts to compare launch readiness, audience size, "
+            "holdout burden, and expected incremental margin."
+        )
+        artifact_uploads = st.file_uploader(
+            "CRM experiment artifact JSON files",
+            type=["json"],
+            accept_multiple_files=True,
+            key="crm_experiment_artifact_comparison_uploads",
+        )
+        if artifact_uploads:
+            parsed_artifacts = []
+            artifact_errors = []
+            for artifact_upload in artifact_uploads:
+                try:
+                    parsed_artifacts.append(
+                        parse_crm_experiment_artifact_json(
+                            artifact_upload.getvalue().decode("utf-8-sig")
+                        )
+                    )
+                except ValueError as exc:
+                    artifact_errors.append(f"{artifact_upload.name}: {exc}")
+
+            if artifact_errors:
+                st.error("One or more uploaded CRM experiment artifacts could not be read.")
+                for error in artifact_errors:
+                    st.write(f"- {error}")
+
+            if parsed_artifacts:
+                artifact_comparison = compare_crm_experiment_artifacts(parsed_artifacts)
+                artifact_display = artifact_comparison.copy()
+                artifact_display["priority_score"] = artifact_display["priority_score"].map(
+                    lambda value: f"{value:,.1f}"
+                )
+                for count_col in [
+                    "contactable_customers",
+                    "treatment_customers",
+                    "holdout_customers",
+                    "required_sample_per_group",
+                    "effective_sample_per_group",
+                ]:
+                    artifact_display[count_col] = artifact_display[count_col].map(integer)
+                for money_col in [
+                    "expected_incremental_margin_at_mde_gbp",
+                    "expected_future_margin_gbp",
+                    "risk_weighted_margin_gbp",
+                ]:
+                    artifact_display[money_col] = artifact_display[money_col].map(gbp)
+                artifact_display["recommended_holdout_rate"] = artifact_display[
+                    "recommended_holdout_rate"
+                ].map(percent)
+                st.dataframe(
+                    artifact_display[
+                        [
+                            "comparison_rank",
+                            "artifact_id",
+                            "segment_label",
+                            "launch_readiness",
+                            "priority_score",
+                            "expected_incremental_margin_at_mde_gbp",
+                            "contactable_customers",
+                            "holdout_customers",
+                            "recommended_holdout_rate",
+                            "crm_evidence_status",
+                            "recommended_action",
+                        ]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.download_button(
+                    "Download artifact comparison CSV",
+                    data=crm_experiment_artifact_comparison_csv(artifact_comparison),
+                    file_name="crm_experiment_artifact_comparison.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+        else:
+            st.info("Download a few CRM experiment artifacts, then upload them here.")
 
 st.subheader("Correlation Scan")
 numeric_cols = [

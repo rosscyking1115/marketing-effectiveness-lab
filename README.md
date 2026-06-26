@@ -39,6 +39,7 @@ stakeholder communication.
 - Retention action planning that links lapse risk, expected margin, CRM evidence, holdouts, and incentive caps
 - CRM experiment design for selected retention segments with sample-size guidance and launch guardrails
 - Downloadable CRM experiment briefs and JSON artifacts for lightweight stakeholder review
+- CRM experiment artifact comparison for prioritising saved retention tests
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -55,6 +56,7 @@ stakeholder communication.
 - Segment-level CRM retention recommendations for scale, holdout testing, retesting, suppression, and monitoring
 - Launch-ready CRM holdout test briefs with audience split, success metric, guardrails, and checklist
 - Deterministic CRM experiment artifacts for review, storage, and future comparison workflows
+- Ranked CRM artifact comparison for readiness, value, audience, and holdout trade-offs
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -97,6 +99,7 @@ Useful docs:
 - `docs/phase-28-retention-action-planner.md` - retention segment action planning
 - `docs/phase-29-crm-experiment-design.md` - CRM holdout experiment design and launch checks
 - `docs/phase-30-crm-experiment-brief-export.md` - downloadable CRM experiment briefs and artifacts
+- `docs/phase-31-crm-experiment-artifact-comparison.md` - comparison workflow for saved CRM experiment artifacts
 
 ## Quick Start
 
