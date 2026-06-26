@@ -45,6 +45,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
+    crm_experiment_portfolio_csv,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
     customer_future_value_backtest,
@@ -56,6 +57,7 @@ from marketing_effectiveness_lab.customer import (
     retention_segment_action_plan,
     score_customer_lapse_value,
     segment_summary,
+    summarize_crm_experiment_portfolio,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.assembly import (
@@ -1069,6 +1071,23 @@ else:
         + " / "
         + experiment_candidates["value_segment"]
     )
+    candidate_artifacts = []
+    for _, candidate_segment in experiment_candidates.iterrows():
+        candidate_design = crm_experiment_design(
+            candidate_segment,
+            baseline_conversion_rate=0.05,
+            minimum_detectable_lift=0.025,
+            test_duration_days=21,
+        )
+        candidate_checklist = crm_experiment_checklist(candidate_design)
+        candidate_artifacts.append(
+            build_crm_experiment_artifact(
+                candidate_segment,
+                candidate_design,
+                candidate_checklist,
+            )
+        )
+    candidate_artifact_comparison = compare_crm_experiment_artifacts(candidate_artifacts)
     selected_segment_label = st.selectbox(
         "Select retention segment",
         experiment_candidates["segment_label"].tolist(),
@@ -1153,6 +1172,97 @@ else:
             data=crm_experiment_artifact_json(experiment_artifact),
             file_name=f"crm_experiment_artifact_{experiment_artifact['artifact_id']}.json",
             mime="application/json",
+            use_container_width=True,
+        )
+
+    with st.expander("Plan CRM experiment portfolio"):
+        st.caption(
+            "Prioritise the current ranked CRM experiment candidates as a launch portfolio, "
+            "then review total audience exposure, holdout burden, and expected margin."
+        )
+        portfolio_size = st.slider(
+            "Experiments to include",
+            min_value=1,
+            max_value=len(candidate_artifact_comparison),
+            value=min(3, len(candidate_artifact_comparison)),
+            step=1,
+            key="crm_experiment_portfolio_size",
+        )
+        portfolio_summary = summarize_crm_experiment_portfolio(
+            candidate_artifact_comparison,
+            top_n=portfolio_size,
+        )
+        selected_portfolio = (
+            candidate_artifact_comparison.sort_values("comparison_rank")
+            .head(portfolio_size)
+            .copy()
+        )
+
+        portfolio_cols = st.columns(5)
+        portfolio_cols[0].metric("Portfolio status", str(portfolio_summary["portfolio_status"]))
+        portfolio_cols[1].metric("Experiments", integer(portfolio_summary["experiments"]))
+        portfolio_cols[2].metric("Contactable audience", integer(portfolio_summary["contactable_customers"]))
+        portfolio_cols[3].metric("Portfolio holdout", integer(portfolio_summary["holdout_customers"]))
+        portfolio_cols[4].metric(
+            "Expected margin at MDE",
+            gbp(portfolio_summary["expected_incremental_margin_at_mde_gbp"]),
+        )
+
+        portfolio_detail_cols = st.columns(4)
+        portfolio_detail_cols[0].metric(
+            "Holdout rate",
+            percent(portfolio_summary["portfolio_holdout_rate"]),
+        )
+        portfolio_detail_cols[1].metric(
+            "Treatment audience",
+            integer(portfolio_summary["treatment_customers"]),
+        )
+        portfolio_detail_cols[2].metric(
+            "Risk-weighted margin",
+            gbp(portfolio_summary["risk_weighted_margin_gbp"]),
+        )
+        portfolio_detail_cols[3].metric(
+            "Avg priority score",
+            f"{portfolio_summary['average_priority_score']:,.1f}",
+        )
+
+        portfolio_display = selected_portfolio.copy()
+        portfolio_display["priority_score"] = portfolio_display["priority_score"].map(
+            lambda value: f"{value:,.1f}"
+        )
+        for count_col in ["contactable_customers", "treatment_customers", "holdout_customers"]:
+            portfolio_display[count_col] = portfolio_display[count_col].map(integer)
+        portfolio_display["expected_incremental_margin_at_mde_gbp"] = portfolio_display[
+            "expected_incremental_margin_at_mde_gbp"
+        ].map(gbp)
+        portfolio_display["recommended_holdout_rate"] = portfolio_display[
+            "recommended_holdout_rate"
+        ].map(percent)
+        st.dataframe(
+            portfolio_display[
+                [
+                    "comparison_rank",
+                    "segment_label",
+                    "launch_readiness",
+                    "priority_score",
+                    "expected_incremental_margin_at_mde_gbp",
+                    "contactable_customers",
+                    "holdout_customers",
+                    "recommended_holdout_rate",
+                    "crm_evidence_status",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.download_button(
+            "Download portfolio CSV",
+            data=crm_experiment_portfolio_csv(
+                candidate_artifact_comparison,
+                top_n=portfolio_size,
+            ),
+            file_name="crm_experiment_portfolio_plan.csv",
+            mime="text/csv",
             use_container_width=True,
         )
 

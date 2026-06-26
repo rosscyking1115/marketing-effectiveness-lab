@@ -751,6 +751,48 @@ def crm_experiment_artifact_comparison_csv(comparison: pd.DataFrame) -> str:
     return comparison.to_csv(index=False)
 
 
+def summarize_crm_experiment_portfolio(
+    comparison: pd.DataFrame,
+    *,
+    top_n: int | None = None,
+) -> dict[str, float | int | str]:
+    """Summarize a planned portfolio of ranked CRM experiment artifacts."""
+
+    selected = _selected_portfolio_experiments(comparison, top_n=top_n)
+    contactable_customers = float(selected["contactable_customers"].sum())
+    holdout_customers = float(selected["holdout_customers"].sum())
+    treatment_customers = float(selected["treatment_customers"].sum())
+    expected_margin = float(selected["expected_incremental_margin_at_mde_gbp"].sum())
+    risk_weighted_margin = float(selected["risk_weighted_margin_gbp"].sum())
+    readiness_counts = selected["launch_readiness"].value_counts()
+
+    return {
+        "experiments": int(len(selected)),
+        "ready_to_test_experiments": int(readiness_counts.get("Ready to test", 0)),
+        "directional_pilot_experiments": int(readiness_counts.get("Directional pilot", 0)),
+        "underpowered_experiments": int(readiness_counts.get("Underpowered", 0)),
+        "do_not_launch_experiments": int(readiness_counts.get("Do not launch", 0)),
+        "contactable_customers": contactable_customers,
+        "treatment_customers": treatment_customers,
+        "holdout_customers": holdout_customers,
+        "portfolio_holdout_rate": _safe_divide(holdout_customers, contactable_customers),
+        "expected_incremental_margin_at_mde_gbp": expected_margin,
+        "risk_weighted_margin_gbp": risk_weighted_margin,
+        "average_priority_score": float(selected["priority_score"].mean()),
+        "portfolio_status": _crm_portfolio_status(selected),
+    }
+
+
+def crm_experiment_portfolio_csv(
+    comparison: pd.DataFrame,
+    *,
+    top_n: int | None = None,
+) -> str:
+    """Serialize a selected CRM experiment portfolio as CSV."""
+
+    return _selected_portfolio_experiments(comparison, top_n=top_n).to_csv(index=False)
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -1063,6 +1105,40 @@ def _crm_artifact_comparison_record(
         "risk_weighted_margin_gbp": _optional_float(segment.get("risk_weighted_margin_gbp")),
         "primary_metric": str(design.get("primary_metric", "")),
     }
+
+
+def _selected_portfolio_experiments(
+    comparison: pd.DataFrame,
+    *,
+    top_n: int | None = None,
+) -> pd.DataFrame:
+    if comparison.empty:
+        msg = "At least one ranked CRM experiment is required for portfolio planning."
+        raise ValueError(msg)
+
+    selected = comparison.sort_values("comparison_rank", ascending=True).copy()
+    if top_n is not None:
+        selected = selected.head(max(int(top_n), 1))
+    return selected.reset_index(drop=True)
+
+
+def _crm_portfolio_status(selected: pd.DataFrame) -> str:
+    readiness = set(selected["launch_readiness"].astype(str))
+    holdout_rate = _safe_divide(
+        float(selected["holdout_customers"].sum()),
+        float(selected["contactable_customers"].sum()),
+    )
+    expected_margin = float(selected["expected_incremental_margin_at_mde_gbp"].sum())
+
+    if "Do not launch" in readiness or expected_margin <= 0:
+        return "Review before launch"
+    if "Underpowered" in readiness:
+        return "Pilot queue"
+    if holdout_rate > 0.25:
+        return "Holdout burden review"
+    if readiness.issubset({"Ready to test"}):
+        return "Launch-ready portfolio"
+    return "Mixed readiness"
 
 
 def _mapping_value(payload: Mapping[str, object], key: str) -> Mapping[str, object]:

@@ -10,6 +10,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
+    crm_experiment_portfolio_csv,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
     customer_future_value_backtest,
@@ -21,6 +22,7 @@ from marketing_effectiveness_lab.customer import (
     retention_segment_action_plan,
     score_customer_lapse_value,
     segment_summary,
+    summarize_crm_experiment_portfolio,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.customer_generator import generate_customer_demo_data
@@ -340,3 +342,48 @@ def test_crm_experiment_artifact_comparison_ranks_saved_artifacts() -> None:
     assert comparison["expected_incremental_margin_at_mde_gbp"].ge(0).all()
     assert comparison_csv.startswith("comparison_rank,artifact_id")
     assert "launch_readiness" in comparison_csv
+
+
+def test_crm_experiment_portfolio_summarizes_selected_ranked_artifacts() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidates = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].head(5)
+    artifacts = []
+    for _, candidate in candidates.iterrows():
+        design = crm_experiment_design(candidate)
+        checklist = crm_experiment_checklist(design)
+        artifacts.append(build_crm_experiment_artifact(candidate, design, checklist))
+
+    comparison = compare_crm_experiment_artifacts(artifacts)
+    portfolio = summarize_crm_experiment_portfolio(comparison, top_n=3)
+    selected = comparison.sort_values("comparison_rank").head(3)
+    portfolio_csv = crm_experiment_portfolio_csv(comparison, top_n=3)
+
+    assert portfolio["experiments"] == 3
+    assert portfolio["contactable_customers"] == selected["contactable_customers"].sum()
+    assert portfolio["holdout_customers"] == selected["holdout_customers"].sum()
+    assert 0 <= portfolio["portfolio_holdout_rate"] <= 1
+    assert portfolio["expected_incremental_margin_at_mde_gbp"] == selected[
+        "expected_incremental_margin_at_mde_gbp"
+    ].sum()
+    assert portfolio["portfolio_status"] in {
+        "Launch-ready portfolio",
+        "Mixed readiness",
+        "Pilot queue",
+        "Holdout burden review",
+        "Review before launch",
+    }
+    assert portfolio_csv.startswith("comparison_rank,artifact_id")

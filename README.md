@@ -40,6 +40,7 @@ stakeholder communication.
 - CRM experiment design for selected retention segments with sample-size guidance and launch guardrails
 - Downloadable CRM experiment briefs and JSON artifacts for lightweight stakeholder review
 - CRM experiment artifact comparison for prioritising saved retention tests
+- CRM experiment portfolio planning for audience, holdout, and expected-margin trade-offs
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -57,6 +58,7 @@ stakeholder communication.
 - Launch-ready CRM holdout test briefs with audience split, success metric, guardrails, and checklist
 - Deterministic CRM experiment artifacts for review, storage, and future comparison workflows
 - Ranked CRM artifact comparison for readiness, value, audience, and holdout trade-offs
+- CRM experiment portfolio summaries for multi-test launch planning
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -100,6 +102,7 @@ Useful docs:
 - `docs/phase-29-crm-experiment-design.md` - CRM holdout experiment design and launch checks
 - `docs/phase-30-crm-experiment-brief-export.md` - downloadable CRM experiment briefs and artifacts
 - `docs/phase-31-crm-experiment-artifact-comparison.md` - comparison workflow for saved CRM experiment artifacts
+- `docs/phase-32-crm-experiment-portfolio-planning.md` - portfolio planning for ranked CRM experiments
 
 ## Quick Start
 
