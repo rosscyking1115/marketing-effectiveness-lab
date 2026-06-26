@@ -184,3 +184,223 @@ def new_vs_returning_summary(customers: pd.DataFrame, orders: pd.DataFrame) -> p
         .sort_values("gross_margin_gbp", ascending=False)
         .reset_index(drop=True)
     )
+
+
+def customer_value_windows(
+    customers: pd.DataFrame,
+    orders: pd.DataFrame,
+    *,
+    windows: tuple[int, ...] = (30, 60, 90, 180),
+) -> pd.DataFrame:
+    """Calculate cumulative customer value after first order for fixed day windows."""
+
+    first_orders = customers[["customer_id", "acquisition_channel", "first_order_date"]].copy()
+    enriched = orders.merge(first_orders, on="customer_id", how="inner")
+    enriched["days_since_first_order"] = (
+        enriched["order_date"] - enriched["first_order_date"]
+    ).dt.days
+
+    rows = first_orders.copy()
+    for window in windows:
+        window_orders = enriched[
+            (enriched["days_since_first_order"] >= 0)
+            & (enriched["days_since_first_order"] <= window)
+        ]
+        window_summary = window_orders.groupby("customer_id", as_index=False).agg(
+            **{
+                f"orders_{window}d": ("order_id", "nunique"),
+                f"revenue_{window}d_gbp": ("gross_revenue_gbp", "sum"),
+                f"gross_margin_{window}d_gbp": ("gross_margin_gbp", "sum"),
+                f"refund_{window}d_gbp": ("refund_gbp", "sum"),
+            }
+        )
+        rows = rows.merge(window_summary, on="customer_id", how="left")
+
+    numeric_columns = [column for column in rows.columns if column.endswith("_gbp")]
+    numeric_columns.extend([column for column in rows.columns if column.startswith("orders_")])
+    rows[numeric_columns] = rows[numeric_columns].fillna(0)
+    return rows
+
+
+def customer_future_value_backtest(
+    customers: pd.DataFrame,
+    orders: pd.DataFrame,
+    *,
+    cutoff_date: pd.Timestamp | str,
+    horizon_days: int = 180,
+) -> pd.DataFrame:
+    """Backtest segment-level future gross-margin baselines from a historical cutoff."""
+
+    cutoff = pd.Timestamp(cutoff_date)
+    horizon_end = cutoff + pd.Timedelta(days=horizon_days)
+    features = _customer_features_as_of(customers, orders, cutoff)
+    eligible = features[features["order_count"] > 0].copy()
+
+    future_orders = orders[(orders["order_date"] > cutoff) & (orders["order_date"] <= horizon_end)]
+    future_margin = future_orders.groupby("customer_id", as_index=False).agg(
+        actual_future_orders=("order_id", "nunique"),
+        actual_future_revenue_gbp=("gross_revenue_gbp", "sum"),
+        actual_future_margin_gbp=("gross_margin_gbp", "sum"),
+    )
+    eligible = eligible.merge(future_margin, on="customer_id", how="left")
+    for column in [
+        "actual_future_orders",
+        "actual_future_revenue_gbp",
+        "actual_future_margin_gbp",
+    ]:
+        eligible[column] = eligible[column].fillna(0)
+
+    segment_means = eligible.groupby(["lifecycle_segment", "value_segment"], as_index=False).agg(
+        segment_expected_future_margin_gbp=("actual_future_margin_gbp", "mean")
+    )
+    scored = eligible.merge(segment_means, on=["lifecycle_segment", "value_segment"], how="left")
+    scored["absolute_error_gbp"] = (
+        scored["segment_expected_future_margin_gbp"] - scored["actual_future_margin_gbp"]
+    ).abs()
+
+    summary = (
+        scored.groupby(["lifecycle_segment", "value_segment"], as_index=False)
+        .agg(
+            customers=("customer_id", "nunique"),
+            avg_historical_margin_gbp=("gross_margin_gbp", "mean"),
+            avg_actual_future_margin_gbp=("actual_future_margin_gbp", "mean"),
+            expected_future_margin_gbp=("segment_expected_future_margin_gbp", "mean"),
+            mean_absolute_error_gbp=("absolute_error_gbp", "mean"),
+            repeat_rate_in_horizon=("actual_future_orders", lambda values: float((values > 0).mean())),
+        )
+        .sort_values("expected_future_margin_gbp", ascending=False)
+        .reset_index(drop=True)
+    )
+    return summary
+
+
+def score_customer_lapse_value(
+    customers: pd.DataFrame,
+    orders: pd.DataFrame,
+    *,
+    as_of_date: pd.Timestamp | str | None = None,
+    calibration_cutoff_date: pd.Timestamp | str | None = None,
+    horizon_days: int = 180,
+) -> pd.DataFrame:
+    """Score current customers with empirical future-margin and lapse-risk baselines."""
+
+    current_date = pd.Timestamp(as_of_date) if as_of_date is not None else orders["order_date"].max()
+    cutoff = (
+        pd.Timestamp(calibration_cutoff_date)
+        if calibration_cutoff_date is not None
+        else current_date - pd.Timedelta(days=horizon_days)
+    )
+    current_features = _customer_features_as_of(customers, orders, current_date)
+    calibration = customer_future_value_backtest(
+        customers,
+        orders,
+        cutoff_date=cutoff,
+        horizon_days=horizon_days,
+    )
+    expected_lookup = calibration[
+        ["lifecycle_segment", "value_segment", "expected_future_margin_gbp"]
+    ]
+    scored = current_features.merge(
+        expected_lookup,
+        on=["lifecycle_segment", "value_segment"],
+        how="left",
+    )
+    fallback_expected_margin = float(calibration["expected_future_margin_gbp"].mean())
+    scored["expected_future_margin_gbp"] = scored["expected_future_margin_gbp"].fillna(
+        fallback_expected_margin
+    )
+    scored["lapse_risk_score"] = scored.apply(_lapse_risk_score, axis=1)
+    scored["lapse_risk_band"] = pd.cut(
+        scored["lapse_risk_score"],
+        bins=[-0.1, 30, 60, 100],
+        labels=["Low", "Medium", "High"],
+    ).astype(str)
+    scored["as_of_date"] = current_date
+    scored["calibration_cutoff_date"] = cutoff
+    return scored.sort_values(
+        ["lapse_risk_score", "expected_future_margin_gbp"],
+        ascending=[False, False],
+    ).reset_index(drop=True)
+
+
+def lapse_value_segment_summary(scored_customers: pd.DataFrame) -> pd.DataFrame:
+    """Summarize expected future margin and lapse risk by customer segment."""
+
+    summary = (
+        scored_customers.groupby(["lapse_risk_band", "lifecycle_segment", "value_segment"], as_index=False)
+        .agg(
+            customers=("customer_id", "nunique"),
+            expected_future_margin_gbp=("expected_future_margin_gbp", "sum"),
+            avg_expected_future_margin_gbp=("expected_future_margin_gbp", "mean"),
+            avg_lapse_risk_score=("lapse_risk_score", "mean"),
+            historical_margin_gbp=("gross_margin_gbp", "sum"),
+            contactable_rate=("contactable_flag", "mean"),
+        )
+        .sort_values(["lapse_risk_band", "expected_future_margin_gbp"], ascending=[True, False])
+        .reset_index(drop=True)
+    )
+    return summary
+
+
+def _customer_features_as_of(
+    customers: pd.DataFrame,
+    orders: pd.DataFrame,
+    as_of_date: pd.Timestamp,
+) -> pd.DataFrame:
+    historical_orders = orders[orders["order_date"] <= as_of_date]
+    order_summary = historical_orders.groupby("customer_id", as_index=False).agg(
+        latest_order_date=("order_date", "max"),
+        order_count=("order_id", "nunique"),
+        revenue_gbp=("gross_revenue_gbp", "sum"),
+        discount_gbp=("discount_gbp", "sum"),
+        refund_gbp=("refund_gbp", "sum"),
+        gross_margin_gbp=("gross_margin_gbp", "sum"),
+    )
+    features = customers.merge(order_summary, on="customer_id", how="left")
+    for column in [
+        "order_count",
+        "revenue_gbp",
+        "discount_gbp",
+        "refund_gbp",
+        "gross_margin_gbp",
+    ]:
+        features[column] = features[column].fillna(0)
+
+    latest_order = pd.to_datetime(features["latest_order_date"])
+    features["recency_days"] = (as_of_date - latest_order).dt.days
+    features.loc[features["latest_order_date"].isna(), "recency_days"] = 9999
+    features["recency_days"] = features["recency_days"].clip(lower=0).astype(int)
+    features["discount_rate"] = (
+        features["discount_gbp"] / features["revenue_gbp"].where(features["revenue_gbp"] > 0)
+    ).fillna(0)
+    features["return_rate"] = (
+        features["refund_gbp"] / features["revenue_gbp"].where(features["revenue_gbp"] > 0)
+    ).fillna(0)
+    features["contactable_flag"] = (
+        (features["email_opt_in"] == 1) | (features["sms_opt_in"] == 1)
+    ).astype(int)
+    features["lifecycle_segment"] = pd.cut(
+        features["recency_days"],
+        bins=[-1, 30, 120, 240, 10_000],
+        labels=["New", "Active", "Lapsing", "Dormant"],
+    ).astype(str)
+    features["value_segment"] = pd.qcut(
+        features["gross_margin_gbp"].rank(method="first"),
+        q=4,
+        labels=["Low value", "Mid value", "High value", "VIP"],
+    ).astype(str)
+    return features
+
+
+def _lapse_risk_score(customer: pd.Series) -> float:
+    recency_component = min(float(customer["recency_days"]) / 240 * 65, 65)
+    frequency_component = max(20 - float(customer["order_count"]) * 4, 0)
+    value_component = {
+        "Low value": 15,
+        "Mid value": 9,
+        "High value": 4,
+        "VIP": 0,
+    }[str(customer["value_segment"])]
+    discount_component = min(float(customer["discount_rate"]) * 20, 8)
+    score = recency_component + frequency_component + value_component + discount_component
+    return round(float(min(max(score, 0), 100)), 1)

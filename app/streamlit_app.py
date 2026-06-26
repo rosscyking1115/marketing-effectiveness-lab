@@ -38,8 +38,12 @@ from marketing_effectiveness_lab.calibration import (
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     cohort_retention,
+    customer_future_value_backtest,
+    customer_value_windows,
+    lapse_value_segment_summary,
     new_vs_returning_summary,
     prepare_customer_tables,
+    score_customer_lapse_value,
     segment_summary,
     summarize_customer_kpis,
 )
@@ -699,6 +703,164 @@ with cohort_right:
                 "gross_margin_gbp",
                 "discount_gbp",
                 "refund_gbp",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+st.markdown("**Empirical CLV and lapse-risk baseline**")
+clv_scores = score_customer_lapse_value(
+    customer_tables["customers"],
+    customer_tables["orders"],
+    as_of_date="2025-12-31",
+    calibration_cutoff_date="2025-01-01",
+    horizon_days=180,
+)
+clv_summary = lapse_value_segment_summary(clv_scores)
+clv_metric_cols = st.columns(4)
+clv_metric_cols[0].metric(
+    "Expected 180d margin",
+    gbp(clv_scores["expected_future_margin_gbp"].sum()),
+)
+high_risk_customers = clv_scores[clv_scores["lapse_risk_band"] == "High"]
+clv_metric_cols[1].metric("High lapse-risk customers", integer(len(high_risk_customers)))
+clv_metric_cols[2].metric(
+    "High-risk expected margin",
+    gbp(high_risk_customers["expected_future_margin_gbp"].sum()),
+)
+clv_metric_cols[3].metric(
+    "Avg lapse-risk score",
+    f"{clv_scores['lapse_risk_score'].mean():,.1f}/100",
+)
+
+clv_left, clv_right = st.columns((1.05, 1))
+with clv_left:
+    value_windows = customer_value_windows(
+        customer_tables["customers"],
+        customer_tables["orders"],
+    )
+    value_window_summary = (
+        value_windows.groupby("acquisition_channel", as_index=False)
+        .agg(
+            customers=("customer_id", "nunique"),
+            margin_30d_gbp=("gross_margin_30d_gbp", "mean"),
+            margin_90d_gbp=("gross_margin_90d_gbp", "mean"),
+            margin_180d_gbp=("gross_margin_180d_gbp", "mean"),
+            orders_180d=("orders_180d", "mean"),
+        )
+        .sort_values("margin_180d_gbp", ascending=False)
+    )
+    value_window_display = value_window_summary.copy()
+    value_window_display["acquisition_channel"] = value_window_display[
+        "acquisition_channel"
+    ].str.replace("_", " ").str.title()
+    for money_col in ["margin_30d_gbp", "margin_90d_gbp", "margin_180d_gbp"]:
+        value_window_display[money_col] = value_window_display[money_col].map(gbp)
+    value_window_display["orders_180d"] = value_window_display["orders_180d"].map(
+        lambda value: f"{value:,.1f}"
+    )
+    st.markdown("**Empirical value windows by acquisition channel**")
+    st.dataframe(
+        value_window_display[
+            [
+                "acquisition_channel",
+                "customers",
+                "margin_30d_gbp",
+                "margin_90d_gbp",
+                "margin_180d_gbp",
+                "orders_180d",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with clv_right:
+    risk_plot = clv_summary.groupby("lapse_risk_band", as_index=False).agg(
+        customers=("customers", "sum"),
+        expected_future_margin_gbp=("expected_future_margin_gbp", "sum"),
+    )
+    risk_fig = px.bar(
+        risk_plot,
+        x="lapse_risk_band",
+        y="expected_future_margin_gbp",
+        color="lapse_risk_band",
+        title="Expected 180d margin by lapse-risk band",
+        labels={
+            "lapse_risk_band": "Lapse-risk band",
+            "expected_future_margin_gbp": "Expected margin GBP",
+        },
+        color_discrete_map={"Low": "#2f7d64", "Medium": "#9a7b3f", "High": "#c65f4b"},
+    )
+    risk_fig.update_layout(
+        height=330,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        showlegend=False,
+    )
+    st.plotly_chart(risk_fig, use_container_width=True)
+
+clv_tables_left, clv_tables_right = st.columns((1, 1))
+with clv_tables_left:
+    clv_display = clv_summary.copy()
+    for money_col in [
+        "expected_future_margin_gbp",
+        "avg_expected_future_margin_gbp",
+        "historical_margin_gbp",
+    ]:
+        clv_display[money_col] = clv_display[money_col].map(gbp)
+    clv_display["avg_lapse_risk_score"] = clv_display["avg_lapse_risk_score"].map(
+        lambda value: f"{value:,.1f}"
+    )
+    clv_display["contactable_rate"] = clv_display["contactable_rate"].map(percent)
+    st.markdown("**Lapse-risk and value segments**")
+    st.dataframe(
+        clv_display[
+            [
+                "lapse_risk_band",
+                "lifecycle_segment",
+                "value_segment",
+                "customers",
+                "expected_future_margin_gbp",
+                "avg_lapse_risk_score",
+                "contactable_rate",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with clv_tables_right:
+    clv_backtest = customer_future_value_backtest(
+        customer_tables["customers"],
+        customer_tables["orders"],
+        cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    clv_backtest_display = clv_backtest.copy()
+    for money_col in [
+        "avg_historical_margin_gbp",
+        "avg_actual_future_margin_gbp",
+        "expected_future_margin_gbp",
+        "mean_absolute_error_gbp",
+    ]:
+        clv_backtest_display[money_col] = clv_backtest_display[money_col].map(gbp)
+    clv_backtest_display["repeat_rate_in_horizon"] = clv_backtest_display[
+        "repeat_rate_in_horizon"
+    ].map(percent)
+    st.markdown("**180d segment baseline backtest**")
+    st.dataframe(
+        clv_backtest_display[
+            [
+                "lifecycle_segment",
+                "value_segment",
+                "customers",
+                "avg_actual_future_margin_gbp",
+                "expected_future_margin_gbp",
+                "mean_absolute_error_gbp",
+                "repeat_rate_in_horizon",
             ]
         ],
         use_container_width=True,
