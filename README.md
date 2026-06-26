@@ -33,6 +33,7 @@ stakeholder communication.
 - Connector assembly from validated source exports into an MMM-ready weekly dataset
 - Source diagnostics for coverage, missing channels, outcome quality, and modeling readiness
 - Analyst dashboarding for revenue, spend, promotions, channel mix, and correlations
+- Customer and cohort intelligence for acquisition quality, lifecycle segments, and repeat behaviour
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -43,6 +44,7 @@ stakeholder communication.
 - Machine-readable model-run manifest for reproducibility and future artifact tracking
 - Model-run manifest comparison for scenario review and artifact governance
 - Customer/CRM data foundation for future cohort, lifecycle, CLV, and CRM incrementality workflows
+- Customer cohort analytics for new vs returning economics and segment margin quality
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -79,6 +81,7 @@ Useful docs:
 - `docs/phase-22-run-manifest.md` - machine-readable model-run manifest for reproducibility
 - `docs/phase-23-manifest-comparison.md` - scenario comparison workflow for saved run manifests
 - `docs/phase-24-customer-data-model.md` - customer/order/CRM data foundation for growth analytics
+- `docs/phase-25-customer-cohort-intelligence.md` - customer cohort and lifecycle analytics
 
 ## Quick Start
 

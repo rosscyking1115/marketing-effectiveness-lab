@@ -35,6 +35,14 @@ from marketing_effectiveness_lab.calibration import (
     lift_test_template_csv,
     validate_lift_test_csv_text,
 )
+from marketing_effectiveness_lab.customer import (
+    acquisition_channel_quality,
+    cohort_retention,
+    new_vs_returning_summary,
+    prepare_customer_tables,
+    segment_summary,
+    summarize_customer_kpis,
+)
 from marketing_effectiveness_lab.data.assembly import (
     WeeklyAssemblyResult,
     assemble_connector_csv_texts,
@@ -45,6 +53,7 @@ from marketing_effectiveness_lab.data.connectors import (
     connector_template_csv,
     validate_connector_csv_text,
 )
+from marketing_effectiveness_lab.data.customer_generator import generate_customer_demo_data
 from marketing_effectiveness_lab.data.diagnostics import assembled_weekly_diagnostics
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
@@ -158,6 +167,12 @@ def load_demo_data() -> pd.DataFrame:
             st.write(f"- {error}")
         st.stop()
     return prepare_weekly_frame(raw)
+
+
+@st.cache_data(show_spinner=False)
+def load_customer_demo_tables() -> dict[str, pd.DataFrame]:
+    dataset = generate_customer_demo_data(seed=42)
+    return prepare_customer_tables(dataset.as_tables())
 
 
 @st.cache_data(show_spinner=False)
@@ -552,6 +567,143 @@ with diag_right:
     st.markdown("**MMM readiness**")
     readiness = pd.DataFrame(mmm_readiness_checks(selected_df))
     st.dataframe(readiness, use_container_width=True, hide_index=True)
+
+st.subheader("Customer & Cohort Intelligence")
+st.markdown(
+    '<p class="mel-caption">Synthetic customer/order/CRM layer for lifecycle quality, '
+    "acquisition quality, and cohort retention analysis.</p>",
+    unsafe_allow_html=True,
+)
+customer_tables = load_customer_demo_tables()
+customer_kpis = summarize_customer_kpis(
+    customer_tables["customers"],
+    customer_tables["orders"],
+    customer_tables["customer_segments"],
+)
+customer_metric_cols = st.columns(5)
+customer_metric_cols[0].metric("Customers", integer(customer_kpis.total_customers))
+customer_metric_cols[1].metric("Repeat purchase rate", percent(customer_kpis.repeat_purchase_rate))
+customer_metric_cols[2].metric("Customer revenue", gbp(customer_kpis.revenue_gbp))
+customer_metric_cols[3].metric("Gross margin", gbp(customer_kpis.gross_margin_gbp))
+customer_metric_cols[4].metric("Contactable rate", percent(customer_kpis.contactable_rate))
+
+customer_left, customer_right = st.columns((1, 1))
+with customer_left:
+    acquisition_quality = acquisition_channel_quality(
+        customer_tables["customers"],
+        customer_tables["customer_segments"],
+    )
+    acquisition_display = acquisition_quality.copy()
+    acquisition_display["acquisition_channel"] = acquisition_display[
+        "acquisition_channel"
+    ].str.replace("_", " ").str.title()
+    for money_col in ["revenue_gbp", "gross_margin_gbp", "gross_margin_per_customer_gbp"]:
+        acquisition_display[money_col] = acquisition_display[money_col].map(gbp)
+    for rate_col in ["repeat_purchase_rate", "avg_discount_rate", "avg_return_rate"]:
+        acquisition_display[rate_col] = acquisition_display[rate_col].map(percent)
+    acquisition_display["avg_order_count"] = acquisition_display["avg_order_count"].map(
+        lambda value: f"{value:,.1f}"
+    )
+    st.markdown("**Acquisition channel quality**")
+    st.dataframe(
+        acquisition_display[
+            [
+                "acquisition_channel",
+                "customers",
+                "repeat_purchase_rate",
+                "gross_margin_per_customer_gbp",
+                "avg_order_count",
+                "avg_discount_rate",
+                "avg_return_rate",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with customer_right:
+    customer_segments = segment_summary(customer_tables["customer_segments"])
+    segment_display = customer_segments.copy()
+    for money_col in ["revenue_gbp", "gross_margin_gbp", "gross_margin_per_customer_gbp"]:
+        segment_display[money_col] = segment_display[money_col].map(gbp)
+    segment_display["avg_recency_days"] = segment_display["avg_recency_days"].map(
+        lambda value: f"{value:,.0f}"
+    )
+    segment_display["contactable_rate"] = segment_display["contactable_rate"].map(percent)
+    st.markdown("**Lifecycle and value segments**")
+    st.dataframe(
+        segment_display[
+            [
+                "lifecycle_segment",
+                "value_segment",
+                "customers",
+                "avg_recency_days",
+                "gross_margin_per_customer_gbp",
+                "contactable_rate",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+cohort_left, cohort_right = st.columns((1.15, 0.85))
+with cohort_left:
+    retention = cohort_retention(
+        customer_tables["customers"],
+        customer_tables["orders"],
+        max_month_number=12,
+    )
+    recent_cohorts = sorted(retention["cohort_label"].unique())[-8:]
+    retention_plot = retention[retention["cohort_label"].isin(recent_cohorts)]
+    cohort_fig = px.line(
+        retention_plot,
+        x="month_number",
+        y="retention_rate",
+        color="cohort_label",
+        markers=True,
+        title="Monthly repeat retention by acquisition cohort",
+        labels={
+            "month_number": "Months since first order",
+            "retention_rate": "Retention rate",
+            "cohort_label": "Cohort",
+        },
+        color_discrete_sequence=["#2f7d64", "#4b6f9c", "#c65f4b", "#9a7b3f", "#6b7280", "#7c6aa6"],
+    )
+    cohort_fig.update_layout(
+        height=390,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        yaxis_tickformat=".0%",
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        legend_orientation="h",
+        legend_y=1.08,
+    )
+    st.plotly_chart(cohort_fig, use_container_width=True)
+
+with cohort_right:
+    order_mix = new_vs_returning_summary(
+        customer_tables["customers"],
+        customer_tables["orders"],
+    )
+    order_mix_display = order_mix.copy()
+    for money_col in ["revenue_gbp", "gross_margin_gbp", "discount_gbp", "refund_gbp"]:
+        order_mix_display[money_col] = order_mix_display[money_col].map(gbp)
+    st.markdown("**New vs returning economics**")
+    st.dataframe(
+        order_mix_display[
+            [
+                "customer_order_type",
+                "orders",
+                "customers",
+                "revenue_gbp",
+                "gross_margin_gbp",
+                "discount_gbp",
+                "refund_gbp",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
 
 st.subheader("Correlation Scan")
 numeric_cols = [
