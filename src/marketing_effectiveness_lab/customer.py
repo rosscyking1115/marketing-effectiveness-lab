@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from dataclasses import dataclass
 
@@ -602,6 +604,141 @@ def crm_experiment_checklist(design: dict[str, object]) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["check_area", "requirement", "status"])
 
 
+def build_crm_experiment_artifact(
+    segment: pd.Series | dict[str, object],
+    design: dict[str, object],
+    checklist: pd.DataFrame,
+) -> dict[str, object]:
+    """Build a deterministic machine-readable CRM experiment artifact."""
+
+    segment_data = dict(segment)
+    payload: dict[str, object] = {
+        "schema_version": "1.0",
+        "artifact_type": "crm_experiment_brief",
+        "segment": {
+            "segment_label": str(design["segment_label"]),
+            "recommended_action": str(segment_data["recommended_action"]),
+            "lapse_risk_band": str(segment_data["lapse_risk_band"]),
+            "lifecycle_segment": str(segment_data["lifecycle_segment"]),
+            "value_segment": str(segment_data["value_segment"]),
+            "customers": int(segment_data["customers"]),
+            "contactable_customers": int(segment_data["contactable_customers"]),
+            "contactable_rate": _round_float(segment_data["contactable_rate"], digits=6),
+            "expected_future_margin_gbp": _round_float(segment_data["expected_future_margin_gbp"]),
+            "risk_weighted_margin_gbp": _round_float(segment_data["risk_weighted_margin_gbp"]),
+            "crm_evidence_status": str(segment_data["crm_evidence_status"]),
+        },
+        "experiment_design": {
+            "launch_readiness": str(design["launch_readiness"]),
+            "treatment_customers": int(design["treatment_customers"]),
+            "holdout_customers": int(design["holdout_customers"]),
+            "recommended_holdout_rate": _round_float(design["recommended_holdout_rate"], digits=6),
+            "required_sample_per_group": int(design["required_sample_per_group"]),
+            "effective_sample_per_group": int(design["effective_sample_per_group"]),
+            "baseline_conversion_rate": _round_float(design["baseline_conversion_rate"], digits=6),
+            "minimum_detectable_lift": _round_float(design["minimum_detectable_lift"], digits=6),
+            "test_duration_days": int(design["test_duration_days"]),
+            "primary_metric": str(design["primary_metric"]),
+            "success_rule": str(design["success_rule"]),
+            "guardrail_metrics": str(design["guardrail_metrics"]),
+            "expected_incremental_conversions_at_mde": _round_float(
+                design["expected_incremental_conversions_at_mde"],
+            ),
+            "expected_incremental_margin_at_mde_gbp": _round_float(
+                design["expected_incremental_margin_at_mde_gbp"],
+            ),
+        },
+        "checklist": [
+            {
+                "check_area": str(row["check_area"]),
+                "requirement": str(row["requirement"]),
+                "status": str(row["status"]),
+            }
+            for row in checklist.to_dict("records")
+        ],
+        "review_notes": [
+            "This artifact is generated deterministically from the dashboard state.",
+            "It is suitable for analyst review and CRM planning, not production approval.",
+            "Production use should persist artifacts with authenticated approvers and audit logs.",
+        ],
+    }
+    payload["artifact_id"] = _experiment_artifact_id(payload)
+    return payload
+
+
+def crm_experiment_artifact_json(artifact: dict[str, object]) -> str:
+    """Serialize a CRM experiment artifact as stable pretty JSON."""
+
+    return json.dumps(artifact, indent=2, sort_keys=True) + "\n"
+
+
+def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
+    """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
+
+    segment = artifact["segment"]
+    design = artifact["experiment_design"]
+    checklist = artifact["checklist"]
+    if not isinstance(segment, dict) or not isinstance(design, dict) or not isinstance(checklist, list):
+        msg = "Artifact has an invalid CRM experiment brief structure."
+        raise ValueError(msg)
+
+    lines = [
+        "# CRM Experiment Brief",
+        "",
+        "## Segment",
+        "",
+        f"- Artifact ID: {artifact['artifact_id']}",
+        f"- Segment: {segment['segment_label']}",
+        f"- Recommended action: {segment['recommended_action']}",
+        f"- Lapse-risk band: {segment['lapse_risk_band']}",
+        f"- Lifecycle segment: {segment['lifecycle_segment']}",
+        f"- Value segment: {segment['value_segment']}",
+        f"- Contactable customers: {int(segment['contactable_customers']):,}",
+        f"- Expected future margin: {_gbp(float(segment['expected_future_margin_gbp']))}",
+        f"- Risk-weighted margin: {_gbp(float(segment['risk_weighted_margin_gbp']))}",
+        f"- CRM evidence status: {segment['crm_evidence_status']}",
+        "",
+        "## Test Design",
+        "",
+        f"- Launch readiness: {design['launch_readiness']}",
+        f"- Treatment customers: {int(design['treatment_customers']):,}",
+        f"- Holdout customers: {int(design['holdout_customers']):,}",
+        f"- Recommended holdout rate: {_pct(float(design['recommended_holdout_rate']))}",
+        f"- Required sample per group: {int(design['required_sample_per_group']):,}",
+        f"- Baseline conversion assumption: {_pct(float(design['baseline_conversion_rate']))}",
+        f"- Minimum detectable lift: {_pct(float(design['minimum_detectable_lift']))}",
+        f"- Test duration: {int(design['test_duration_days']):,} days",
+        f"- Primary metric: {design['primary_metric']}",
+        f"- Expected margin at MDE: {_gbp(float(design['expected_incremental_margin_at_mde_gbp']))}",
+        "",
+        "## Success Rule",
+        "",
+        str(design["success_rule"]),
+        "",
+        "## Guardrails",
+        "",
+        str(design["guardrail_metrics"]),
+        "",
+        "## Launch Checklist",
+        "",
+        "| Area | Requirement | Status |",
+        "| --- | --- | --- |",
+    ]
+    for row in checklist:
+        if isinstance(row, dict):
+            lines.append(f"| {row['check_area']} | {row['requirement']} | {row['status']} |")
+
+    lines.extend(
+        [
+            "",
+            "## Review Notes",
+            "",
+        ]
+    )
+    lines.extend(f"- {note}" for note in artifact["review_notes"])
+    return "\n".join(lines) + "\n"
+
+
 def _customer_features_as_of(
     customers: pd.DataFrame,
     orders: pd.DataFrame,
@@ -806,3 +943,26 @@ def _experiment_launch_readiness(
     if effective_sample_per_group >= max(30, required_sample_per_group * 0.25):
         return "Directional pilot"
     return "Underpowered"
+
+
+def _experiment_artifact_id(payload: dict[str, object]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _round_float(value: object, digits: int = 2) -> float:
+    return round(float(value), digits)
+
+
+def _gbp(value: float) -> str:
+    prefix = "-" if value < 0 else ""
+    absolute = abs(value)
+    if absolute >= 1_000_000:
+        return f"{prefix}GBP {absolute / 1_000_000:,.1f}M"
+    if absolute >= 1_000:
+        return f"{prefix}GBP {absolute / 1_000:,.0f}K"
+    return f"{prefix}GBP {absolute:,.0f}"
+
+
+def _pct(value: float) -> str:
+    return f"{value * 100:,.1f}%"

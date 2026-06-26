@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
+    build_crm_experiment_artifact,
     cohort_retention,
+    crm_experiment_artifact_json,
+    crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
     crm_incrementality_portfolio,
@@ -264,3 +267,36 @@ def test_crm_experiment_design_returns_launch_plan_and_checklist() -> None:
     assert set(checklist.columns) == {"check_area", "requirement", "status"}
     assert len(checklist) == 5
     assert checklist["status"].isin({"Ready", "Review", "Blocked"}).all()
+
+
+def test_crm_experiment_artifact_exports_json_and_markdown_brief() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    testable_segment = plan[
+        plan["recommended_action"].isin({"Run holdout test", "Retest offer before scaling"})
+    ].iloc[0]
+    design = crm_experiment_design(testable_segment)
+    checklist = crm_experiment_checklist(design)
+
+    artifact = build_crm_experiment_artifact(testable_segment, design, checklist)
+    duplicate_artifact = build_crm_experiment_artifact(testable_segment, design, checklist)
+    artifact_json = crm_experiment_artifact_json(artifact)
+    brief = crm_experiment_brief_markdown(artifact)
+
+    assert artifact["schema_version"] == "1.0"
+    assert artifact["artifact_type"] == "crm_experiment_brief"
+    assert artifact["artifact_id"] == duplicate_artifact["artifact_id"]
+    assert '"artifact_id"' in artifact_json
+    assert artifact_json.endswith("\n")
+    assert brief.startswith("# CRM Experiment Brief")
+    assert "## Launch Checklist" in brief
+    assert "not production approval" in brief

@@ -37,7 +37,10 @@ from marketing_effectiveness_lab.calibration import (
 )
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
+    build_crm_experiment_artifact,
     cohort_retention,
+    crm_experiment_artifact_json,
+    crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
     crm_incrementality_portfolio,
@@ -1078,6 +1081,11 @@ else:
         test_duration_days=21,
     )
     checklist = crm_experiment_checklist(experiment_design)
+    experiment_artifact = build_crm_experiment_artifact(
+        selected_segment,
+        experiment_design,
+        checklist,
+    )
 
     experiment_cols = st.columns(4)
     experiment_cols[0].metric("Launch readiness", str(experiment_design["launch_readiness"]))
@@ -1126,6 +1134,24 @@ else:
         )
         st.dataframe(design_summary, use_container_width=True, hide_index=True)
         st.dataframe(checklist, use_container_width=True, hide_index=True)
+
+    brief_col, artifact_col = st.columns(2)
+    with brief_col:
+        st.download_button(
+            "Download experiment brief",
+            data=crm_experiment_brief_markdown(experiment_artifact),
+            file_name=f"crm_experiment_brief_{experiment_artifact['artifact_id']}.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    with artifact_col:
+        st.download_button(
+            "Download experiment artifact",
+            data=crm_experiment_artifact_json(experiment_artifact),
+            file_name=f"crm_experiment_artifact_{experiment_artifact['artifact_id']}.json",
+            mime="application/json",
+            use_container_width=True,
+        )
 
 st.subheader("Correlation Scan")
 numeric_cols = [
