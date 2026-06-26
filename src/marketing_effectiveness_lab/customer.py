@@ -907,6 +907,96 @@ def assess_crm_experiment_portfolio_eligibility(
     return pd.DataFrame(rows)
 
 
+def build_crm_experiment_audience_assignment(
+    scored_customers: pd.DataFrame,
+    artifact: Mapping[str, object],
+) -> pd.DataFrame:
+    """Build a deterministic customer-level treatment/holdout assignment export."""
+
+    segment = _mapping_value(artifact, "segment")
+    design = _mapping_value(artifact, "experiment_design")
+    artifact_id = str(artifact.get("artifact_id", "uploaded_artifact"))
+    segment_label = str(segment.get("segment_label", ""))
+
+    required_columns = {
+        "customer_id",
+        "lapse_risk_band",
+        "lifecycle_segment",
+        "value_segment",
+        "contactable_flag",
+    }
+    missing = sorted(required_columns.difference(scored_customers.columns))
+    if missing:
+        msg = f"Scored customers are missing required audience field(s): {', '.join(missing)}."
+        raise ValueError(msg)
+
+    matching = scored_customers[
+        (scored_customers["lapse_risk_band"].astype(str) == str(segment.get("lapse_risk_band", "")))
+        & (
+            scored_customers["lifecycle_segment"].astype(str)
+            == str(segment.get("lifecycle_segment", ""))
+        )
+        & (scored_customers["value_segment"].astype(str) == str(segment.get("value_segment", "")))
+        & (scored_customers["contactable_flag"].astype(int) == 1)
+    ].copy()
+
+    if matching.empty:
+        return pd.DataFrame(columns=_audience_assignment_columns())
+
+    matching["assignment_score"] = matching["customer_id"].map(
+        lambda customer_id: _assignment_score(artifact_id, str(customer_id))
+    )
+    matching = matching.sort_values(["assignment_score", "customer_id"]).reset_index(drop=True)
+    matching["assignment_rank"] = range(1, len(matching) + 1)
+    holdout_customers = min(int(_optional_float(design.get("holdout_customers"))), len(matching))
+    matching["experiment_group"] = "treatment"
+    if holdout_customers > 0:
+        matching.loc[matching.index[:holdout_customers], "experiment_group"] = "holdout"
+    matching["artifact_id"] = artifact_id
+    matching["segment_label"] = segment_label
+    matching["recommended_action"] = str(segment.get("recommended_action", ""))
+    matching["preferred_channel"] = matching.apply(_preferred_contact_channel, axis=1)
+    matching["eligibility_status"] = "Eligible"
+    matching["exclusion_reason"] = ""
+
+    for column in _audience_assignment_columns():
+        if column not in matching:
+            matching[column] = ""
+    return matching[_audience_assignment_columns()].reset_index(drop=True)
+
+
+def summarize_crm_experiment_audience(audience: pd.DataFrame) -> dict[str, float | int | str]:
+    """Summarize a CRM experiment customer assignment export."""
+
+    audience_customers = int(len(audience))
+    treatment_customers = int((audience["experiment_group"] == "treatment").sum()) if audience_customers else 0
+    holdout_customers = int((audience["experiment_group"] == "holdout").sum()) if audience_customers else 0
+    email_reachable = int((audience["email_opt_in"].astype(float) == 1).sum()) if audience_customers else 0
+    sms_reachable = int((audience["sms_opt_in"].astype(float) == 1).sum()) if audience_customers else 0
+    if audience_customers == 0:
+        status = "No eligible audience"
+    elif holdout_customers == 0:
+        status = "Missing holdout"
+    else:
+        status = "Ready to export"
+
+    return {
+        "audience_customers": audience_customers,
+        "treatment_customers": treatment_customers,
+        "holdout_customers": holdout_customers,
+        "holdout_rate": _safe_divide(holdout_customers, audience_customers),
+        "email_reachable_customers": email_reachable,
+        "sms_reachable_customers": sms_reachable,
+        "assignment_status": status,
+    }
+
+
+def crm_experiment_audience_csv(audience: pd.DataFrame) -> str:
+    """Serialize a CRM experiment audience assignment export as CSV."""
+
+    return audience.to_csv(index=False)
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -1264,6 +1354,44 @@ def _duplicate_values(frame: pd.DataFrame, column: str) -> list[str]:
         return []
     counts = frame[column].dropna().astype(str).value_counts()
     return counts[counts > 1].index.tolist()
+
+
+def _audience_assignment_columns() -> list[str]:
+    return [
+        "artifact_id",
+        "segment_label",
+        "recommended_action",
+        "customer_id",
+        "experiment_group",
+        "assignment_rank",
+        "assignment_score",
+        "preferred_channel",
+        "email_opt_in",
+        "sms_opt_in",
+        "lapse_risk_band",
+        "lifecycle_segment",
+        "value_segment",
+        "lapse_risk_score",
+        "expected_future_margin_gbp",
+        "recency_days",
+        "order_count",
+        "gross_margin_gbp",
+        "eligibility_status",
+        "exclusion_reason",
+    ]
+
+
+def _assignment_score(artifact_id: str, customer_id: str) -> int:
+    digest = hashlib.sha256(f"{artifact_id}:{customer_id}".encode()).hexdigest()
+    return int(digest[:12], 16)
+
+
+def _preferred_contact_channel(customer: pd.Series) -> str:
+    if int(customer.get("sms_opt_in", 0)) == 1:
+        return "sms"
+    if int(customer.get("email_opt_in", 0)) == 1:
+        return "email"
+    return "none"
 
 
 def _mapping_value(payload: Mapping[str, object], key: str) -> Mapping[str, object]:

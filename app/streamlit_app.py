@@ -39,10 +39,12 @@ from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
+    build_crm_experiment_audience_assignment,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
     crm_experiment_artifact_json,
+    crm_experiment_audience_csv,
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
@@ -58,6 +60,7 @@ from marketing_effectiveness_lab.customer import (
     retention_segment_action_plan,
     score_customer_lapse_value,
     segment_summary,
+    summarize_crm_experiment_audience,
     summarize_crm_experiment_portfolio,
     summarize_customer_kpis,
 )
@@ -1109,6 +1112,11 @@ else:
         experiment_design,
         checklist,
     )
+    audience_assignment = build_crm_experiment_audience_assignment(
+        clv_scores,
+        experiment_artifact,
+    )
+    audience_summary = summarize_crm_experiment_audience(audience_assignment)
 
     experiment_cols = st.columns(4)
     experiment_cols[0].metric("Launch readiness", str(experiment_design["launch_readiness"]))
@@ -1173,6 +1181,47 @@ else:
             data=crm_experiment_artifact_json(experiment_artifact),
             file_name=f"crm_experiment_artifact_{experiment_artifact['artifact_id']}.json",
             mime="application/json",
+            use_container_width=True,
+        )
+
+    with st.expander("Export CRM audience assignment"):
+        st.caption(
+            "Generate a deterministic customer-level treatment/holdout file for the selected "
+            "experiment. Customer IDs are demo identifiers; production use would require CRM "
+            "identity mapping, suppression rules, and approval logging."
+        )
+        audience_cols = st.columns(5)
+        audience_cols[0].metric("Assignment status", str(audience_summary["assignment_status"]))
+        audience_cols[1].metric("Audience customers", integer(audience_summary["audience_customers"]))
+        audience_cols[2].metric("Treatment", integer(audience_summary["treatment_customers"]))
+        audience_cols[3].metric("Holdout", integer(audience_summary["holdout_customers"]))
+        audience_cols[4].metric("Holdout rate", percent(audience_summary["holdout_rate"]))
+
+        reach_cols = st.columns(2)
+        reach_cols[0].metric("Email reachable", integer(audience_summary["email_reachable_customers"]))
+        reach_cols[1].metric("SMS reachable", integer(audience_summary["sms_reachable_customers"]))
+
+        audience_preview = audience_assignment.head(25).copy()
+        st.dataframe(
+            audience_preview[
+                [
+                    "customer_id",
+                    "experiment_group",
+                    "preferred_channel",
+                    "lapse_risk_band",
+                    "lifecycle_segment",
+                    "value_segment",
+                    "assignment_rank",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.download_button(
+            "Download audience assignment CSV",
+            data=crm_experiment_audience_csv(audience_assignment),
+            file_name=f"crm_experiment_audience_{experiment_artifact['artifact_id']}.csv",
+            mime="text/csv",
             use_container_width=True,
         )
 

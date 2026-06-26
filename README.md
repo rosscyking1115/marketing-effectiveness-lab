@@ -42,6 +42,7 @@ stakeholder communication.
 - CRM experiment artifact comparison for prioritising saved retention tests
 - CRM experiment portfolio planning for audience, holdout, and expected-margin trade-offs
 - CRM portfolio eligibility checks for duplicate segments, targeting overlap, and launch guardrails
+- Deterministic CRM audience assignment exports for treatment and holdout launch files
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -61,6 +62,7 @@ stakeholder communication.
 - Ranked CRM artifact comparison for readiness, value, audience, and holdout trade-offs
 - CRM experiment portfolio summaries for multi-test launch planning
 - CRM portfolio overlap and eligibility checks before launch
+- Customer-level CRM treatment and holdout assignment exports
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -106,6 +108,7 @@ Useful docs:
 - `docs/phase-31-crm-experiment-artifact-comparison.md` - comparison workflow for saved CRM experiment artifacts
 - `docs/phase-32-crm-experiment-portfolio-planning.md` - portfolio planning for ranked CRM experiments
 - `docs/phase-33-crm-portfolio-eligibility.md` - portfolio overlap and eligibility guardrails
+- `docs/phase-34-crm-audience-assignment-export.md` - deterministic CRM audience assignment exports
 
 ## Quick Start
 

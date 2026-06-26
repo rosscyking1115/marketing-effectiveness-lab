@@ -4,10 +4,12 @@ from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
+    build_crm_experiment_audience_assignment,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
     crm_experiment_artifact_json,
+    crm_experiment_audience_csv,
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
@@ -23,6 +25,7 @@ from marketing_effectiveness_lab.customer import (
     retention_segment_action_plan,
     score_customer_lapse_value,
     segment_summary,
+    summarize_crm_experiment_audience,
     summarize_crm_experiment_portfolio,
     summarize_customer_kpis,
 )
@@ -424,3 +427,42 @@ def test_crm_experiment_portfolio_eligibility_flags_duplicate_segments() -> None
     assert uniqueness["affected_experiments"] == 2
     assert isolation["status"] == "Review"
     assert eligibility["status"].isin({"Ready", "Review", "Blocked"}).all()
+
+
+def test_crm_experiment_audience_assignment_is_deterministic_and_exportable() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidate = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].iloc[0]
+    design = crm_experiment_design(candidate)
+    checklist = crm_experiment_checklist(design)
+    artifact = build_crm_experiment_artifact(candidate, design, checklist)
+
+    audience = build_crm_experiment_audience_assignment(scored, artifact)
+    duplicate_audience = build_crm_experiment_audience_assignment(scored, artifact)
+    summary = summarize_crm_experiment_audience(audience)
+    audience_csv = crm_experiment_audience_csv(audience)
+
+    assert audience.equals(duplicate_audience)
+    assert len(audience) == int(artifact["segment"]["contactable_customers"])
+    assert set(audience["experiment_group"]) == {"treatment", "holdout"}
+    assert int((audience["experiment_group"] == "holdout").sum()) == int(
+        artifact["experiment_design"]["holdout_customers"]
+    )
+    assert audience["preferred_channel"].isin({"email", "sms"}).all()
+    assert audience["customer_id"].is_unique
+    assert summary["assignment_status"] == "Ready to export"
+    assert summary["audience_customers"] == len(audience)
+    assert audience_csv.startswith("artifact_id,segment_label,recommended_action,customer_id")
