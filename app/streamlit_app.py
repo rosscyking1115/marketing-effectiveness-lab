@@ -37,6 +37,7 @@ from marketing_effectiveness_lab.calibration import (
 )
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
+    assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
     cohort_retention,
     compare_crm_experiment_artifacts,
@@ -1192,6 +1193,10 @@ else:
             candidate_artifact_comparison,
             top_n=portfolio_size,
         )
+        portfolio_eligibility = assess_crm_experiment_portfolio_eligibility(
+            candidate_artifact_comparison,
+            top_n=portfolio_size,
+        )
         selected_portfolio = (
             candidate_artifact_comparison.sort_values("comparison_rank")
             .head(portfolio_size)
@@ -1226,6 +1231,12 @@ else:
             f"{portfolio_summary['average_priority_score']:,.1f}",
         )
 
+        eligibility_counts = portfolio_eligibility["status"].value_counts()
+        eligibility_cols = st.columns(3)
+        eligibility_cols[0].metric("Ready checks", integer(eligibility_counts.get("Ready", 0)))
+        eligibility_cols[1].metric("Review checks", integer(eligibility_counts.get("Review", 0)))
+        eligibility_cols[2].metric("Blocked checks", integer(eligibility_counts.get("Blocked", 0)))
+
         portfolio_display = selected_portfolio.copy()
         portfolio_display["priority_score"] = portfolio_display["priority_score"].map(
             lambda value: f"{value:,.1f}"
@@ -1255,6 +1266,12 @@ else:
             use_container_width=True,
             hide_index=True,
         )
+        st.markdown("**Eligibility and overlap checks**")
+        st.dataframe(
+            portfolio_eligibility,
+            use_container_width=True,
+            hide_index=True,
+        )
         st.download_button(
             "Download portfolio CSV",
             data=crm_experiment_portfolio_csv(
@@ -1262,6 +1279,13 @@ else:
                 top_n=portfolio_size,
             ),
             file_name="crm_experiment_portfolio_plan.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download eligibility checks",
+            data=portfolio_eligibility.to_csv(index=False),
+            file_name="crm_experiment_portfolio_eligibility.csv",
             mime="text/csv",
             use_container_width=True,
         )

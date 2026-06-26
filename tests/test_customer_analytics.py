@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
+    assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
     cohort_retention,
     compare_crm_experiment_artifacts,
@@ -387,3 +388,39 @@ def test_crm_experiment_portfolio_summarizes_selected_ranked_artifacts() -> None
         "Review before launch",
     }
     assert portfolio_csv.startswith("comparison_rank,artifact_id")
+
+
+def test_crm_experiment_portfolio_eligibility_flags_duplicate_segments() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidate = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].iloc[0]
+    design = crm_experiment_design(candidate)
+    checklist = crm_experiment_checklist(design)
+    artifact = build_crm_experiment_artifact(candidate, design, checklist)
+
+    comparison = compare_crm_experiment_artifacts([artifact, artifact])
+    eligibility = assess_crm_experiment_portfolio_eligibility(comparison)
+
+    assert {"check_area", "status", "finding", "affected_experiments", "recommendation"}.issubset(
+        eligibility.columns
+    )
+    uniqueness = eligibility[eligibility["check_area"] == "Segment uniqueness"].iloc[0]
+    isolation = eligibility[eligibility["check_area"] == "Measurement isolation"].iloc[0]
+
+    assert uniqueness["status"] == "Blocked"
+    assert uniqueness["affected_experiments"] == 2
+    assert isolation["status"] == "Review"
+    assert eligibility["status"].isin({"Ready", "Review", "Blocked"}).all()

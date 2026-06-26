@@ -793,6 +793,120 @@ def crm_experiment_portfolio_csv(
     return _selected_portfolio_experiments(comparison, top_n=top_n).to_csv(index=False)
 
 
+def assess_crm_experiment_portfolio_eligibility(
+    comparison: pd.DataFrame,
+    *,
+    top_n: int | None = None,
+) -> pd.DataFrame:
+    """Assess launch guardrails for a selected CRM experiment portfolio."""
+
+    selected = _selected_portfolio_experiments(comparison, top_n=top_n)
+    duplicate_segments = _duplicate_values(selected, "segment_label")
+    shared_lifecycle_segments = _duplicate_values(selected, "lifecycle_segment")
+    shared_value_segments = _duplicate_values(selected, "value_segment")
+    underpowered = selected[selected["launch_readiness"].isin(["Underpowered", "Do not launch"])]
+    holdout_rate = _safe_divide(
+        float(selected["holdout_customers"].sum()),
+        float(selected["contactable_customers"].sum()),
+    )
+    broad_overlap_labels = [*shared_lifecycle_segments, *shared_value_segments]
+    has_broad_overlap = bool(broad_overlap_labels)
+
+    rows = [
+        {
+            "check_area": "Segment uniqueness",
+            "status": "Blocked" if duplicate_segments else "Ready",
+            "finding": (
+                f"Duplicate segment design(s): {', '.join(duplicate_segments)}"
+                if duplicate_segments
+                else "Selected experiments use unique segment labels."
+            ),
+            "affected_experiments": int(
+                selected["segment_label"].isin(duplicate_segments).sum()
+                if duplicate_segments
+                else 0
+            ),
+            "recommendation": (
+                "Keep one experiment per exact segment label before launch."
+                if duplicate_segments
+                else "No action required."
+            ),
+        },
+        {
+            "check_area": "Broad targeting overlap",
+            "status": "Review" if has_broad_overlap else "Ready",
+            "finding": (
+                f"Shared lifecycle/value targeting: {', '.join(broad_overlap_labels)}"
+                if has_broad_overlap
+                else "No repeated lifecycle or value segment among selected experiments."
+            ),
+            "affected_experiments": int(
+                selected[
+                    selected["lifecycle_segment"].isin(shared_lifecycle_segments)
+                    | selected["value_segment"].isin(shared_value_segments)
+                ].shape[0]
+                if has_broad_overlap
+                else 0
+            ),
+            "recommendation": (
+                "Add exclusion rules or a campaign priority order for shared broad segments."
+                if has_broad_overlap
+                else "No action required."
+            ),
+        },
+        {
+            "check_area": "Launch readiness",
+            "status": (
+                "Blocked"
+                if (underpowered["launch_readiness"] == "Do not launch").any()
+                else "Review"
+                if not underpowered.empty
+                else "Ready"
+            ),
+            "finding": (
+                f"{len(underpowered):,} selected experiment(s) are underpowered or not launchable."
+                if not underpowered.empty
+                else "All selected experiments are launchable under current rules."
+            ),
+            "affected_experiments": int(len(underpowered)),
+            "recommendation": (
+                "Remove blocked tests or treat underpowered tests as directional pilots."
+                if not underpowered.empty
+                else "No action required."
+            ),
+        },
+        {
+            "check_area": "Holdout burden",
+            "status": "Review" if holdout_rate > 0.25 else "Ready",
+            "finding": f"Portfolio holdout rate is {holdout_rate * 100:,.1f}%.",
+            "affected_experiments": int(len(selected) if holdout_rate > 0.25 else 0),
+            "recommendation": (
+                "Reduce portfolio size or lower holdout rates before launch."
+                if holdout_rate > 0.25
+                else "No action required."
+            ),
+        },
+        {
+            "check_area": "Measurement isolation",
+            "status": "Review" if duplicate_segments or has_broad_overlap else "Ready",
+            "finding": (
+                "Some selected experiments could compete for campaign exposure."
+                if duplicate_segments or has_broad_overlap
+                else "Selected experiments have clean segment-level measurement isolation."
+            ),
+            "affected_experiments": int(
+                len(selected) if duplicate_segments or has_broad_overlap else 0
+            ),
+            "recommendation": (
+                "Define mutual exclusions, send priority, and suppression windows."
+                if duplicate_segments or has_broad_overlap
+                else "No action required."
+            ),
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -1088,10 +1202,14 @@ def _crm_artifact_comparison_record(
     return {
         "artifact_id": str(artifact.get("artifact_id", f"uploaded_artifact_{index + 1}")),
         "segment_label": str(segment.get("segment_label", "")),
+        "lapse_risk_band": str(segment.get("lapse_risk_band", "")),
+        "lifecycle_segment": str(segment.get("lifecycle_segment", "")),
+        "value_segment": str(segment.get("value_segment", "")),
         "recommended_action": str(segment.get("recommended_action", "")),
         "launch_readiness": readiness,
         "priority_score": round(float(priority_score), 2),
         "crm_evidence_status": evidence_status,
+        "customers": _optional_float(segment.get("customers")),
         "contactable_customers": _optional_float(segment.get("contactable_customers")),
         "treatment_customers": _optional_float(design.get("treatment_customers")),
         "holdout_customers": _optional_float(design.get("holdout_customers")),
@@ -1139,6 +1257,13 @@ def _crm_portfolio_status(selected: pd.DataFrame) -> str:
     if readiness.issubset({"Ready to test"}):
         return "Launch-ready portfolio"
     return "Mixed readiness"
+
+
+def _duplicate_values(frame: pd.DataFrame, column: str) -> list[str]:
+    if column not in frame:
+        return []
+    counts = frame[column].dropna().astype(str).value_counts()
+    return counts[counts > 1].index.tolist()
 
 
 def _mapping_value(payload: Mapping[str, object], key: str) -> Mapping[str, object]:
