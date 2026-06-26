@@ -6,6 +6,16 @@
 
 Weekly UK fashion ecommerce marketing effectiveness dataset.
 
+The demo folder now also includes synthetic customer and CRM tables:
+
+- `customers.csv`
+- `orders.csv`
+- `order_items.csv`
+- `returns.csv`
+- `crm_campaigns.csv`
+- `crm_events.csv`
+- `customer_segments.csv`
+
 ## Fields
 
 | Column | Description |
@@ -37,6 +47,27 @@ The demo dataset is generated for development and portfolio use. It is not ASOS 
 The schema is intentionally close to what a real business could provide through weekly spreadsheet exports or warehouse tables.
 
 The dashboard can also accept uploaded CSV files that follow this schema. Uploaded files are parsed in memory in the current prototype.
+
+The customer and CRM tables are synthetic and anonymized. They are designed for customer growth analytics,
+not for public upload of confidential customer records. In production, these tables would require strict
+PII handling, consent governance, access control, retention policy, and audit logging.
+
+## Customer and CRM Tables
+
+Phase 24 adds a second data grain beside the weekly MMM dataset.
+
+| Table | Grain | Purpose |
+| --- | --- | --- |
+| `customers.csv` | Customer | Anonymized customer profile, acquisition channel, contact consent, and lifecycle status. |
+| `orders.csv` | Order | Ecommerce order revenue, discounts, refunds, margin, and status. |
+| `order_items.csv` | Order item | Product category, units, item revenue, and item margin. |
+| `returns.csv` | Return | Return/refund events linked to orders and customers. |
+| `crm_campaigns.csv` | Campaign | CRM campaign type, channel, timing, segment, cost, and incentive assumptions. |
+| `crm_events.csv` | Campaign-customer | CRM target/holdout assignment, contact flags, conversion window value, and unsubscribe flag. |
+| `customer_segments.csv` | Customer snapshot | Recency, frequency, revenue, margin, discount rate, return rate, lifecycle, and value segment. |
+
+The customer grain should not be forced into the weekly MMM schema. Future phases can aggregate selected
+customer measures into weekly reporting when they are useful for planning.
 
 ## Connector Templates
 
@@ -93,3 +124,11 @@ The connector assembly workflow now reports pre-modeling diagnostics:
 - Numeric columns must contain numeric values.
 - Non-negative columns cannot contain negative values.
 - Flag columns must contain only `0` and `1`.
+
+Customer and CRM validation also checks:
+
+- Primary keys are unique.
+- Date fields parse correctly.
+- Allowed-value fields use supported lifecycle, value, product, campaign, and treatment labels.
+- Foreign keys connect orders, order items, returns, campaigns, CRM events, and segment snapshots.
+- Each customer has exactly one segment snapshot row.

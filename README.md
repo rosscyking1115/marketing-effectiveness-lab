@@ -29,6 +29,7 @@ stakeholder communication.
 ## What It Demonstrates
 
 - Data contracts for weekly marketing, ecommerce, web analytics, paid media, CRM, affiliate, influencer, display, and external-control exports
+- Synthetic customer, order, return, CRM campaign, and segment data contracts for customer growth analytics
 - Connector assembly from validated source exports into an MMM-ready weekly dataset
 - Source diagnostics for coverage, missing channels, outcome quality, and modeling readiness
 - Analyst dashboarding for revenue, spend, promotions, channel mix, and correlations
@@ -41,6 +42,7 @@ stakeholder communication.
 - Recommendation readiness scoring for stakeholder review governance
 - Machine-readable model-run manifest for reproducibility and future artifact tracking
 - Model-run manifest comparison for scenario review and artifact governance
+- Customer/CRM data foundation for future cohort, lifecycle, CLV, and CRM incrementality workflows
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -76,6 +78,7 @@ Useful docs:
 - `docs/phase-21-recommendation-readiness.md` - recommendation readiness gates for budget decisions
 - `docs/phase-22-run-manifest.md` - machine-readable model-run manifest for reproducibility
 - `docs/phase-23-manifest-comparison.md` - scenario comparison workflow for saved run manifests
+- `docs/phase-24-customer-data-model.md` - customer/order/CRM data foundation for growth analytics
 
 ## Quick Start
 

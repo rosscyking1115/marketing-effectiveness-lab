@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from marketing_effectiveness_lab.data.customer_generator import generate_customer_data_and_validate
 from marketing_effectiveness_lab.data.generator import generate_and_validate
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -24,11 +25,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     df = generate_and_validate(args.output_dir, seed=args.seed)
+    customer_dataset = generate_customer_data_and_validate(args.output_dir, seed=args.seed)
     print(f"Generated {len(df):,} weekly rows in {args.output_dir}")
     print(f"Revenue range: GBP {df['revenue_gbp'].min():,.0f} to {df['revenue_gbp'].max():,.0f}")
     print(f"Total media spend: GBP {df.filter(like='_spend_gbp').sum().sum():,.0f}")
+    print(f"Generated {len(customer_dataset.customers):,} customer rows")
+    print(f"Generated {len(customer_dataset.orders):,} order rows")
+    print(f"Generated {len(customer_dataset.crm_events):,} CRM event rows")
 
 
 if __name__ == "__main__":
     main()
-
