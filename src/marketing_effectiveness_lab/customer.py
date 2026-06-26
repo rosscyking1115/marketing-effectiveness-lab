@@ -446,6 +446,65 @@ def crm_incrementality_portfolio(summary: pd.DataFrame) -> dict[str, float | int
     }
 
 
+def retention_segment_action_plan(
+    scored_customers: pd.DataFrame,
+    crm_summary: pd.DataFrame,
+    *,
+    min_segment_customers: int = 20,
+) -> pd.DataFrame:
+    """Create a segment-level CRM retention plan from lapse risk, value, and holdout evidence."""
+
+    segment_plan = (
+        scored_customers.groupby(["lapse_risk_band", "lifecycle_segment", "value_segment"], as_index=False)
+        .agg(
+            customers=("customer_id", "nunique"),
+            contactable_customers=("contactable_flag", "sum"),
+            expected_future_margin_gbp=("expected_future_margin_gbp", "sum"),
+            avg_expected_future_margin_gbp=("expected_future_margin_gbp", "mean"),
+            avg_lapse_risk_score=("lapse_risk_score", "mean"),
+            historical_margin_gbp=("gross_margin_gbp", "sum"),
+            avg_discount_rate=("discount_rate", "mean"),
+        )
+        .reset_index(drop=True)
+    )
+    segment_plan["contactable_rate"] = segment_plan["contactable_customers"] / segment_plan["customers"]
+    segment_plan["risk_weighted_margin_gbp"] = (
+        segment_plan["expected_future_margin_gbp"] * segment_plan["avg_lapse_risk_score"] / 100
+    )
+
+    evidence_rows = [
+        _matched_crm_evidence(row, crm_summary)
+        for row in segment_plan[["lifecycle_segment", "value_segment"]].to_dict("records")
+    ]
+    evidence = pd.DataFrame(evidence_rows)
+    segment_plan = pd.concat([segment_plan, evidence], axis=1)
+    segment_plan["recommended_action"] = segment_plan.apply(
+        lambda row: _retention_action(row, min_segment_customers),
+        axis=1,
+    )
+    segment_plan["recommended_holdout_rate"] = segment_plan["recommended_action"].map(
+        {
+            "Scale tested CRM": 0.10,
+            "Run holdout test": 0.20,
+            "Retest offer before scaling": 0.25,
+            "Suppress incentive": 0.00,
+            "Monitor": 0.00,
+            "No contactable audience": 0.00,
+        }
+    )
+    segment_plan["testable_customers"] = (
+        segment_plan["contactable_customers"] * (1 - segment_plan["recommended_holdout_rate"])
+    ).round(0).astype(int)
+    segment_plan["max_incentive_cost_per_customer_gbp"] = segment_plan.apply(
+        _max_incentive_cost_per_customer,
+        axis=1,
+    )
+    return segment_plan.sort_values(
+        ["risk_weighted_margin_gbp", "expected_future_margin_gbp"],
+        ascending=[False, False],
+    ).reset_index(drop=True)
+
+
 def _customer_features_as_of(
     customers: pd.DataFrame,
     orders: pd.DataFrame,
@@ -544,3 +603,77 @@ def _crm_evidence_status(
 
 def _safe_divide(numerator: float, denominator: float) -> float:
     return float(numerator / denominator) if denominator else 0.0
+
+
+def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame) -> dict[str, object]:
+    lifecycle_segment = str(segment["lifecycle_segment"])
+    value_segment = str(segment["value_segment"])
+    matched = crm_summary[
+        (crm_summary["target_segment"] == lifecycle_segment)
+        | (crm_summary["target_segment"] == value_segment)
+    ]
+    if matched.empty:
+        return {
+            "matched_campaigns": 0,
+            "crm_evidence_status": "No prior test",
+            "avg_crm_conversion_lift": 0.0,
+            "avg_crm_profit_per_target_customer_gbp": 0.0,
+            "crm_incremental_profit_gbp": 0.0,
+        }
+
+    status_priority = {
+        "Positive": 4,
+        "Review": 3,
+        "Needs more data": 2,
+        "Negative": 1,
+    }
+    evidence_status = max(
+        matched["evidence_status"],
+        key=lambda status: status_priority.get(str(status), 0),
+    )
+    return {
+        "matched_campaigns": int(len(matched)),
+        "crm_evidence_status": str(evidence_status),
+        "avg_crm_conversion_lift": float(matched["conversion_lift"].mean()),
+        "avg_crm_profit_per_target_customer_gbp": float(
+            matched["incremental_profit_per_target_customer_gbp"].mean()
+        ),
+        "crm_incremental_profit_gbp": float(matched["incremental_profit_gbp"].sum()),
+    }
+
+
+def _retention_action(segment: pd.Series, min_segment_customers: int) -> str:
+    if int(segment["customers"]) < min_segment_customers or int(segment["contactable_customers"]) == 0:
+        return "No contactable audience"
+
+    risk_band = str(segment["lapse_risk_band"])
+    value_segment = str(segment["value_segment"])
+    evidence_status = str(segment["crm_evidence_status"])
+    expected_margin = float(segment["expected_future_margin_gbp"])
+    profit_per_target = float(segment["avg_crm_profit_per_target_customer_gbp"])
+    discount_rate = float(segment["avg_discount_rate"])
+
+    high_value_at_risk = risk_band in {"Medium", "High"} and value_segment in {"High value", "VIP"}
+    low_value_high_discount = value_segment == "Low value" and risk_band == "High" and discount_rate > 0.12
+
+    if evidence_status == "Positive" and high_value_at_risk and profit_per_target > 0:
+        return "Scale tested CRM"
+    if evidence_status == "Negative" and (low_value_high_discount or profit_per_target < 0):
+        return "Suppress incentive"
+    if evidence_status in {"Negative", "Review"} and high_value_at_risk:
+        return "Retest offer before scaling"
+    if risk_band in {"Medium", "High"} and expected_margin > 0:
+        return "Run holdout test"
+    return "Monitor"
+
+
+def _max_incentive_cost_per_customer(segment: pd.Series) -> float:
+    action = str(segment["recommended_action"])
+    if action in {"Monitor", "Suppress incentive", "No contactable audience"}:
+        return 0.0
+    expected_margin = float(segment["avg_expected_future_margin_gbp"])
+    if action == "Scale tested CRM":
+        return round(max(min(expected_margin * 0.12, 10), 0), 2)
+    if action == "Retest offer before scaling":
+        return round(max(min(expected_margin * 0.08, 6), 0), 2)
+    return round(max(min(expected_margin * 0.06, 5), 0), 2)

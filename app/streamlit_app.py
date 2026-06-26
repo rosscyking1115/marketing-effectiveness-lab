@@ -45,6 +45,7 @@ from marketing_effectiveness_lab.customer import (
     lapse_value_segment_summary,
     new_vs_returning_summary,
     prepare_customer_tables,
+    retention_segment_action_plan,
     score_customer_lapse_value,
     segment_summary,
     summarize_customer_kpis,
@@ -948,6 +949,98 @@ with crm_right:
                 "incremental_profit_gbp",
                 "unsubscribe_rate",
                 "evidence_status",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+st.markdown("**Retention action planner**")
+retention_plan = retention_segment_action_plan(clv_scores, crm_lift)
+test_segments = retention_plan[
+    retention_plan["recommended_action"].isin(["Run holdout test", "Retest offer before scaling"])
+]
+scale_segments = retention_plan[retention_plan["recommended_action"] == "Scale tested CRM"]
+suppression_segments = retention_plan[retention_plan["recommended_action"] == "Suppress incentive"]
+retention_metric_cols = st.columns(4)
+retention_metric_cols[0].metric(
+    "Risk-weighted margin",
+    gbp(retention_plan["risk_weighted_margin_gbp"].sum()),
+)
+retention_metric_cols[1].metric("Segments to test", integer(len(test_segments)))
+retention_metric_cols[2].metric("Segments to scale", integer(len(scale_segments)))
+retention_metric_cols[3].metric("Segments to suppress", integer(len(suppression_segments)))
+
+retention_left, retention_right = st.columns((1.05, 1))
+with retention_left:
+    retention_plot = retention_plan.head(12).copy()
+    retention_plot["segment_label"] = (
+        retention_plot["lapse_risk_band"]
+        + " / "
+        + retention_plot["lifecycle_segment"]
+        + " / "
+        + retention_plot["value_segment"]
+    )
+    retention_fig = px.bar(
+        retention_plot.sort_values("risk_weighted_margin_gbp"),
+        x="risk_weighted_margin_gbp",
+        y="segment_label",
+        color="recommended_action",
+        orientation="h",
+        title="Retention priority by risk-weighted future margin",
+        labels={
+            "risk_weighted_margin_gbp": "Risk-weighted margin GBP",
+            "segment_label": "Segment",
+            "recommended_action": "Action",
+        },
+        color_discrete_map={
+            "Scale tested CRM": "#2f7d64",
+            "Run holdout test": "#376f9f",
+            "Retest offer before scaling": "#9a7b3f",
+            "Suppress incentive": "#c65f4b",
+            "Monitor": "#6f7482",
+            "No contactable audience": "#b7bbc4",
+        },
+    )
+    retention_fig.update_layout(
+        height=410,
+        margin={"l": 12, "r": 12, "t": 48, "b": 24},
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        legend_orientation="h",
+        legend_y=1.13,
+    )
+    st.plotly_chart(retention_fig, use_container_width=True)
+
+with retention_right:
+    retention_display = retention_plan.copy()
+    for money_col in [
+        "expected_future_margin_gbp",
+        "risk_weighted_margin_gbp",
+        "avg_crm_profit_per_target_customer_gbp",
+        "max_incentive_cost_per_customer_gbp",
+    ]:
+        retention_display[money_col] = retention_display[money_col].map(gbp)
+    retention_display["contactable_rate"] = retention_display["contactable_rate"].map(percent)
+    retention_display["recommended_holdout_rate"] = retention_display["recommended_holdout_rate"].map(percent)
+    retention_display["avg_lapse_risk_score"] = retention_display["avg_lapse_risk_score"].map(
+        lambda value: f"{value:,.1f}"
+    )
+    st.dataframe(
+        retention_display[
+            [
+                "recommended_action",
+                "lapse_risk_band",
+                "lifecycle_segment",
+                "value_segment",
+                "customers",
+                "contactable_rate",
+                "expected_future_margin_gbp",
+                "risk_weighted_margin_gbp",
+                "crm_evidence_status",
+                "avg_crm_profit_per_target_customer_gbp",
+                "recommended_holdout_rate",
+                "max_incentive_cost_per_customer_gbp",
             ]
         ],
         use_container_width=True,

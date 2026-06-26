@@ -36,6 +36,7 @@ stakeholder communication.
 - Customer and cohort intelligence for acquisition quality, lifecycle segments, and repeat behaviour
 - Empirical CLV and lapse-risk baselines using customer margin, value windows, and segment backtests
 - CRM incrementality diagnostics using campaign target/holdout events and profit-aware readouts
+- Retention action planning that links lapse risk, expected margin, CRM evidence, holdouts, and incentive caps
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -49,6 +50,7 @@ stakeholder communication.
 - Customer cohort analytics for new vs returning economics and segment margin quality
 - Explainable customer value and lapse-risk diagnostics for retention planning
 - Target-vs-holdout CRM lift testing with incremental margin, cost, and evidence status
+- Segment-level CRM retention recommendations for scale, holdout testing, retesting, suppression, and monitoring
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -88,6 +90,7 @@ Useful docs:
 - `docs/phase-25-customer-cohort-intelligence.md` - customer cohort and lifecycle analytics
 - `docs/phase-26-empirical-clv-lapse-risk.md` - empirical CLV and lapse-risk baseline methodology
 - `docs/phase-27-crm-incrementality.md` - target/holdout CRM incrementality diagnostics
+- `docs/phase-28-retention-action-planner.md` - retention segment action planning
 
 ## Quick Start
 

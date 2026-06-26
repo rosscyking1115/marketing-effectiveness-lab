@@ -10,6 +10,7 @@ from marketing_effectiveness_lab.customer import (
     lapse_value_segment_summary,
     new_vs_returning_summary,
     prepare_customer_tables,
+    retention_segment_action_plan,
     score_customer_lapse_value,
     segment_summary,
     summarize_customer_kpis,
@@ -187,3 +188,37 @@ def test_crm_incrementality_portfolio_rolls_up_campaign_diagnostics() -> None:
     assert portfolio["review_campaigns"] >= 0
     assert isinstance(portfolio["total_incremental_profit_gbp"], float)
     assert isinstance(portfolio["total_incremental_margin_gbp"], float)
+
+
+def test_retention_segment_action_plan_combines_value_risk_and_crm_evidence() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+
+    plan = retention_segment_action_plan(scored, crm_summary)
+
+    assert plan["customers"].sum() == 800
+    assert plan["contactable_customers"].le(plan["customers"]).all()
+    assert plan["contactable_rate"].between(0, 1).all()
+    assert plan["risk_weighted_margin_gbp"].ge(0).all()
+    assert plan["recommended_holdout_rate"].between(0, 0.25).all()
+    assert plan["max_incentive_cost_per_customer_gbp"].ge(0).all()
+    assert plan["testable_customers"].ge(0).all()
+    assert set(plan["recommended_action"]).issubset(
+        {
+            "Scale tested CRM",
+            "Run holdout test",
+            "Retest offer before scaling",
+            "Suppress incentive",
+            "Monitor",
+            "No contactable audience",
+        }
+    )
+    assert plan["recommended_action"].isin({"Run holdout test", "Retest offer before scaling"}).any()
