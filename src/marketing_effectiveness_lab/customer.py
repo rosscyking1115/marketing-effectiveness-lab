@@ -997,6 +997,102 @@ def crm_experiment_audience_csv(audience: pd.DataFrame) -> str:
     return audience.to_csv(index=False)
 
 
+def build_crm_experiment_portfolio_audience_assignment(
+    scored_customers: pd.DataFrame,
+    artifacts: Sequence[Mapping[str, object]],
+    *,
+    top_n: int | None = None,
+) -> pd.DataFrame:
+    """Build a mutually exclusive customer assignment export for a CRM experiment portfolio."""
+
+    if not artifacts:
+        msg = "At least one CRM experiment artifact is required for portfolio audience export."
+        raise ValueError(msg)
+
+    comparison = compare_crm_experiment_artifacts(artifacts)
+    selected = _selected_portfolio_experiments(comparison, top_n=top_n)
+    artifacts_by_id = {
+        str(artifact.get("artifact_id", f"uploaded_artifact_{index + 1}")): artifact
+        for index, artifact in enumerate(artifacts)
+    }
+    assigned_customer_ids: set[str] = set()
+    portfolio_rows: list[pd.DataFrame] = []
+    candidate_customers = 0
+    suppressed_customers = 0
+
+    for experiment in selected.to_dict("records"):
+        artifact_id = str(experiment["artifact_id"])
+        artifact = artifacts_by_id.get(artifact_id)
+        if artifact is None:
+            continue
+
+        audience = build_crm_experiment_audience_assignment(scored_customers, artifact)
+        candidate_customers += len(audience)
+        if audience.empty:
+            continue
+
+        already_assigned = audience["customer_id"].astype(str).isin(assigned_customer_ids)
+        suppressed_customers += int(already_assigned.sum())
+        assigned = audience[~already_assigned].copy()
+        if assigned.empty:
+            continue
+
+        assigned["portfolio_priority"] = int(experiment["comparison_rank"])
+        assigned["portfolio_assignment_status"] = "Assigned"
+        assigned["portfolio_exclusion_reason"] = ""
+        assigned_customer_ids.update(assigned["customer_id"].astype(str).tolist())
+        portfolio_rows.append(assigned)
+
+    if portfolio_rows:
+        portfolio = pd.concat(portfolio_rows, ignore_index=True)
+        portfolio = portfolio.sort_values(["portfolio_priority", "assignment_rank", "customer_id"])
+    else:
+        portfolio = pd.DataFrame(columns=_portfolio_audience_assignment_columns())
+
+    for column in _portfolio_audience_assignment_columns():
+        if column not in portfolio:
+            portfolio[column] = ""
+    portfolio = portfolio[_portfolio_audience_assignment_columns()].reset_index(drop=True)
+    portfolio.attrs["candidate_customers"] = candidate_customers
+    portfolio.attrs["suppressed_customers"] = suppressed_customers
+    return portfolio
+
+
+def summarize_crm_experiment_portfolio_audience(audience: pd.DataFrame) -> dict[str, float | int | str]:
+    """Summarize a mutually exclusive CRM experiment portfolio audience export."""
+
+    assigned_customers = int(len(audience))
+    candidate_customers = int(audience.attrs.get("candidate_customers", assigned_customers))
+    suppressed_customers = int(audience.attrs.get("suppressed_customers", 0))
+    treatment_customers = int((audience["experiment_group"] == "treatment").sum()) if assigned_customers else 0
+    holdout_customers = int((audience["experiment_group"] == "holdout").sum()) if assigned_customers else 0
+    experiments = int(audience["artifact_id"].nunique()) if assigned_customers else 0
+    if assigned_customers == 0:
+        status = "No eligible audience"
+    elif suppressed_customers > 0:
+        status = "Ready with exclusions"
+    else:
+        status = "Ready to export"
+
+    return {
+        "experiments": experiments,
+        "candidate_customers": candidate_customers,
+        "assigned_customers": assigned_customers,
+        "suppressed_customers": suppressed_customers,
+        "suppression_rate": _safe_divide(suppressed_customers, candidate_customers),
+        "treatment_customers": treatment_customers,
+        "holdout_customers": holdout_customers,
+        "holdout_rate": _safe_divide(holdout_customers, assigned_customers),
+        "assignment_status": status,
+    }
+
+
+def crm_experiment_portfolio_audience_csv(audience: pd.DataFrame) -> str:
+    """Serialize a CRM experiment portfolio audience assignment export as CSV."""
+
+    return audience.to_csv(index=False)
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -1378,6 +1474,15 @@ def _audience_assignment_columns() -> list[str]:
         "gross_margin_gbp",
         "eligibility_status",
         "exclusion_reason",
+    ]
+
+
+def _portfolio_audience_assignment_columns() -> list[str]:
+    return [
+        "portfolio_priority",
+        "portfolio_assignment_status",
+        "portfolio_exclusion_reason",
+        *_audience_assignment_columns(),
     ]
 
 

@@ -40,6 +40,7 @@ from marketing_effectiveness_lab.customer import (
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
     build_crm_experiment_audience_assignment,
+    build_crm_experiment_portfolio_audience_assignment,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
@@ -48,6 +49,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
+    crm_experiment_portfolio_audience_csv,
     crm_experiment_portfolio_csv,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
@@ -62,6 +64,7 @@ from marketing_effectiveness_lab.customer import (
     segment_summary,
     summarize_crm_experiment_audience,
     summarize_crm_experiment_portfolio,
+    summarize_crm_experiment_portfolio_audience,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.assembly import (
@@ -1246,6 +1249,14 @@ else:
             candidate_artifact_comparison,
             top_n=portfolio_size,
         )
+        portfolio_audience = build_crm_experiment_portfolio_audience_assignment(
+            clv_scores,
+            candidate_artifacts,
+            top_n=portfolio_size,
+        )
+        portfolio_audience_summary = summarize_crm_experiment_portfolio_audience(
+            portfolio_audience
+        )
         selected_portfolio = (
             candidate_artifact_comparison.sort_values("comparison_rank")
             .head(portfolio_size)
@@ -1321,6 +1332,43 @@ else:
             use_container_width=True,
             hide_index=True,
         )
+        st.markdown("**Mutually exclusive audience export**")
+        portfolio_audience_cols = st.columns(5)
+        portfolio_audience_cols[0].metric(
+            "Export status",
+            str(portfolio_audience_summary["assignment_status"]),
+        )
+        portfolio_audience_cols[1].metric(
+            "Assigned customers",
+            integer(portfolio_audience_summary["assigned_customers"]),
+        )
+        portfolio_audience_cols[2].metric(
+            "Suppressed overlap",
+            integer(portfolio_audience_summary["suppressed_customers"]),
+        )
+        portfolio_audience_cols[3].metric(
+            "Treatment",
+            integer(portfolio_audience_summary["treatment_customers"]),
+        )
+        portfolio_audience_cols[4].metric(
+            "Holdout",
+            integer(portfolio_audience_summary["holdout_customers"]),
+        )
+        portfolio_audience_preview = portfolio_audience.head(25).copy()
+        st.dataframe(
+            portfolio_audience_preview[
+                [
+                    "portfolio_priority",
+                    "customer_id",
+                    "artifact_id",
+                    "experiment_group",
+                    "preferred_channel",
+                    "segment_label",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
         st.download_button(
             "Download portfolio CSV",
             data=crm_experiment_portfolio_csv(
@@ -1335,6 +1383,13 @@ else:
             "Download eligibility checks",
             data=portfolio_eligibility.to_csv(index=False),
             file_name="crm_experiment_portfolio_eligibility.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download portfolio audience CSV",
+            data=crm_experiment_portfolio_audience_csv(portfolio_audience),
+            file_name="crm_experiment_portfolio_audience.csv",
             mime="text/csv",
             use_container_width=True,
         )

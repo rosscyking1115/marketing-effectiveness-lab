@@ -5,6 +5,7 @@ from marketing_effectiveness_lab.customer import (
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
     build_crm_experiment_audience_assignment,
+    build_crm_experiment_portfolio_audience_assignment,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
@@ -13,6 +14,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
+    crm_experiment_portfolio_audience_csv,
     crm_experiment_portfolio_csv,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
@@ -27,6 +29,7 @@ from marketing_effectiveness_lab.customer import (
     segment_summary,
     summarize_crm_experiment_audience,
     summarize_crm_experiment_portfolio,
+    summarize_crm_experiment_portfolio_audience,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.customer_generator import generate_customer_demo_data
@@ -466,3 +469,57 @@ def test_crm_experiment_audience_assignment_is_deterministic_and_exportable() ->
     assert summary["assignment_status"] == "Ready to export"
     assert summary["audience_customers"] == len(audience)
     assert audience_csv.startswith("artifact_id,segment_label,recommended_action,customer_id")
+
+
+def test_crm_experiment_portfolio_audience_assignment_enforces_mutual_exclusion() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidates = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].head(5)
+
+    artifacts = []
+    for _, candidate in candidates.iterrows():
+        design = crm_experiment_design(candidate)
+        checklist = crm_experiment_checklist(design)
+        artifacts.append(build_crm_experiment_artifact(candidate, design, checklist))
+
+    audience = build_crm_experiment_portfolio_audience_assignment(
+        scored,
+        artifacts,
+        top_n=3,
+    )
+    duplicate_audience = build_crm_experiment_portfolio_audience_assignment(
+        scored,
+        artifacts,
+        top_n=3,
+    )
+    summary = summarize_crm_experiment_portfolio_audience(audience)
+    portfolio_csv = crm_experiment_portfolio_audience_csv(audience)
+
+    assert audience.equals(duplicate_audience)
+    assert audience["customer_id"].is_unique
+    assert audience["portfolio_priority"].between(1, 3).all()
+    assert audience["portfolio_priority"].is_monotonic_increasing
+    assert set(audience["experiment_group"]).issubset({"treatment", "holdout"})
+    assert summary["experiments"] <= 3
+    assert summary["assigned_customers"] == len(audience)
+    assert summary["candidate_customers"] >= summary["assigned_customers"]
+    assert summary["suppressed_customers"] == (
+        summary["candidate_customers"] - summary["assigned_customers"]
+    )
+    assert summary["assignment_status"] in {"Ready to export", "Ready with exclusions"}
+    assert portfolio_csv.startswith(
+        "portfolio_priority,portfolio_assignment_status,portfolio_exclusion_reason"
+    )
