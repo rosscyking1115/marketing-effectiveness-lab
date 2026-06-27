@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from marketing_effectiveness_lab.customer import (
     acquisition_channel_quality,
     assess_crm_experiment_portfolio_eligibility,
@@ -7,6 +9,7 @@ from marketing_effectiveness_lab.customer import (
     build_crm_experiment_audience_assignment,
     build_crm_experiment_portfolio_audience_assignment,
     build_crm_experiment_portfolio_calendar,
+    build_crm_experiment_portfolio_readout,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
@@ -18,6 +21,8 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_portfolio_audience_csv,
     crm_experiment_portfolio_calendar_csv,
     crm_experiment_portfolio_csv,
+    crm_experiment_portfolio_readout_csv,
+    crm_experiment_portfolio_readout_markdown,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
     customer_future_value_backtest,
@@ -33,6 +38,7 @@ from marketing_effectiveness_lab.customer import (
     summarize_crm_experiment_portfolio,
     summarize_crm_experiment_portfolio_audience,
     summarize_crm_experiment_portfolio_calendar,
+    summarize_crm_experiment_portfolio_readout,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.customer_generator import generate_customer_demo_data
@@ -603,3 +609,86 @@ def test_crm_experiment_portfolio_calendar_flags_contact_policy_spacing() -> Non
     assert set(capped_calendar["calendar_status"]) == {"Review weekly cap"}
     assert "Review spacing and weekly cap" in set(combined_review_calendar["calendar_status"])
     assert calendar_csv.startswith("launch_sequence,portfolio_priority,artifact_id")
+
+
+def test_crm_experiment_portfolio_readout_packages_decisions_and_brief() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidates = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].head(5)
+
+    artifacts = []
+    for _, candidate in candidates.iterrows():
+        design = crm_experiment_design(candidate)
+        checklist = crm_experiment_checklist(design)
+        artifacts.append(build_crm_experiment_artifact(candidate, design, checklist))
+
+    comparison = compare_crm_experiment_artifacts(artifacts)
+    audience = build_crm_experiment_portfolio_audience_assignment(
+        scored,
+        artifacts,
+        top_n=3,
+    )
+    calendar = build_crm_experiment_portfolio_calendar(
+        audience,
+        start_date="2026-02-02",
+        spacing_days=14,
+        contact_policy_window_days=14,
+        max_contacts_per_week=100_000,
+    )
+    readout = build_crm_experiment_portfolio_readout(
+        calendar,
+        comparison,
+        crm_summary,
+        top_n=3,
+    )
+    duplicate_readout = build_crm_experiment_portfolio_readout(
+        calendar,
+        comparison,
+        crm_summary,
+        top_n=3,
+    )
+    summary = summarize_crm_experiment_portfolio_readout(readout)
+    readout_csv = crm_experiment_portfolio_readout_csv(readout)
+    readout_brief = crm_experiment_portfolio_readout_markdown(readout)
+
+    assert readout.equals(duplicate_readout)
+    assert len(readout) == len(calendar)
+    assert readout["launch_sequence"].is_monotonic_increasing
+    assert readout["observed_conversion_lift"].between(-1, 1).all()
+    assert readout["incremental_profit_readout_gbp"].ge(0).all()
+    assert set(readout["readout_confidence"]).issubset({"High", "Medium", "Low"})
+    assert set(readout["decision_status"]).issubset({"Scale", "Retest", "Stop", "Review"})
+    assert readout["recommended_next_action"].astype(str).str.len().gt(0).all()
+    assert summary["experiments"] == len(readout)
+    assert summary["total_incremental_profit_readout_gbp"] == readout[
+        "incremental_profit_readout_gbp"
+    ].sum()
+    assert summary["readout_status"] in {
+        "Portfolio learning ready",
+        "Needs decision review",
+        "No scale candidates",
+    }
+    assert readout_csv.startswith("launch_sequence,portfolio_priority,comparison_rank")
+    assert readout_brief.startswith("# CRM Experiment Portfolio Readout")
+    assert "not production decision approval" in readout_brief
+
+    with pytest.raises(ValueError, match="outside the selected comparison set"):
+        build_crm_experiment_portfolio_readout(
+            calendar,
+            comparison,
+            crm_summary,
+            top_n=2,
+        )

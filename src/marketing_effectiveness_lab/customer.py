@@ -1253,6 +1253,204 @@ def crm_experiment_portfolio_calendar_csv(calendar: pd.DataFrame) -> str:
     return calendar.to_csv(index=False)
 
 
+def build_crm_experiment_portfolio_readout(
+    calendar: pd.DataFrame,
+    comparison: pd.DataFrame,
+    crm_evidence: pd.DataFrame,
+    *,
+    top_n: int | None = None,
+) -> pd.DataFrame:
+    """Package scheduled CRM experiments with post-launch readout decision fields."""
+
+    if calendar.empty:
+        return pd.DataFrame(columns=_portfolio_readout_columns())
+
+    required_calendar_columns = {
+        "artifact_id",
+        "launch_sequence",
+        "launch_date",
+        "measurement_end_date",
+        "assigned_customers",
+        "treatment_customers",
+        "holdout_customers",
+    }
+    missing_calendar = sorted(required_calendar_columns.difference(calendar.columns))
+    if missing_calendar:
+        msg = f"Portfolio calendar is missing required readout field(s): {', '.join(missing_calendar)}."
+        raise ValueError(msg)
+
+    required_comparison_columns = {
+        "artifact_id",
+        "comparison_rank",
+        "priority_score",
+        "segment_label",
+        "recommended_action",
+        "launch_readiness",
+        "crm_evidence_status",
+        "expected_incremental_margin_at_mde_gbp",
+        "risk_weighted_margin_gbp",
+        "primary_metric",
+    }
+    missing_comparison = sorted(required_comparison_columns.difference(comparison.columns))
+    if missing_comparison:
+        msg = f"Experiment comparison is missing required readout field(s): {', '.join(missing_comparison)}."
+        raise ValueError(msg)
+
+    selected = _selected_portfolio_experiments(comparison, top_n=top_n)
+    unmatched_artifact_ids = sorted(
+        set(calendar["artifact_id"].astype(str)).difference(selected["artifact_id"].astype(str))
+    )
+    if unmatched_artifact_ids:
+        msg = (
+            "Portfolio readout calendar contains artifact(s) outside the selected comparison set: "
+            + ", ".join(unmatched_artifact_ids)
+            + ". Rebuild the calendar with the same portfolio selection or pass a matching comparison table."
+        )
+        raise ValueError(msg)
+
+    readout = calendar.merge(
+        selected[list(required_comparison_columns)],
+        on="artifact_id",
+        how="left",
+        suffixes=("", "_planned"),
+    )
+    evidence_benchmark = _crm_evidence_benchmark(crm_evidence)
+    readout["benchmark_campaigns"] = evidence_benchmark["benchmark_campaigns"]
+    readout["benchmark_positive_campaigns"] = evidence_benchmark["benchmark_positive_campaigns"]
+    readout["benchmark_conversion_lift"] = evidence_benchmark["benchmark_conversion_lift"]
+    readout["benchmark_incremental_profit_per_customer_gbp"] = evidence_benchmark[
+        "benchmark_incremental_profit_per_customer_gbp"
+    ]
+    readout["observed_conversion_lift"] = readout.apply(
+        lambda row: _portfolio_readout_observed_lift(row, evidence_benchmark),
+        axis=1,
+    )
+    readout["lift_vs_benchmark"] = (
+        readout["observed_conversion_lift"] - readout["benchmark_conversion_lift"]
+    )
+    readout["expected_incremental_margin_at_mde_gbp"] = readout[
+        "expected_incremental_margin_at_mde_gbp"
+    ].fillna(0.0)
+    readout["incremental_margin_readout_gbp"] = (
+        readout["expected_incremental_margin_at_mde_gbp"]
+        * (1 + readout["lift_vs_benchmark"].clip(lower=-0.4, upper=0.4))
+    ).clip(lower=0.0)
+    readout["incremental_profit_readout_gbp"] = (
+        readout["incremental_margin_readout_gbp"]
+        + (
+            readout["assigned_customers"].astype(float)
+            * readout["benchmark_incremental_profit_per_customer_gbp"]
+            * 0.2
+        )
+    ).clip(lower=0.0)
+    readout["readout_confidence"] = readout.apply(_portfolio_readout_confidence, axis=1)
+    readout["decision_status"] = readout.apply(_portfolio_readout_decision_status, axis=1)
+    readout["recommended_next_action"] = readout.apply(_portfolio_readout_next_action, axis=1)
+    readout["readout_note"] = readout.apply(_portfolio_readout_note, axis=1)
+
+    for column in _portfolio_readout_columns():
+        if column not in readout:
+            readout[column] = ""
+    return readout[_portfolio_readout_columns()].reset_index(drop=True)
+
+
+def summarize_crm_experiment_portfolio_readout(readout: pd.DataFrame) -> dict[str, float | int | str]:
+    """Summarize CRM experiment portfolio readout decisions."""
+
+    experiments = int(len(readout))
+    if experiments == 0:
+        return {
+            "experiments": 0,
+            "scale_decisions": 0,
+            "retest_decisions": 0,
+            "stop_decisions": 0,
+            "total_incremental_profit_readout_gbp": 0.0,
+            "average_observed_conversion_lift": 0.0,
+            "readout_status": "No readouts packaged",
+        }
+
+    scale_decisions = int((readout["decision_status"] == "Scale").sum())
+    retest_decisions = int((readout["decision_status"] == "Retest").sum())
+    stop_decisions = int((readout["decision_status"] == "Stop").sum())
+    review_decisions = int((readout["decision_status"] == "Review").sum())
+    if scale_decisions > 0 and stop_decisions == 0:
+        status = "Portfolio learning ready"
+    elif review_decisions > 0 or retest_decisions > 0:
+        status = "Needs decision review"
+    else:
+        status = "No scale candidates"
+
+    return {
+        "experiments": experiments,
+        "scale_decisions": scale_decisions,
+        "retest_decisions": retest_decisions,
+        "stop_decisions": stop_decisions,
+        "total_incremental_profit_readout_gbp": float(
+            readout["incremental_profit_readout_gbp"].sum()
+        ),
+        "average_observed_conversion_lift": float(readout["observed_conversion_lift"].mean()),
+        "readout_status": status,
+    }
+
+
+def crm_experiment_portfolio_readout_csv(readout: pd.DataFrame) -> str:
+    """Serialize CRM experiment portfolio readouts as CSV."""
+
+    return readout.to_csv(index=False)
+
+
+def crm_experiment_portfolio_readout_markdown(readout: pd.DataFrame) -> str:
+    """Render CRM experiment portfolio readouts as a stakeholder-facing markdown note."""
+
+    summary = summarize_crm_experiment_portfolio_readout(readout)
+    lines = [
+        "# CRM Experiment Portfolio Readout",
+        "",
+        "## Summary",
+        "",
+        f"- Readout status: {summary['readout_status']}",
+        f"- Experiments packaged: {int(summary['experiments']):,}",
+        f"- Scale decisions: {int(summary['scale_decisions']):,}",
+        f"- Retest decisions: {int(summary['retest_decisions']):,}",
+        f"- Stop decisions: {int(summary['stop_decisions']):,}",
+        f"- Total incremental profit readout: {_gbp(float(summary['total_incremental_profit_readout_gbp']))}",
+        f"- Average observed conversion lift: {_pct(float(summary['average_observed_conversion_lift']))}",
+        "",
+        "## Experiment Decisions",
+        "",
+        "| Launch | Experiment | Decision | Observed lift | Profit readout | Next action |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for row in readout.to_dict("records"):
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    _markdown_table_cell(row["launch_sequence"]),
+                    _markdown_table_cell(row["segment_label"]),
+                    _markdown_table_cell(row["decision_status"]),
+                    _pct(float(row["observed_conversion_lift"])),
+                    _gbp(float(row["incremental_profit_readout_gbp"])),
+                    _markdown_table_cell(row["recommended_next_action"]),
+                ]
+            )
+            + " |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Caveat",
+            "",
+            (
+                "This portfolio readout is a deterministic demo artifact that uses available CRM "
+                "evidence as a benchmark. It is suitable for portfolio review and workflow design, "
+                "not production decision approval."
+            ),
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -1605,6 +1803,109 @@ def _crm_portfolio_status(selected: pd.DataFrame) -> str:
     return "Mixed readiness"
 
 
+def _crm_evidence_benchmark(crm_evidence: pd.DataFrame) -> dict[str, float | int]:
+    if crm_evidence.empty:
+        return {
+            "benchmark_campaigns": 0,
+            "benchmark_positive_campaigns": 0,
+            "benchmark_conversion_lift": 0.0,
+            "benchmark_incremental_profit_per_customer_gbp": 0.0,
+        }
+
+    campaigns = int(len(crm_evidence))
+    target_customers = float(crm_evidence.get("target_customers", pd.Series(dtype=float)).sum())
+    positive_campaigns = int((crm_evidence["evidence_status"].astype(str) == "Positive").sum())
+    if target_customers > 0:
+        conversion_lift = float(
+            (
+                crm_evidence["conversion_lift"].astype(float)
+                * crm_evidence["target_customers"].astype(float)
+            ).sum()
+            / target_customers
+        )
+        profit_per_customer = float(
+            crm_evidence["incremental_profit_gbp"].astype(float).sum() / target_customers
+        )
+    else:
+        conversion_lift = float(crm_evidence["conversion_lift"].astype(float).mean())
+        profit_per_customer = 0.0
+
+    return {
+        "benchmark_campaigns": campaigns,
+        "benchmark_positive_campaigns": positive_campaigns,
+        "benchmark_conversion_lift": conversion_lift,
+        "benchmark_incremental_profit_per_customer_gbp": profit_per_customer,
+    }
+
+
+def _portfolio_readout_observed_lift(
+    row: pd.Series,
+    evidence_benchmark: Mapping[str, float | int],
+) -> float:
+    benchmark_lift = float(evidence_benchmark["benchmark_conversion_lift"])
+    readiness_adjustment = {
+        "Ready to test": 0.006,
+        "Directional pilot": 0.003,
+        "Underpowered": -0.002,
+        "Do not launch": -0.006,
+    }.get(str(row.get("launch_readiness", "")), 0.0)
+    evidence_adjustment = {
+        "Positive": 0.006,
+        "Review": 0.001,
+        "Needs more data": -0.001,
+        "No prior test": -0.002,
+        "Negative": -0.006,
+    }.get(str(row.get("crm_evidence_status", "")), 0.0)
+    priority_adjustment = min(float(row.get("priority_score", 0.0)) / 10_000, 0.004)
+    return round(float(benchmark_lift + readiness_adjustment + evidence_adjustment + priority_adjustment), 5)
+
+
+def _portfolio_readout_confidence(row: pd.Series) -> str:
+    holdout_customers = int(_optional_float(row.get("holdout_customers")))
+    readiness = str(row.get("launch_readiness", ""))
+    if holdout_customers >= 250 and readiness == "Ready to test":
+        return "High"
+    if holdout_customers >= 100 and readiness in {"Ready to test", "Directional pilot"}:
+        return "Medium"
+    return "Low"
+
+
+def _portfolio_readout_decision_status(row: pd.Series) -> str:
+    observed_lift = float(row.get("observed_conversion_lift", 0.0))
+    profit = float(row.get("incremental_profit_readout_gbp", 0.0))
+    confidence = str(row.get("readout_confidence", ""))
+    if observed_lift > 0.01 and profit > 0 and confidence in {"High", "Medium"}:
+        return "Scale"
+    if observed_lift > 0 and profit > 0:
+        return "Retest"
+    if observed_lift <= 0 or profit <= 0:
+        return "Stop"
+    return "Review"
+
+
+def _portfolio_readout_next_action(row: pd.Series) -> str:
+    decision = str(row.get("decision_status", ""))
+    if decision == "Scale":
+        return "Add to CRM learning library and prepare scaled rollout"
+    if decision == "Retest":
+        return "Run a larger holdout test before scaling"
+    if decision == "Stop":
+        return "Stop rollout and review offer economics"
+    return "Review with marketing and analytics stakeholders"
+
+
+def _portfolio_readout_note(row: pd.Series) -> str:
+    return (
+        f"{row.get('readout_confidence', 'Low')} confidence readout using "
+        f"{int(_optional_float(row.get('benchmark_campaigns'))):,} CRM benchmark campaign(s); "
+        "treat as demo evidence until linked to live CRM delivery logs."
+    )
+
+
+def _markdown_table_cell(value: object) -> str:
+    return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
 def _duplicate_values(frame: pd.DataFrame, column: str) -> list[str]:
     if column not in frame:
         return []
@@ -1670,6 +1971,40 @@ def _portfolio_calendar_columns() -> list[str]:
         "weekly_cap_review_flag",
         "calendar_status",
         "calendar_guardrail",
+    ]
+
+
+def _portfolio_readout_columns() -> list[str]:
+    return [
+        "launch_sequence",
+        "portfolio_priority",
+        "comparison_rank",
+        "artifact_id",
+        "segment_label",
+        "recommended_action",
+        "launch_date",
+        "measurement_end_date",
+        "launch_readiness",
+        "crm_evidence_status",
+        "primary_metric",
+        "assigned_customers",
+        "treatment_customers",
+        "holdout_customers",
+        "priority_score",
+        "risk_weighted_margin_gbp",
+        "expected_incremental_margin_at_mde_gbp",
+        "benchmark_campaigns",
+        "benchmark_positive_campaigns",
+        "benchmark_conversion_lift",
+        "benchmark_incremental_profit_per_customer_gbp",
+        "observed_conversion_lift",
+        "lift_vs_benchmark",
+        "incremental_margin_readout_gbp",
+        "incremental_profit_readout_gbp",
+        "readout_confidence",
+        "decision_status",
+        "recommended_next_action",
+        "readout_note",
     ]
 
 

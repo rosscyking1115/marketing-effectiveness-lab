@@ -42,6 +42,7 @@ from marketing_effectiveness_lab.customer import (
     build_crm_experiment_audience_assignment,
     build_crm_experiment_portfolio_audience_assignment,
     build_crm_experiment_portfolio_calendar,
+    build_crm_experiment_portfolio_readout,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
@@ -53,6 +54,8 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_portfolio_audience_csv,
     crm_experiment_portfolio_calendar_csv,
     crm_experiment_portfolio_csv,
+    crm_experiment_portfolio_readout_csv,
+    crm_experiment_portfolio_readout_markdown,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
     customer_future_value_backtest,
@@ -68,6 +71,7 @@ from marketing_effectiveness_lab.customer import (
     summarize_crm_experiment_portfolio,
     summarize_crm_experiment_portfolio_audience,
     summarize_crm_experiment_portfolio_calendar,
+    summarize_crm_experiment_portfolio_readout,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.assembly import (
@@ -1306,6 +1310,15 @@ else:
         portfolio_calendar_summary = summarize_crm_experiment_portfolio_calendar(
             portfolio_calendar
         )
+        portfolio_readout = build_crm_experiment_portfolio_readout(
+            portfolio_calendar,
+            candidate_artifact_comparison,
+            crm_lift,
+            top_n=portfolio_size,
+        )
+        portfolio_readout_summary = summarize_crm_experiment_portfolio_readout(
+            portfolio_readout
+        )
         selected_portfolio = (
             candidate_artifact_comparison.sort_values("comparison_rank")
             .head(portfolio_size)
@@ -1465,6 +1478,55 @@ else:
             use_container_width=True,
             hide_index=True,
         )
+        st.markdown("**Post-launch readout package**")
+        st.caption(
+            "Demo decision-support readout using CRM benchmark evidence; not a production CRM "
+            "measurement approval or proof of a live launched experiment."
+        )
+        readout_cols = st.columns(5)
+        readout_cols[0].metric(
+            "Readout status",
+            str(portfolio_readout_summary["readout_status"]),
+        )
+        readout_cols[1].metric(
+            "Scale decisions",
+            integer(portfolio_readout_summary["scale_decisions"]),
+        )
+        readout_cols[2].metric(
+            "Retest decisions",
+            integer(portfolio_readout_summary["retest_decisions"]),
+        )
+        readout_cols[3].metric(
+            "Readout profit",
+            gbp(portfolio_readout_summary["total_incremental_profit_readout_gbp"]),
+        )
+        readout_cols[4].metric(
+            "Observed lift",
+            percent(portfolio_readout_summary["average_observed_conversion_lift"]),
+        )
+        portfolio_readout_display = portfolio_readout.copy()
+        for pct_col in ["observed_conversion_lift", "lift_vs_benchmark"]:
+            portfolio_readout_display[pct_col] = portfolio_readout_display[pct_col].map(percent)
+        for money_col in [
+            "incremental_profit_readout_gbp",
+            "expected_incremental_margin_at_mde_gbp",
+        ]:
+            portfolio_readout_display[money_col] = portfolio_readout_display[money_col].map(gbp)
+        st.dataframe(
+            portfolio_readout_display[
+                [
+                    "launch_sequence",
+                    "segment_label",
+                    "decision_status",
+                    "readout_confidence",
+                    "observed_conversion_lift",
+                    "incremental_profit_readout_gbp",
+                    "recommended_next_action",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
         st.download_button(
             "Download portfolio CSV",
             data=crm_experiment_portfolio_csv(
@@ -1494,6 +1556,20 @@ else:
             data=crm_experiment_portfolio_calendar_csv(portfolio_calendar),
             file_name="crm_experiment_portfolio_calendar.csv",
             mime="text/csv",
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download portfolio readout CSV",
+            data=crm_experiment_portfolio_readout_csv(portfolio_readout),
+            file_name="crm_experiment_portfolio_readout.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download portfolio readout brief",
+            data=crm_experiment_portfolio_readout_markdown(portfolio_readout),
+            file_name="crm_experiment_portfolio_readout.md",
+            mime="text/markdown",
             use_container_width=True,
         )
 

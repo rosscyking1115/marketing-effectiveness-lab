@@ -45,6 +45,7 @@ stakeholder communication.
 - Deterministic CRM audience assignment exports for treatment and holdout launch files
 - Mutually exclusive CRM portfolio audience exports using rank-based assignment priority
 - CRM portfolio launch calendar planning with spacing, cooldown, and weekly contact-cap guardrails
+- CRM post-launch readout packaging with decision status, evidence context, and stakeholder briefs
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -67,6 +68,7 @@ stakeholder communication.
 - Customer-level CRM treatment and holdout assignment exports
 - Portfolio-level CRM audience exports with overlap suppression
 - CRM launch calendar exports with contact-fatigue guardrails
+- CRM portfolio readout exports and markdown decision briefs
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -115,6 +117,7 @@ Useful docs:
 - `docs/phase-34-crm-audience-assignment-export.md` - deterministic CRM audience assignment exports
 - `docs/phase-35-crm-portfolio-audience-export.md` - mutually exclusive portfolio audience exports
 - `docs/phase-36-crm-portfolio-calendar.md` - CRM launch calendar and contact-fatigue planning
+- `docs/phase-37-crm-portfolio-readout.md` - CRM post-launch readout packaging
 
 ## Quick Start
 
