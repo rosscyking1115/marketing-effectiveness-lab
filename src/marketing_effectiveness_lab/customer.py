@@ -1093,6 +1093,166 @@ def crm_experiment_portfolio_audience_csv(audience: pd.DataFrame) -> str:
     return audience.to_csv(index=False)
 
 
+def build_crm_experiment_portfolio_calendar(
+    audience: pd.DataFrame,
+    *,
+    start_date: object = "2026-01-05",
+    spacing_days: int = 7,
+    contact_policy_window_days: int = 14,
+    measurement_window_days: int = 28,
+    max_contacts_per_week: int = 1_500,
+) -> pd.DataFrame:
+    """Build a launch calendar for a mutually exclusive CRM experiment audience export."""
+
+    if audience.empty:
+        calendar = pd.DataFrame(columns=_portfolio_calendar_columns())
+        calendar.attrs["max_contacts_per_week"] = int(max_contacts_per_week)
+        calendar.attrs["contact_policy_window_days"] = int(contact_policy_window_days)
+        calendar.attrs["measurement_window_days"] = int(measurement_window_days)
+        return calendar
+
+    required_columns = {
+        "portfolio_priority",
+        "artifact_id",
+        "segment_label",
+        "customer_id",
+        "experiment_group",
+        "preferred_channel",
+    }
+    missing = sorted(required_columns.difference(audience.columns))
+    if missing:
+        msg = f"Portfolio audience is missing required calendar field(s): {', '.join(missing)}."
+        raise ValueError(msg)
+
+    spacing_days = max(int(spacing_days), 1)
+    contact_policy_window_days = max(int(contact_policy_window_days), 1)
+    measurement_window_days = max(int(measurement_window_days), 1)
+    max_contacts_per_week = max(int(max_contacts_per_week), 1)
+    launch_start = pd.Timestamp(start_date).normalize()
+
+    experiment_summary = (
+        audience.groupby(["portfolio_priority", "artifact_id", "segment_label"], as_index=False)
+        .agg(
+            assigned_customers=("customer_id", "nunique"),
+            treatment_customers=("experiment_group", lambda values: int((values == "treatment").sum())),
+            holdout_customers=("experiment_group", lambda values: int((values == "holdout").sum())),
+            email_customers=("preferred_channel", lambda values: int((values == "email").sum())),
+            sms_customers=("preferred_channel", lambda values: int((values == "sms").sum())),
+        )
+        .sort_values(["portfolio_priority", "artifact_id"])
+        .reset_index(drop=True)
+    )
+
+    rows: list[dict[str, object]] = []
+    previous_launch_date: pd.Timestamp | None = None
+    for sequence, experiment in enumerate(experiment_summary.to_dict("records"), start=1):
+        launch_date = launch_start + pd.Timedelta(days=(sequence - 1) * spacing_days)
+        launch_week_start = launch_date - pd.Timedelta(days=launch_date.weekday())
+        cooldown_end_date = launch_date + pd.Timedelta(days=contact_policy_window_days)
+        measurement_end_date = launch_date + pd.Timedelta(days=measurement_window_days)
+        if previous_launch_date is None:
+            days_since_previous = None
+        else:
+            days_since_previous = int((launch_date - previous_launch_date).days)
+
+        rows.append(
+            {
+                "launch_sequence": sequence,
+                "portfolio_priority": int(experiment["portfolio_priority"]),
+                "artifact_id": str(experiment["artifact_id"]),
+                "segment_label": str(experiment["segment_label"]),
+                "launch_date": launch_date.date().isoformat(),
+                "launch_week_start": launch_week_start.date().isoformat(),
+                "cooldown_end_date": cooldown_end_date.date().isoformat(),
+                "measurement_end_date": measurement_end_date.date().isoformat(),
+                "days_since_previous_launch": days_since_previous,
+                "assigned_customers": int(experiment["assigned_customers"]),
+                "treatment_customers": int(experiment["treatment_customers"]),
+                "holdout_customers": int(experiment["holdout_customers"]),
+                "email_customers": int(experiment["email_customers"]),
+                "sms_customers": int(experiment["sms_customers"]),
+                "max_contacts_per_week": max_contacts_per_week,
+                "contact_policy_window_days": contact_policy_window_days,
+                "measurement_window_days": measurement_window_days,
+            }
+        )
+        previous_launch_date = launch_date
+
+    calendar = pd.DataFrame(rows)
+    weekly_load = calendar.groupby("launch_week_start")["assigned_customers"].transform("sum")
+    calendar["weekly_contact_load"] = weekly_load.astype(int)
+
+    spacing_review = calendar["days_since_previous_launch"].apply(
+        lambda value: pd.notna(value) and int(value) < contact_policy_window_days
+    )
+    weekly_cap_review = calendar["weekly_contact_load"] > max_contacts_per_week
+    calendar["spacing_review_flag"] = spacing_review.astype(int)
+    calendar["weekly_cap_review_flag"] = weekly_cap_review.astype(int)
+    calendar["calendar_status"] = "Ready"
+    calendar.loc[spacing_review & ~weekly_cap_review, "calendar_status"] = "Review spacing"
+    calendar.loc[weekly_cap_review & ~spacing_review, "calendar_status"] = "Review weekly cap"
+    calendar.loc[spacing_review & weekly_cap_review, "calendar_status"] = (
+        "Review spacing and weekly cap"
+    )
+
+    calendar["calendar_guardrail"] = "No action required"
+    calendar.loc[spacing_review & ~weekly_cap_review, "calendar_guardrail"] = (
+        "Increase launch spacing or confirm CRM contact policy"
+    )
+    calendar.loc[weekly_cap_review & ~spacing_review, "calendar_guardrail"] = (
+        "Reduce portfolio size or raise weekly send capacity"
+    )
+    calendar.loc[spacing_review & weekly_cap_review, "calendar_guardrail"] = (
+        "Increase launch spacing and reduce weekly send pressure"
+    )
+
+    for column in _portfolio_calendar_columns():
+        if column not in calendar:
+            calendar[column] = ""
+    calendar = calendar[_portfolio_calendar_columns()].reset_index(drop=True)
+    calendar.attrs["max_contacts_per_week"] = max_contacts_per_week
+    calendar.attrs["contact_policy_window_days"] = contact_policy_window_days
+    calendar.attrs["measurement_window_days"] = measurement_window_days
+    return calendar
+
+
+def summarize_crm_experiment_portfolio_calendar(calendar: pd.DataFrame) -> dict[str, float | int | str]:
+    """Summarize a CRM experiment portfolio launch calendar."""
+
+    experiments = int(len(calendar))
+    if experiments == 0:
+        return {
+            "experiments": 0,
+            "assigned_customers": 0,
+            "launch_start_date": "",
+            "launch_end_date": "",
+            "peak_weekly_contacts": 0,
+            "max_contacts_per_week": int(calendar.attrs.get("max_contacts_per_week", 0)),
+            "review_experiments": 0,
+            "calendar_status": "No scheduled audience",
+        }
+
+    review_experiments = int((calendar["calendar_status"].astype(str) != "Ready").sum())
+    calendar_status = "Ready to schedule" if review_experiments == 0 else "Review contact policy"
+
+    return {
+        "experiments": experiments,
+        "assigned_customers": int(calendar["assigned_customers"].sum()),
+        "launch_start_date": str(calendar["launch_date"].min()),
+        "launch_end_date": str(calendar["launch_date"].max()),
+        "peak_weekly_contacts": int(calendar["weekly_contact_load"].max()),
+        "max_contacts_per_week": int(calendar["max_contacts_per_week"].max()),
+        "review_experiments": review_experiments,
+        "calendar_status": calendar_status,
+    }
+
+
+def crm_experiment_portfolio_calendar_csv(calendar: pd.DataFrame) -> str:
+    """Serialize a CRM experiment portfolio launch calendar as CSV."""
+
+    return calendar.to_csv(index=False)
+
+
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
     """Render a CRM experiment artifact as a stakeholder-readable markdown brief."""
 
@@ -1483,6 +1643,33 @@ def _portfolio_audience_assignment_columns() -> list[str]:
         "portfolio_assignment_status",
         "portfolio_exclusion_reason",
         *_audience_assignment_columns(),
+    ]
+
+
+def _portfolio_calendar_columns() -> list[str]:
+    return [
+        "launch_sequence",
+        "portfolio_priority",
+        "artifact_id",
+        "segment_label",
+        "launch_date",
+        "launch_week_start",
+        "cooldown_end_date",
+        "measurement_end_date",
+        "days_since_previous_launch",
+        "assigned_customers",
+        "treatment_customers",
+        "holdout_customers",
+        "email_customers",
+        "sms_customers",
+        "weekly_contact_load",
+        "max_contacts_per_week",
+        "contact_policy_window_days",
+        "measurement_window_days",
+        "spacing_review_flag",
+        "weekly_cap_review_flag",
+        "calendar_status",
+        "calendar_guardrail",
     ]
 
 

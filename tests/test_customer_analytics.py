@@ -6,6 +6,7 @@ from marketing_effectiveness_lab.customer import (
     build_crm_experiment_artifact,
     build_crm_experiment_audience_assignment,
     build_crm_experiment_portfolio_audience_assignment,
+    build_crm_experiment_portfolio_calendar,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
@@ -15,6 +16,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_checklist,
     crm_experiment_design,
     crm_experiment_portfolio_audience_csv,
+    crm_experiment_portfolio_calendar_csv,
     crm_experiment_portfolio_csv,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
@@ -30,6 +32,7 @@ from marketing_effectiveness_lab.customer import (
     summarize_crm_experiment_audience,
     summarize_crm_experiment_portfolio,
     summarize_crm_experiment_portfolio_audience,
+    summarize_crm_experiment_portfolio_calendar,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.customer_generator import generate_customer_demo_data
@@ -523,3 +526,80 @@ def test_crm_experiment_portfolio_audience_assignment_enforces_mutual_exclusion(
     assert portfolio_csv.startswith(
         "portfolio_priority,portfolio_assignment_status,portfolio_exclusion_reason"
     )
+
+
+def test_crm_experiment_portfolio_calendar_flags_contact_policy_spacing() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    scored = score_customer_lapse_value(
+        tables["customers"],
+        tables["orders"],
+        as_of_date="2025-12-31",
+        calibration_cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+    crm_summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+    plan = retention_segment_action_plan(scored, crm_summary)
+    candidates = plan[
+        plan["recommended_action"].isin(
+            {"Scale tested CRM", "Run holdout test", "Retest offer before scaling"}
+        )
+    ].head(5)
+
+    artifacts = []
+    for _, candidate in candidates.iterrows():
+        design = crm_experiment_design(candidate)
+        checklist = crm_experiment_checklist(design)
+        artifacts.append(build_crm_experiment_artifact(candidate, design, checklist))
+
+    audience = build_crm_experiment_portfolio_audience_assignment(
+        scored,
+        artifacts,
+        top_n=3,
+    )
+    calendar = build_crm_experiment_portfolio_calendar(
+        audience,
+        start_date="2026-02-02",
+        spacing_days=7,
+        contact_policy_window_days=14,
+        max_contacts_per_week=100_000,
+    )
+    duplicate_calendar = build_crm_experiment_portfolio_calendar(
+        audience,
+        start_date="2026-02-02",
+        spacing_days=7,
+        contact_policy_window_days=14,
+        max_contacts_per_week=100_000,
+    )
+    summary = summarize_crm_experiment_portfolio_calendar(calendar)
+    calendar_csv = crm_experiment_portfolio_calendar_csv(calendar)
+    capped_calendar = build_crm_experiment_portfolio_calendar(
+        audience,
+        start_date="2026-02-02",
+        spacing_days=14,
+        contact_policy_window_days=14,
+        max_contacts_per_week=1,
+    )
+    combined_review_calendar = build_crm_experiment_portfolio_calendar(
+        audience,
+        start_date="2026-02-02",
+        spacing_days=7,
+        contact_policy_window_days=14,
+        max_contacts_per_week=1,
+    )
+
+    assert calendar.equals(duplicate_calendar)
+    assert calendar["launch_sequence"].is_monotonic_increasing
+    assert calendar["launch_date"].iloc[0] == "2026-02-02"
+    assert set(calendar["calendar_status"]).issubset({"Ready", "Review spacing"})
+    assert set(calendar["spacing_review_flag"]).issubset({0, 1})
+    assert set(calendar["weekly_cap_review_flag"]) == {0}
+    assert (calendar["calendar_status"] == "Review spacing").sum() >= 1
+    assert summary["experiments"] == len(calendar)
+    assert summary["assigned_customers"] == len(audience)
+    assert summary["calendar_status"] == "Review contact policy"
+    assert summary["peak_weekly_contacts"] <= summary["max_contacts_per_week"]
+    assert (capped_calendar["weekly_cap_review_flag"] == 1).all()
+    assert set(capped_calendar["calendar_status"]) == {"Review weekly cap"}
+    assert "Review spacing and weekly cap" in set(combined_review_calendar["calendar_status"])
+    assert calendar_csv.startswith("launch_sequence,portfolio_priority,artifact_id")

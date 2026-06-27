@@ -41,6 +41,7 @@ from marketing_effectiveness_lab.customer import (
     build_crm_experiment_artifact,
     build_crm_experiment_audience_assignment,
     build_crm_experiment_portfolio_audience_assignment,
+    build_crm_experiment_portfolio_calendar,
     cohort_retention,
     compare_crm_experiment_artifacts,
     crm_experiment_artifact_comparison_csv,
@@ -50,6 +51,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_checklist,
     crm_experiment_design,
     crm_experiment_portfolio_audience_csv,
+    crm_experiment_portfolio_calendar_csv,
     crm_experiment_portfolio_csv,
     crm_incrementality_portfolio,
     crm_incrementality_summary,
@@ -65,6 +67,7 @@ from marketing_effectiveness_lab.customer import (
     summarize_crm_experiment_audience,
     summarize_crm_experiment_portfolio,
     summarize_crm_experiment_portfolio_audience,
+    summarize_crm_experiment_portfolio_calendar,
     summarize_customer_kpis,
 )
 from marketing_effectiveness_lab.data.assembly import (
@@ -1257,6 +1260,52 @@ else:
         portfolio_audience_summary = summarize_crm_experiment_portfolio_audience(
             portfolio_audience
         )
+        calendar_control_cols = st.columns(4)
+        calendar_start_date = calendar_control_cols[0].date_input(
+            "First launch date",
+            value=pd.Timestamp("2026-01-05").date(),
+            key="crm_portfolio_calendar_start_date",
+        )
+        calendar_spacing_days = int(
+            calendar_control_cols[1].number_input(
+                "Launch spacing days",
+                min_value=1,
+                max_value=60,
+                value=14,
+                step=1,
+                key="crm_portfolio_calendar_spacing_days",
+            )
+        )
+        calendar_weekly_cap = int(
+            calendar_control_cols[2].number_input(
+                "Weekly contact cap",
+                min_value=1,
+                max_value=50_000,
+                value=1_500,
+                step=100,
+                key="crm_portfolio_calendar_weekly_cap",
+            )
+        )
+        calendar_cooldown_days = int(
+            calendar_control_cols[3].number_input(
+                "Cooldown days",
+                min_value=1,
+                max_value=60,
+                value=14,
+                step=1,
+                key="crm_portfolio_calendar_cooldown_days",
+            )
+        )
+        portfolio_calendar = build_crm_experiment_portfolio_calendar(
+            portfolio_audience,
+            start_date=calendar_start_date,
+            spacing_days=calendar_spacing_days,
+            contact_policy_window_days=calendar_cooldown_days,
+            max_contacts_per_week=calendar_weekly_cap,
+        )
+        portfolio_calendar_summary = summarize_crm_experiment_portfolio_calendar(
+            portfolio_calendar
+        )
         selected_portfolio = (
             candidate_artifact_comparison.sort_values("comparison_rank")
             .head(portfolio_size)
@@ -1369,6 +1418,53 @@ else:
             use_container_width=True,
             hide_index=True,
         )
+        st.markdown("**Launch calendar and contact policy**")
+        calendar_cols = st.columns(5)
+        calendar_cols[0].metric(
+            "Calendar status",
+            str(portfolio_calendar_summary["calendar_status"]),
+        )
+        calendar_cols[1].metric(
+            "Launches",
+            integer(portfolio_calendar_summary["experiments"]),
+        )
+        calendar_cols[2].metric(
+            "Peak weekly load",
+            integer(portfolio_calendar_summary["peak_weekly_contacts"]),
+        )
+        calendar_cols[3].metric(
+            "Weekly cap",
+            integer(portfolio_calendar_summary["max_contacts_per_week"]),
+        )
+        calendar_cols[4].metric(
+            "Review launches",
+            integer(portfolio_calendar_summary["review_experiments"]),
+        )
+        portfolio_calendar_display = portfolio_calendar.copy()
+        for count_col in [
+            "assigned_customers",
+            "treatment_customers",
+            "holdout_customers",
+            "weekly_contact_load",
+            "max_contacts_per_week",
+        ]:
+            portfolio_calendar_display[count_col] = portfolio_calendar_display[count_col].map(integer)
+        st.dataframe(
+            portfolio_calendar_display[
+                [
+                    "launch_sequence",
+                    "launch_date",
+                    "artifact_id",
+                    "segment_label",
+                    "assigned_customers",
+                    "weekly_contact_load",
+                    "calendar_status",
+                    "calendar_guardrail",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
         st.download_button(
             "Download portfolio CSV",
             data=crm_experiment_portfolio_csv(
@@ -1390,6 +1486,13 @@ else:
             "Download portfolio audience CSV",
             data=crm_experiment_portfolio_audience_csv(portfolio_audience),
             file_name="crm_experiment_portfolio_audience.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download portfolio launch calendar",
+            data=crm_experiment_portfolio_calendar_csv(portfolio_calendar),
+            file_name="crm_experiment_portfolio_calendar.csv",
             mime="text/csv",
             use_container_width=True,
         )
