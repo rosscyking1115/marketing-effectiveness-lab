@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
 from marketing_effectiveness_lab.customer import (
     _customer_features_as_of,
+    _matched_crm_evidence,
     acquisition_channel_quality,
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
@@ -277,6 +279,47 @@ def test_crm_incrementality_portfolio_rolls_up_campaign_diagnostics() -> None:
     assert portfolio["review_campaigns"] >= 0
     assert isinstance(portfolio["total_incremental_profit_gbp"], float)
     assert isinstance(portfolio["total_incremental_margin_gbp"], float)
+
+
+def test_crm_evidence_keeps_lifecycle_and_value_dimensions_separate() -> None:
+    crm_summary = pd.DataFrame(
+        [
+            {
+                "target_segment": "Active",
+                "evidence_status": "Review",
+                "conversion_lift": 0.02,
+                "incremental_profit_per_target_customer_gbp": 1.0,
+                "incremental_profit_gbp": 1000.0,
+            },
+            {
+                "target_segment": "VIP",
+                "evidence_status": "Positive",
+                "conversion_lift": 0.10,
+                "incremental_profit_per_target_customer_gbp": 5.0,
+                "incremental_profit_gbp": 5000.0,
+            },
+        ]
+    )
+
+    both = _matched_crm_evidence(
+        {"lifecycle_segment": "Active", "value_segment": "VIP"}, crm_summary
+    )
+    # Each dimension is reported separately rather than blended into one mean.
+    assert both["lifecycle_crm_conversion_lift"] == 0.02
+    assert both["value_crm_conversion_lift"] == 0.10
+    assert both["matched_campaigns"] == 2
+    # The decision signal is the value dimension, NOT the cross-dimension mean (0.06).
+    assert both["crm_evidence_dimension"] == "value"
+    assert both["crm_evidence_status"] == "Positive"
+    assert both["avg_crm_conversion_lift"] == 0.10
+
+    # With no value-targeted campaign, fall back to the lifecycle dimension only.
+    fallback = _matched_crm_evidence(
+        {"lifecycle_segment": "Active", "value_segment": "Low value"}, crm_summary
+    )
+    assert fallback["crm_evidence_dimension"] == "lifecycle"
+    assert fallback["value_crm_campaigns"] == 0
+    assert fallback["avg_crm_conversion_lift"] == 0.02
 
 
 def test_retention_segment_action_plan_combines_value_risk_and_crm_evidence() -> None:
