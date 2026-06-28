@@ -16,19 +16,6 @@ from marketing_effectiveness_lab.analytics import (
     spend_columns,
 )
 
-CONTROL_COLUMNS = [
-    "trend",
-    "trend_squared",
-    "promotion_depth_pct",
-    "promotion_flag",
-    "holiday_flag",
-    "season_spring_summer",
-    "season_autumn_winter",
-    "organic_search_sessions",
-    "consumer_confidence_index",
-    "inflation_rate_pct",
-]
-
 
 @dataclass(frozen=True)
 class BaselineModelResult:

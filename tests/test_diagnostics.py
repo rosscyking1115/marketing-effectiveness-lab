@@ -70,6 +70,27 @@ def test_diagnostics_review_customer_count_anomaly() -> None:
     assert _status(diagnostics, "Customer counts") == "Review"
 
 
+def test_diagnostics_flag_connector_weeks_outside_spine() -> None:
+    shopify = connector_template_dataframe("shopify")
+    google_ads = connector_template_dataframe("google_ads")
+    # Push one Google Ads week off the Shopify spine (a Monday far in the future)
+    # so the left-join silently drops it.
+    google_ads.loc[google_ads.index[-1], "week_start"] = "2030-01-07"
+
+    result = assemble_weekly_dataset_from_connectors(
+        {"shopify": shopify, "google_ads": google_ads}
+    )
+    diagnostics = assembled_weekly_diagnostics(result.weekly_dataset, result.source_summary)
+
+    coverage = diagnostics[
+        (diagnostics["check"] == "Source coverage")
+        & diagnostics["detail"].str.startswith("Google Ads")
+    ]
+    assert not coverage.empty
+    assert (coverage["status"] == "Review").all()
+    assert "outside the assembled spine" in coverage["detail"].iloc[0]
+
+
 def _status(diagnostics: pd.DataFrame, check: str) -> str:
     return str(diagnostics.loc[diagnostics["check"] == check, "status"].iloc[0])
 
