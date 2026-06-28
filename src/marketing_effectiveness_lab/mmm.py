@@ -26,6 +26,9 @@ DEFAULT_MEDIA_PARAMETERS = {
     "influencer_spend_gbp": {"adstock_decay": 0.60, "half_saturation": 65_000.0, "slope": 1.35},
 }
 
+# season_spring_summer and season_autumn_winter are exact complements, so only
+# one is used as a control alongside the intercept (autumn/winter is the
+# reference season). Including both would make the design matrix rank-deficient.
 CONTROL_FEATURES = [
     "trend",
     "trend_squared",
@@ -33,7 +36,6 @@ CONTROL_FEATURES = [
     "promotion_flag",
     "holiday_flag",
     "season_spring_summer",
-    "season_autumn_winter",
     "log_organic_search_sessions",
     "consumer_confidence_index",
     "inflation_rate_pct",

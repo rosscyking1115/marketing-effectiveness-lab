@@ -60,6 +60,9 @@ def feature_columns(df: pd.DataFrame) -> list[str]:
     """Return baseline model feature columns available in the frame."""
 
     media_features = [f"log_{column}" for column in spend_columns(df)]
+    # season_spring_summer and season_autumn_winter are exact complements, so only
+    # one is included alongside the intercept (autumn/winter is the reference
+    # season). Including both would make the design matrix rank-deficient.
     controls = [
         "trend",
         "trend_squared",
@@ -67,7 +70,6 @@ def feature_columns(df: pd.DataFrame) -> list[str]:
         "promotion_flag",
         "holiday_flag",
         "season_spring_summer",
-        "season_autumn_winter",
         "log_organic_search_sessions",
         "consumer_confidence_index",
         "inflation_rate_pct",
