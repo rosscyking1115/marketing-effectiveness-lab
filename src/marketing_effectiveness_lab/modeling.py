@@ -52,7 +52,9 @@ def make_model_frame(df: pd.DataFrame) -> pd.DataFrame:
         model_df[f"log_{column}"] = np.log1p(model_df[column])
 
     model_df["log_organic_search_sessions"] = np.log1p(model_df["organic_search_sessions"])
-    model_df["log_revenue_gbp"] = np.log(model_df["revenue_gbp"])
+    # Guard against log(0) -> -inf, which would make the OLS target non-finite.
+    # Revenue is in GBP (thousands+), so clipping at 1.0 never affects real data.
+    model_df["log_revenue_gbp"] = np.log(model_df["revenue_gbp"].clip(lower=1.0))
     return model_df
 
 
@@ -164,7 +166,12 @@ def _model_metrics(
 def _mape(actual: pd.Series, predicted: pd.Series) -> float:
     actual_values = actual.to_numpy(dtype=float)
     predicted_values = predicted.to_numpy(dtype=float)
-    return float(np.mean(np.abs((actual_values - predicted_values) / actual_values)))
+    # Exclude zero actuals so they do not produce inf/NaN; MAPE is undefined there.
+    nonzero = actual_values != 0
+    if not nonzero.any():
+        return float("nan")
+    errors = (actual_values[nonzero] - predicted_values[nonzero]) / actual_values[nonzero]
+    return float(np.mean(np.abs(errors)))
 
 
 def _feature_label(feature: str) -> str:

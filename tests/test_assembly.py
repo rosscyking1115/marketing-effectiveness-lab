@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from marketing_effectiveness_lab.data.assembly import (
+    _coerce_for_assembly,
     assemble_connector_csv_texts,
     assemble_weekly_dataset_from_connectors,
 )
@@ -54,6 +55,24 @@ def test_connector_templates_assemble_to_weekly_schema() -> None:
         "Influencer weekly export",
         "External controls weekly export",
     }
+
+
+def test_coerce_for_assembly_handles_dirty_numeric_and_text_columns() -> None:
+    frame = pd.DataFrame(
+        {
+            "week_start": ["2025-01-06", "2025-01-13"],
+            # Numeric-like control column with a stray non-numeric cell.
+            "consumer_confidence_index": ["-18.0", "n/a"],
+            # Genuine label column: none of its values parse as numbers.
+            "session_source_medium": ["google / organic", "newsletter / email"],
+        }
+    )
+
+    coerced = _coerce_for_assembly(frame)
+
+    assert pd.api.types.is_numeric_dtype(coerced["consumer_confidence_index"])
+    assert coerced["consumer_confidence_index"].isna().sum() == 1
+    assert not pd.api.types.is_numeric_dtype(coerced["session_source_medium"])
 
 
 def test_shopify_export_is_reconciled_outcome_source() -> None:
