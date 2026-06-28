@@ -52,6 +52,7 @@ stakeholder communication.
 - CRM portfolio launch calendar planning with spacing, cooldown, and weekly contact-cap guardrails
 - CRM post-launch readout packaging with decision status, evidence context, and stakeholder briefs
 - CRM experiment learning library for reusable evidence by segment, channel, action, and decision outcome
+- Local artifact registry for persisted model reports, run manifests, CRM readouts, launch calendars, and learning records
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -130,6 +131,7 @@ Useful docs:
 - `docs/phase-37-crm-portfolio-readout.md` - CRM post-launch readout packaging
 - `docs/phase-38-crm-learning-library.md` - reusable CRM experiment learning library
 - `docs/phase-39-product-repositioning.md` - product and contribution repositioning
+- `docs/phase-40-local-artifact-registry.md` - local persistence foundation for generated artifacts
 
 ## Quick Start
 
@@ -146,6 +148,8 @@ Launch the analyst dashboard:
 ```powershell
 uv run streamlit run app/streamlit_app.py --server.port 8501 --server.headless true
 ```
+
+Local artifact registry files are written to `.local/artifact_registry/` when the dashboard persistence buttons are used. This folder is git-ignored and is intended for local review only.
 
 The repository also includes a root Streamlit Cloud entrypoint:
 

@@ -18,6 +18,11 @@ from marketing_effectiveness_lab.analytics import (
     summarize_kpis,
     weekly_spend_long,
 )
+from marketing_effectiveness_lab.artifacts import (
+    artifact_index_dataframe,
+    persist_artifact,
+    persist_json_artifact,
+)
 from marketing_effectiveness_lab.bayesian import fit_bayesian_mmm
 from marketing_effectiveness_lab.budget import (
     allocation_from_shares,
@@ -109,6 +114,7 @@ from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "demo" / "fashion_retail_weekly.csv"
 DEMO_OUTPUT_DIR = PROJECT_ROOT / "data" / "demo"
+LOCAL_ARTIFACT_REGISTRY_DIR = PROJECT_ROOT / ".local" / "artifact_registry"
 
 PAGE_TITLE = "Marketing Effectiveness Lab"
 optimize_budget_allocation = getattr(budget_tools, "optimize_budget_allocation", None)
@@ -187,6 +193,29 @@ def percent(value: float) -> str:
 
 def x_value(value: float) -> str:
     return f"{value:,.1f}x"
+
+
+def artifact_registry_display() -> pd.DataFrame:
+    try:
+        registry = artifact_index_dataframe(LOCAL_ARTIFACT_REGISTRY_DIR)
+    except ValueError as exc:
+        st.warning(f"Local artifact registry index could not be read: {exc}")
+        return pd.DataFrame()
+    if registry.empty:
+        return registry
+    display = registry.drop(columns=["metadata"]).copy()
+    display["content_kb"] = (display["content_bytes"] / 1024).round(1)
+    return display[
+        [
+            "artifact_type",
+            "artifact_id",
+            "content_type",
+            "content_kb",
+            "content_sha256",
+            "created_at_utc",
+            "content_path",
+        ]
+    ]
 
 
 @st.cache_data(show_spinner=False)
@@ -1631,6 +1660,84 @@ else:
             mime="text/csv",
             use_container_width=True,
         )
+        with st.expander("Persist CRM package to local registry"):
+            st.caption(
+                "Writes the selected CRM portfolio plan, launch calendar, readout, brief, and learning "
+                "library to `.local/artifact_registry`. This is local prototype persistence, not a "
+                "production approval store."
+            )
+            if st.button("Persist current CRM package", key="persist_crm_package_registry"):
+                portfolio_record = persist_artifact(
+                    LOCAL_ARTIFACT_REGISTRY_DIR,
+                    artifact_type="crm_portfolio_plan",
+                    content=crm_experiment_portfolio_csv(
+                        candidate_artifact_comparison,
+                        top_n=portfolio_size,
+                    ),
+                    content_type="text/csv",
+                    file_extension="csv",
+                    metadata={
+                        "portfolio_size": portfolio_size,
+                        "experiments": int(portfolio_summary["experiments"]),
+                        "status": str(portfolio_summary["portfolio_status"]),
+                    },
+                )
+                calendar_record = persist_artifact(
+                    LOCAL_ARTIFACT_REGISTRY_DIR,
+                    artifact_type="crm_portfolio_calendar",
+                    content=crm_experiment_portfolio_calendar_csv(portfolio_calendar),
+                    content_type="text/csv",
+                    file_extension="csv",
+                    metadata={
+                        "portfolio_size": portfolio_size,
+                        "calendar_status": str(portfolio_calendar_summary["calendar_status"]),
+                    },
+                )
+                readout_record = persist_artifact(
+                    LOCAL_ARTIFACT_REGISTRY_DIR,
+                    artifact_type="crm_portfolio_readout",
+                    content=crm_experiment_portfolio_readout_csv(portfolio_readout),
+                    content_type="text/csv",
+                    file_extension="csv",
+                    metadata={
+                        "portfolio_size": portfolio_size,
+                        "readout_status": str(portfolio_readout_summary["readout_status"]),
+                    },
+                )
+                brief_record = persist_artifact(
+                    LOCAL_ARTIFACT_REGISTRY_DIR,
+                    artifact_type="crm_portfolio_readout_brief",
+                    content=crm_experiment_portfolio_readout_markdown(portfolio_readout),
+                    content_type="text/markdown",
+                    file_extension="md",
+                    metadata={
+                        "portfolio_size": portfolio_size,
+                        "readout_status": str(portfolio_readout_summary["readout_status"]),
+                    },
+                )
+                learning_record = persist_artifact(
+                    LOCAL_ARTIFACT_REGISTRY_DIR,
+                    artifact_type="crm_learning_library",
+                    content=crm_experiment_learning_library_csv(learning_library),
+                    content_type="text/csv",
+                    file_extension="csv",
+                    metadata={
+                        "portfolio_size": portfolio_size,
+                        "learning_status": str(learning_library_summary["learning_status"]),
+                        "library_rows": int(learning_library_summary["library_rows"]),
+                    },
+                )
+                st.success(
+                    "Persisted CRM artifacts: "
+                    f"{portfolio_record.content_path}, {calendar_record.content_path}, "
+                    f"{readout_record.content_path}, {brief_record.content_path}, "
+                    f"and {learning_record.content_path}."
+                )
+            registry_display = artifact_registry_display()
+            if registry_display.empty:
+                st.info("No local artifacts have been persisted yet.")
+            else:
+                st.dataframe(registry_display, use_container_width=True, hide_index=True)
 
     with st.expander("Compare saved CRM experiment artifacts"):
         st.caption(
@@ -2911,6 +3018,49 @@ with download_manifest_col:
         mime="application/json",
         use_container_width=True,
     )
+
+with st.expander("Persist current model run to local registry"):
+    st.caption(
+        "Writes the current report and JSON manifest to `.local/artifact_registry` for local review. "
+        "On Streamlit Cloud this storage is ephemeral; production use still needs governed storage, "
+        "authenticated users, and audit logging."
+    )
+    if st.button("Persist current model run", key="persist_model_run_registry"):
+        manifest_record = persist_json_artifact(
+            LOCAL_ARTIFACT_REGISTRY_DIR,
+            artifact_type="model_run_manifest",
+            artifact_id=str(model_run_manifest["run_id"]),
+            payload=model_run_manifest,
+            metadata={
+                "data_source": data_source_label,
+                "model_label": active_mmm_label,
+                "row_count": len(selected_df),
+                "first_week": str(selected_df["week_start"].min().date()),
+                "last_week": str(selected_df["week_start"].max().date()),
+            },
+        )
+        report_record = persist_artifact(
+            LOCAL_ARTIFACT_REGISTRY_DIR,
+            artifact_type="model_run_report",
+            artifact_id=f"{model_run_manifest['run_id']}_report",
+            content=model_run_report,
+            content_type="text/markdown",
+            file_extension="md",
+            metadata={
+                "manifest_id": str(model_run_manifest["run_id"]),
+                "data_source": data_source_label,
+                "model_label": active_mmm_label,
+            },
+        )
+        st.success(
+            "Persisted model artifacts: "
+            f"{manifest_record.content_path} and {report_record.content_path}."
+        )
+    registry_display = artifact_registry_display()
+    if registry_display.empty:
+        st.info("No local artifacts have been persisted yet.")
+    else:
+        st.dataframe(registry_display, use_container_width=True, hide_index=True)
 
 with st.expander("Compare saved run manifests"):
     st.caption(

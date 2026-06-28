@@ -6,15 +6,15 @@ Marketing Effectiveness Lab aims to become an open, practical workbench for mark
 
 ## Current Product State
 
-The current product is a Streamlit prototype backed by a reusable Python package. It supports deterministic demo data, documented CSV contracts, connector validation, MMM-style modelling, experiment calibration, CRM experiment planning, audience exports, calendar planning, readout packaging, and a learning library.
+The current product is a Streamlit prototype backed by a reusable Python package. It supports deterministic demo data, documented CSV contracts, connector validation, MMM-style modelling, experiment calibration, CRM experiment planning, audience exports, calendar planning, readout packaging, a learning library, and a local artifact registry for generated outputs.
 
 It should not yet be used with confidential customer or company data. Production use requires authentication, governed storage, consent controls, audit logs, and deployment hardening.
 
 ## Near-Term Product Priorities
 
 1. Governed artifact storage
-   - Persist model runs, uploaded evidence, CRM briefs, audience files, readouts, and learning records.
-   - Add stable artifact IDs, versioning, metadata, and export history.
+   - Extend the local artifact registry into durable storage for model runs, uploaded evidence, CRM briefs, audience files, readouts, and learning records.
+   - Add authenticated ownership, versioning, approval status, and export history.
 
 2. Safer data onboarding
    - Strengthen connector validation.
