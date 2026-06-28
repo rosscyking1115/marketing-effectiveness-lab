@@ -281,21 +281,35 @@ def _coerce_for_assembly(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def _source_summary(frames: Mapping[str, pd.DataFrame]) -> pd.DataFrame:
+    shopify = frames.get("shopify")
+    spine_weeks: set[object] = set()
+    if shopify is not None and not shopify.empty:
+        spine_weeks = set(pd.to_datetime(shopify["week_start"]).dropna().unique())
+
     rows: list[dict[str, object]] = []
     for connector_key, frame in frames.items():
         if connector_key not in CONNECTOR_LOOKUP or frame.empty:
             continue
         weeks = pd.to_datetime(frame["week_start"])
+        unique_weeks = set(weeks.dropna().unique())
+        # Count weeks that actually align to the Shopify spine the dataset is
+        # assembled onto. Misaligned connector weeks are silently dropped by the
+        # left-join, so a raw week count can look complete while contributing zero.
+        aligned_weeks = len(unique_weeks & spine_weeks) if spine_weeks else weeks.nunique()
         rows.append(
             {
                 "connector": CONNECTOR_LOOKUP[connector_key].label,
                 "rows": len(frame),
                 "weeks": weeks.nunique(),
+                "aligned_weeks": aligned_weeks,
                 "first_week": weeks.min().strftime("%Y-%m-%d"),
                 "last_week": weeks.max().strftime("%Y-%m-%d"),
             }
         )
-    return pd.DataFrame(rows, columns=["connector", "rows", "weeks", "first_week", "last_week"])
+    return pd.DataFrame(
+        rows,
+        columns=["connector", "rows", "weeks", "aligned_weeks", "first_week", "last_week"],
+    )
 
 
 def _empty_weekly_dataset() -> pd.DataFrame:

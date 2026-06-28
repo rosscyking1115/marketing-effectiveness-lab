@@ -58,7 +58,11 @@ def summarize_customer_kpis(
     margin = float(orders["gross_margin_gbp"].sum())
     refunds = float(orders["refund_gbp"].sum())
     order_count = int(len(orders))
-    contactable = float(customer_segments["contactable_flag"].mean())
+    contactable = (
+        float(customer_segments["contactable_flag"].mean())
+        if not customer_segments.empty
+        else 0.0
+    )
 
     return CustomerKpiSummary(
         total_customers=total_customers,
