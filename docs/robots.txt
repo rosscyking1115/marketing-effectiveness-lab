@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rosscyking1115.github.io/marketing-effectiveness-lab/sitemap.xml
