@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from marketing_effectiveness_lab.customer import (
+    _customer_features_as_of,
     acquisition_channel_quality,
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
@@ -75,6 +76,27 @@ def test_customer_kpis_handle_empty_segments() -> None:
 
     # No segments -> contactable rate must be a clean 0.0, not NaN.
     assert summary.contactable_rate == 0.0
+
+
+def test_value_segment_assigns_zero_margin_customers_to_low_value() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+    # An early as-of date leaves many customers with no orders yet (zero margin)
+    # while enough have ordered to populate the full value ladder.
+    as_of = tables["orders"]["order_date"].quantile(0.25)
+
+    features = _customer_features_as_of(tables["customers"], tables["orders"], as_of)
+
+    zero_margin = features[features["gross_margin_gbp"] <= 0]
+    positive_margin = features[features["gross_margin_gbp"] > 0]
+    assert not zero_margin.empty
+    assert (zero_margin["value_segment"] == "Low value").all()
+    assert set(positive_margin["value_segment"]) == {
+        "Low value",
+        "Mid value",
+        "High value",
+        "VIP",
+    }
 
 
 def test_segment_summary_preserves_customer_counts() -> None:
@@ -214,6 +236,33 @@ def test_crm_incrementality_summary_estimates_holdout_lift_and_profit() -> None:
     assert set(summary["evidence_status"]).issubset(
         {"Positive", "Review", "Negative", "Needs more data"}
     )
+
+
+def test_crm_incremental_margin_ties_to_conversion_lift_with_intervals() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+
+    summary = crm_incrementality_summary(tables["crm_campaigns"], tables["crm_events"])
+
+    # Margin and profit carry a confidence interval that brackets the point estimate.
+    assert summary["incremental_margin_lower_gbp"].le(summary["incremental_margin_gbp"]).all()
+    assert summary["incremental_margin_upper_gbp"].ge(summary["incremental_margin_gbp"]).all()
+    assert summary["incremental_profit_lower_gbp"].le(summary["incremental_profit_gbp"]).all()
+    assert summary["incremental_profit_upper_gbp"].ge(summary["incremental_profit_gbp"]).all()
+
+    # Headline margin = incremental conversions valued at the per-conversion margin.
+    expected_margin = (
+        summary["incremental_conversions"] * summary["margin_per_converting_customer_gbp"]
+    )
+    assert (summary["incremental_margin_gbp"] - expected_margin).abs().lt(1e-6).all()
+
+    # Profit is margin net of campaign and incentive cost.
+    expected_profit = (
+        summary["incremental_margin_gbp"]
+        - summary["campaign_cost_gbp"]
+        - summary["incentive_cost_gbp"]
+    )
+    assert (summary["incremental_profit_gbp"] - expected_profit).abs().lt(1e-6).all()
 
 
 def test_crm_incrementality_portfolio_rolls_up_campaign_diagnostics() -> None:
@@ -402,7 +451,7 @@ def test_crm_experiment_portfolio_summarizes_selected_ranked_artifacts() -> None
     selected = comparison.sort_values("comparison_rank").head(3)
     portfolio_csv = crm_experiment_portfolio_csv(comparison, top_n=3)
 
-    assert portfolio["experiments"] == 3
+    assert portfolio["experiments"] == len(selected)
     assert portfolio["contactable_customers"] == selected["contactable_customers"].sum()
     assert portfolio["holdout_customers"] == selected["holdout_customers"].sum()
     assert 0 <= portfolio["portfolio_holdout_rate"] <= 1
@@ -735,10 +784,13 @@ def test_crm_experiment_portfolio_readout_packages_decisions_and_brief() -> None
     ).all()
     assert learning_csv.startswith("learning_dimension,learning_key,experiments")
 
+    # The calendar was built from more artifacts than top_n selects, so a calendar
+    # entry falls outside the chosen comparison set and the readout must reject it.
+    assert calendar["artifact_id"].nunique() > 1
     with pytest.raises(ValueError, match="outside the selected comparison set"):
         build_crm_experiment_portfolio_readout(
             calendar,
             comparison,
             crm_summary,
-            top_n=2,
+            top_n=1,
         )
