@@ -12,6 +12,12 @@ from marketing_effectiveness_lab.data.connectors import (
     validate_connector_csv_text,
     validate_connector_frame,
 )
+from marketing_effectiveness_lab.data.features import (
+    holiday_flag,
+    promotion_flag,
+    season_autumn_winter_flag,
+    season_spring_summer_flag,
+)
 from marketing_effectiveness_lab.data.schema import REQUIRED_COLUMNS, validate_weekly_dataset
 
 CONTROL_DEFAULTS = {
@@ -131,10 +137,11 @@ def assemble_weekly_dataset_from_connectors(
     ]:
         weekly[column] = weekly[column].fillna(0.0)
 
-    weekly["promotion_flag"] = (weekly["promotion_depth_pct"] >= 5).astype(int)
-    weekly["holiday_flag"] = weekly["week_start"].dt.month.isin([11, 12]).astype(int)
-    weekly["season_spring_summer"] = weekly["week_start"].dt.month.between(3, 8).astype(int)
-    weekly["season_autumn_winter"] = (1 - weekly["season_spring_summer"]).astype(int)
+    month = weekly["week_start"].dt.month
+    weekly["promotion_flag"] = promotion_flag(weekly["promotion_depth_pct"])
+    weekly["holiday_flag"] = holiday_flag(month)
+    weekly["season_spring_summer"] = season_spring_summer_flag(month)
+    weekly["season_autumn_winter"] = season_autumn_winter_flag(month)
     weekly["consumer_confidence_index"] = weekly["consumer_confidence_index"].fillna(
         float(controls["consumer_confidence_index"])
     )

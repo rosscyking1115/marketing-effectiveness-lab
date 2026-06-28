@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 from marketing_effectiveness_lab.analytics import KpiSummary
@@ -310,14 +312,15 @@ def build_model_run_manifest(
             "required_actions": recommendation_readiness.required_actions,
         }
 
+    payload = _json_safe(payload)
     payload["run_id"] = _manifest_run_id(payload)
     return payload
 
 
 def model_run_manifest_json(manifest: dict[str, object]) -> str:
-    """Serialize a model-run manifest as stable pretty JSON."""
+    """Serialize a model-run manifest as stable, strictly valid JSON."""
 
-    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    return json.dumps(_json_safe(manifest), indent=2, sort_keys=True, allow_nan=False) + "\n"
 
 
 def parse_model_run_manifest_json(manifest_json: str) -> dict[str, object]:
@@ -377,6 +380,8 @@ def model_run_manifest_comparison_csv(comparison: pd.DataFrame) -> str:
 
 
 def _top_channel(contribution_table: pd.DataFrame) -> pd.Series:
+    if contribution_table.empty:
+        return pd.Series({"channel": "No channel", "estimated_contribution_gbp": 0.0})
     return contribution_table.sort_values("estimated_contribution_gbp", ascending=False).iloc[0]
 
 
@@ -412,7 +417,9 @@ def _manifest_contributions(contribution_table: pd.DataFrame) -> list[dict[str, 
 
 
 def _manifest_run_id(payload: dict[str, object]) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    canonical = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False, default=str
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
@@ -482,3 +489,27 @@ def _json_safe_float(value: object) -> float | None:
     if pd.isna(numeric_value):
         return None
     return _round_float(numeric_value)
+
+
+def _json_safe(value: object) -> object:
+    """Recursively make a manifest payload strictly JSON-compliant.
+
+    Non-finite floats (NaN, inf, -inf) become ``None`` and NumPy scalar types are
+    normalized to native Python, so ``json.dumps`` never emits the non-standard
+    ``NaN``/``Infinity`` tokens (which strict parsers reject) and never raises on
+    a NumPy type. Applied to every nested field, including ones the per-field
+    helpers do not sanitize (e.g. recommendation-readiness check records).
+    """
+
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        numeric_value = float(value)
+        return numeric_value if math.isfinite(numeric_value) else None
+    return value
