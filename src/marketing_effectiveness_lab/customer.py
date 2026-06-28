@@ -1767,20 +1767,17 @@ def _safe_divide(numerator: float, denominator: float) -> float:
     return float(numerator / denominator) if denominator else 0.0
 
 
-def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame) -> dict[str, object]:
-    lifecycle_segment = str(segment["lifecycle_segment"])
-    value_segment = str(segment["value_segment"])
-    matched = crm_summary[
-        (crm_summary["target_segment"] == lifecycle_segment)
-        | (crm_summary["target_segment"] == value_segment)
-    ]
+def _dimension_crm_evidence(crm_summary: pd.DataFrame, target_segment: str) -> dict[str, object]:
+    """Summarize CRM evidence for campaigns that targeted a single segment label."""
+
+    matched = crm_summary[crm_summary["target_segment"] == target_segment]
     if matched.empty:
         return {
-            "matched_campaigns": 0,
-            "crm_evidence_status": "No prior test",
-            "avg_crm_conversion_lift": 0.0,
-            "avg_crm_profit_per_target_customer_gbp": 0.0,
-            "crm_incremental_profit_gbp": 0.0,
+            "campaigns": 0,
+            "evidence_status": "No prior test",
+            "conversion_lift": 0.0,
+            "profit_per_target_customer_gbp": 0.0,
+            "incremental_profit_gbp": 0.0,
         }
 
     status_priority = {
@@ -1794,13 +1791,48 @@ def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame)
         key=lambda status: status_priority.get(str(status), 0),
     )
     return {
-        "matched_campaigns": int(len(matched)),
-        "crm_evidence_status": str(evidence_status),
-        "avg_crm_conversion_lift": float(matched["conversion_lift"].mean()),
-        "avg_crm_profit_per_target_customer_gbp": float(
+        "campaigns": int(len(matched)),
+        "evidence_status": str(evidence_status),
+        "conversion_lift": float(matched["conversion_lift"].mean()),
+        "profit_per_target_customer_gbp": float(
             matched["incremental_profit_per_target_customer_gbp"].mean()
         ),
-        "crm_incremental_profit_gbp": float(matched["incremental_profit_gbp"].sum()),
+        "incremental_profit_gbp": float(matched["incremental_profit_gbp"].sum()),
+    }
+
+
+def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame) -> dict[str, object]:
+    # A retention segment spans two dimensions (lifecycle and value), and each CRM
+    # campaign targets only one of them. Keep the two as distinct evidence signals
+    # rather than averaging campaigns that reached different audiences into one
+    # number. The decision signal prefers the value-targeted evidence (the action
+    # rules are value-centric) and falls back to the lifecycle-targeted evidence
+    # when no value-targeted campaign exists.
+    lifecycle = _dimension_crm_evidence(crm_summary, str(segment["lifecycle_segment"]))
+    value = _dimension_crm_evidence(crm_summary, str(segment["value_segment"]))
+
+    if value["campaigns"]:
+        primary, primary_dimension = value, "value"
+    elif lifecycle["campaigns"]:
+        primary, primary_dimension = lifecycle, "lifecycle"
+    else:
+        primary, primary_dimension = lifecycle, "none"
+
+    return {
+        "matched_campaigns": int(lifecycle["campaigns"]) + int(value["campaigns"]),
+        "lifecycle_crm_campaigns": lifecycle["campaigns"],
+        "lifecycle_crm_evidence_status": lifecycle["evidence_status"],
+        "lifecycle_crm_conversion_lift": lifecycle["conversion_lift"],
+        "lifecycle_crm_profit_per_target_customer_gbp": lifecycle["profit_per_target_customer_gbp"],
+        "value_crm_campaigns": value["campaigns"],
+        "value_crm_evidence_status": value["evidence_status"],
+        "value_crm_conversion_lift": value["conversion_lift"],
+        "value_crm_profit_per_target_customer_gbp": value["profit_per_target_customer_gbp"],
+        "crm_evidence_dimension": primary_dimension,
+        "crm_evidence_status": primary["evidence_status"],
+        "avg_crm_conversion_lift": primary["conversion_lift"],
+        "avg_crm_profit_per_target_customer_gbp": primary["profit_per_target_customer_gbp"],
+        "crm_incremental_profit_gbp": primary["incremental_profit_gbp"],
     }
 
 
