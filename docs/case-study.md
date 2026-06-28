@@ -58,21 +58,20 @@ The interactive dashboard provides:
 
 The project intentionally keeps the modeling transparent. The MMM foundation uses channel-specific adstock and saturation transformations, then fits a regression model with controls for trend, seasonality, promotion, organic demand, and macro placeholders.
 
-The Bayesian layer adds posterior uncertainty over the active MMM design matrix and can use approved lift-test evidence as media priors. It is suitable for portfolio demonstration and directional planning, while the documentation clearly separates this from a full production Bayesian MMM sampler over all adstock and saturation parameters.
+The Bayesian layer adds posterior uncertainty over the active MMM design matrix and can use approved lift-test evidence as media priors. It is suitable for workflow prototyping and directional planning, while the documentation clearly separates this from a full production Bayesian MMM sampler over all adstock and saturation parameters.
 
 ## Data Notes
 
-The included dataset is generated from deterministic code for portfolio and development use. It is not ASOS data and does not copy any private brand data. The app can also validate uploaded weekly datasets or assemble connector exports that follow the documented contracts.
+The included dataset is generated from deterministic code for product development and public demo use. It is not ASOS data and does not copy any private brand data. The app can also validate uploaded weekly datasets or assemble connector exports that follow the documented contracts.
 
 Uploaded files are parsed in memory in the current Streamlit version. A production version should add authentication, storage policy, audit logging, secrets management, and warehouse integrations before handling private company data.
 
-## Portfolio Positioning
+## Product Direction
 
-This project is aimed at roles such as:
+The project is being developed as an open marketing measurement workbench. The product direction is to help users:
 
-- Marketing Data Scientist
-- Commercial Data Scientist
-- Product or Growth Analyst
-- Retail Analytics Specialist
-- Marketing Effectiveness Consultant
-- Econometrics or Causal Inference Analyst
+- Validate marketing and CRM data before modeling.
+- Compare transparent MMM, lift-test, and CRM experiment evidence.
+- Translate model outputs into budget and launch decisions.
+- Preserve reusable learning across experiments and planning cycles.
+- Move toward governed production use with authentication, storage, audit logs, and role-aware workflows.

@@ -39,7 +39,7 @@ For this prototype, uploaded files are parsed in memory and are not written to d
 
 ## Why This Matters
 
-The project is no longer locked to a synthetic dataset. The generated data remains useful for development and portfolio demonstration, but the app can now run on real weekly marketing exports if they match the schema.
+The project is no longer locked to a synthetic dataset. The generated data remains useful for product development and public demo use, but the app can now run on real weekly marketing exports if they match the schema.
 
 This creates a practical route for real-world use:
 
@@ -59,4 +59,3 @@ Potential next steps:
 - Warehouse connectors
 - Secure user authentication before storing real data
 - Tenant-aware storage for multi-brand use
-

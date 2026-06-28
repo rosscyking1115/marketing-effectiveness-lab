@@ -42,7 +42,7 @@ The demo folder now also includes synthetic customer and CRM tables:
 
 ## Notes
 
-The demo dataset is generated for development and portfolio use. It is not ASOS data and does not copy any private brand data.
+The demo dataset is generated for product development and public demo use. It is not ASOS data and does not copy any private brand data.
 
 The schema is intentionally close to what a real business could provide through weekly spreadsheet exports or warehouse tables.
 

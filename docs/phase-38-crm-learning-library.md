@@ -27,7 +27,7 @@ The learning library is built from the portfolio readout package:
 
 Commercial analytics teams do not only need one experiment result. They need a memory of what has been tried, which audiences responded, which decisions were made, and which evidence should shape the next plan.
 
-This phase strengthens the project as a job portfolio because it demonstrates a full measurement loop: plan, assign, schedule, read out, decide, and retain reusable learning.
+This phase strengthens the product because it demonstrates a full measurement loop: plan, assign, schedule, read out, decide, and retain reusable learning.
 
 ## Production boundary
 
@@ -35,4 +35,4 @@ The current learning library is generated from deterministic demo readouts. A pr
 
 ## Next step
 
-Phase 39 should add portfolio polish around the CRM workflow, such as a concise case-study section on the GitHub Pages site that explains the end-to-end lifecycle from retention opportunity to reusable learning.
+Phase 39 should reposition the project around product usefulness, contribution paths, and production-grade boundaries rather than showcase packaging.

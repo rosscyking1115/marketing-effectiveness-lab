@@ -36,7 +36,7 @@ It does not sample:
 - Long-term brand effects.
 - Experiment likelihoods directly inside the model.
 
-It is still valuable because it introduces Bayesian workflow concepts without hiding the assumptions. The dashboard can now show priors, posterior intervals, and predictive coverage in a way that is suitable for a portfolio project and a future production roadmap.
+It is still valuable because it introduces Bayesian workflow concepts without hiding the assumptions. The dashboard can now show priors, posterior intervals, and predictive coverage in a way that is suitable for workflow prototyping and a future production roadmap.
 
 ## Future Product Path
 

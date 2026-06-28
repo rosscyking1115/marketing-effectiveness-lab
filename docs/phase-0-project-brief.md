@@ -4,15 +4,17 @@
 
 Marketing Effectiveness Lab
 
-## Positioning
+## Product Positioning
 
 This project is an end-to-end marketing measurement lab for an ASOS-style fashion ecommerce business. It estimates incremental marketing impact, explains revenue contribution by channel, and supports budget reallocation decisions under uncertainty.
 
-The project is designed to support the broadest useful data science path: marketing, commercial, product, retail, and analytics consulting. The strongest positioning is:
+The project is designed as a useful marketing measurement product path: marketing analytics, commercial planning, CRM experimentation, retail/ecommerce decision support, and causal measurement.
 
-> Commercial Data Scientist with a marketing measurement and causal inference specialty.
+The strongest positioning is now:
 
-This keeps the project relevant to marketing analytics roles while also showing business impact, product thinking, econometrics, causal inference, and stakeholder communication.
+> Open marketing measurement workbench with practical MMM, experiment evidence, CRM learning, and production-grade governance.
+
+This keeps the project relevant to real marketing teams while also showing business impact, product thinking, econometrics, causal inference, and stakeholder communication.
 
 ## What "ASOS-Style" Means
 
@@ -26,7 +28,7 @@ ASOS-style does not mean copying ASOS data or branding. It means using a realist
 - Commercial KPIs such as revenue, orders, new customers, average order value, and margin
 - Marketing questions around paid search, paid social, influencers, affiliates, email, display, and promotions
 
-This is a strong scenario because it is realistic, recognizable, and employable across retail, luxury, beauty, ecommerce, consumer brands, agencies, and consultancies.
+This is a strong scenario because it is realistic and recognizable across retail, luxury, beauty, ecommerce, consumer brands, agencies, and consultancies.
 
 ## Recommended Project Shape
 
@@ -157,7 +159,7 @@ The project should be considered successful if it can:
 - Show how adstock, saturation, seasonality, and promotions affect interpretation.
 - Recommend a plausible budget reallocation.
 - Communicate model assumptions and limitations honestly.
-- Look credible to a hiring manager, analyst, consultant, or senior data scientist.
+- Be credible enough for analysts, marketing teams, consultants, and product contributors to inspect, extend, and challenge.
 
 ## Suggested Phase 1 Direction
 
@@ -173,11 +175,11 @@ Phase 1 should build the data foundation:
 
 The first dataset should be realistic enough that the later MMM results feel believable, not toy-like.
 
-## Portfolio Story
+## Product Story
 
-A strong resume/project description could be:
+A strong product description is:
 
-> Built a marketing effectiveness lab for a UK fashion ecommerce retailer using econometrics, Bayesian marketing mix modeling, causal validation, and budget optimization. Designed a realistic synthetic data pipeline, estimated channel contribution and ROI under uncertainty, and developed a scenario planner for marketing budget reallocation.
+> Marketing Effectiveness Lab is an open workbench for validating marketing data, estimating channel contribution, calibrating MMM with experiment evidence, planning budget scenarios, and retaining reusable CRM experiment learning.
 
 ## Future Roadmap
 

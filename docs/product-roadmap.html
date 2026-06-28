@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Product Roadmap | Marketing Effectiveness Lab</title>
+    <meta
+      name="description"
+      content="Product roadmap for Marketing Effectiveness Lab, an open marketing measurement workbench."
+    />
+    <link rel="stylesheet" href="assets/site-pages.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="shell" aria-label="Main navigation">
+        <a class="brand" href="index.html">Marketing Effectiveness Lab</a>
+        <div class="nav-links">
+          <a href="case-study.html">Workflow</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="data-contract.html">Data Contract</a>
+          <a href="product-roadmap.html">Roadmap</a>
+          <a href="https://github.com/rosscyking1115/marketing-effectiveness-lab">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="shell page-hero">
+        <div class="eyebrow">Product Roadmap</div>
+        <h1>An open workbench for practical marketing measurement.</h1>
+        <p class="lead">
+          The goal is to help teams validate marketing data, estimate channel impact,
+          compare causal evidence, plan budgets, design CRM experiments, and retain reusable
+          learning without pretending the current prototype is already an enterprise system.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app/">
+            Open Interactive App
+          </a>
+          <a class="button" href="https://github.com/rosscyking1115/marketing-effectiveness-lab/blob/main/CONTRIBUTING.md">
+            Contribute
+          </a>
+        </div>
+      </div>
+
+      <section>
+        <div class="shell grid">
+          <article class="card metric">
+            <small>Current State</small>
+            <strong>Streamlit prototype</strong>
+            <p>Reusable package code, deterministic demo data, documented contracts, and exportable artifacts.</p>
+          </article>
+          <article class="card metric">
+            <small>Product Boundary</small>
+            <strong>Not confidential-data ready</strong>
+            <p>No authentication, governed storage, tenant isolation, or approval audit log yet.</p>
+          </article>
+          <article class="card metric">
+            <small>Next Product Layer</small>
+            <strong>Governed persistence</strong>
+            <p>Model runs, CRM briefs, audience files, readouts, and learning records need stable storage.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Near-Term Priorities</h2>
+          <div class="timeline">
+            <div class="step">
+              <div>
+                <h3>Governed Artifact Storage</h3>
+                <p class="muted">
+                  Persist model runs, uploaded evidence, CRM briefs, audience files, readouts,
+                  and learning records with stable IDs, versioning, metadata, and export history.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Safer Data Onboarding</h3>
+                <p class="muted">
+                  Strengthen connector validation, remediation guidance, and warehouse-friendly
+                  contracts for aggregated weekly marketing data.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Experiment Registry</h3>
+                <p class="muted">
+                  Store planned, launched, completed, and archived experiments, then connect design,
+                  audience assignment, calendar, readout, and learning outcomes.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Multi-User Governance</h3>
+                <p class="muted">
+                  Separate analyst draft work from approved stakeholder decisions with role
+                  boundaries, approval states, and audit events.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Deployment Architecture</h3>
+                <p class="muted">
+                  Move from Streamlit-only prototype toward an API plus production web app,
+                  database, background jobs, observability, dependency scanning, and secure config.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell">
+          <h2>Contribution Lanes</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Measurement Methods</h3>
+              <p>MMM, uncertainty, calibration, diagnostics, causal evidence, and validation.</p>
+            </article>
+            <article class="card">
+              <h3>Data Platform</h3>
+              <p>Connectors, schemas, storage, data quality, and reproducible model inputs.</p>
+            </article>
+            <article class="card">
+              <h3>CRM Experimentation</h3>
+              <p>Audience logic, contact policy, readouts, experiment registry, and learning library.</p>
+            </article>
+            <article class="card">
+              <h3>Product Engineering</h3>
+              <p>API design, persistence, authentication boundaries, audit logs, and deployment.</p>
+            </article>
+            <article class="card">
+              <h3>Documentation</h3>
+              <p>Examples, governance notes, product boundaries, deployment notes, and contribution guides.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="shell grid two">
+          <div>
+            <h2>Non-Goals For Now</h2>
+            <div class="pill-row">
+              <span class="pill">Raw PII in the public demo</span>
+              <span class="pill">Production approval claims</span>
+              <span class="pill">Vendor replacement claims</span>
+              <span class="pill">Pretending demo data is real brand performance</span>
+            </div>
+          </div>
+          <div class="callout">
+            <h2>Principle</h2>
+            <p>
+              Useful measurement tools should be transparent about assumptions, data limits,
+              security boundaries, and where human judgment remains necessary.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">Built for practical marketing measurement, with production controls treated as product requirements.</div>
+    </footer>
+  </body>
+</html>

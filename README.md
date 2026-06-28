@@ -1,32 +1,37 @@
 # Marketing Effectiveness Lab
 
-A portfolio-ready marketing effectiveness platform for a UK fashion ecommerce scenario, covering analytics, econometrics, MMM, incrementality evidence, connector data quality, and budget optimization.
+An open marketing measurement workbench for teams and analysts who need practical MMM, incrementality evidence, CRM experimentation, connector data quality, and budget decision support.
 
-The project is built to show the workflow expected from a commercial or marketing data scientist: define a business measurement problem, validate the data contract, model channel impact, quantify uncertainty, calibrate with experiments, and translate outputs into budget decisions.
+The project is being built toward a useful, production-grade product. Today it is a transparent Streamlit-based prototype with deterministic demo data and real data contracts; the roadmap is to evolve it into a governed tool for importing marketing data, validating measurement readiness, comparing models and experiments, and retaining reusable learning.
 
-## Live Project
+## Live Product Prototype
 
-- Portfolio site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
+- Product site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
 - Interactive dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
 - GitHub repo: <https://github.com/rosscyking1115/marketing-effectiveness-lab>
 
-## Reviewer Guide
+## Who It Is For
 
-For a quick portfolio review:
+- Growth, CRM, ecommerce, and marketing analytics teams that need a practical measurement workspace.
+- Analysts who want explainable workflows for MMM, holdout evidence, CRM experiments, and budget planning.
+- Contributors who want to improve open tooling around marketing effectiveness without depending on private vendor platforms.
 
-1. Open the portfolio site for the business framing and project narrative.
-2. Open the Streamlit dashboard and review the analyst KPIs, MMM diagnostics, experiment calibration, Bayesian intervals, and budget planner.
-3. Read the designed case-study pages:
+## Product Walkthrough
+
+1. Open the product site for the measurement workflow and product boundaries.
+2. Open the Streamlit dashboard and review the analyst KPIs, MMM diagnostics, experiment calibration, Bayesian intervals, budget planner, and CRM experimentation workflow.
+3. Read the supporting product pages:
    - Case study: <https://rosscyking1115.github.io/marketing-effectiveness-lab/case-study.html>
    - Architecture: <https://rosscyking1115.github.io/marketing-effectiveness-lab/architecture.html>
    - Data contract: <https://rosscyking1115.github.io/marketing-effectiveness-lab/data-contract.html>
-4. Inspect the reusable package code in `src/marketing_effectiveness_lab/` and the test suite in `tests/`.
+   - Product roadmap: <https://rosscyking1115.github.io/marketing-effectiveness-lab/product-roadmap.html>
+4. Inspect the reusable package code in `src/marketing_effectiveness_lab/`, the test suite in `tests/`, and the contribution guide.
 
 The strongest signal is not a single model output. It is the end-to-end workflow: data contract,
 source validation, model diagnostics, incrementality evidence, uncertainty, optimization, and
 stakeholder communication.
 
-## What It Demonstrates
+## What It Does
 
 - Data contracts for weekly marketing, ecommerce, web analytics, paid media, CRM, affiliate, influencer, display, and external-control exports
 - Synthetic customer, order, return, CRM campaign, and segment data contracts for customer growth analytics
@@ -72,7 +77,7 @@ stakeholder communication.
 - CRM portfolio readout exports and markdown decision briefs
 - CRM experiment learning-library exports for future planning evidence
 
-The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
+The current version is useful for learning, prototyping, and workflow design. It is not yet a production system for confidential company data. The next product expansion moves from CSV contracts toward connector authentication, governed storage, model-run tracking, role-based workflows, and persistent experiment learning records.
 
 ## Project Shape
 
@@ -80,6 +85,7 @@ The current version is polished for portfolio use and intentionally transparent 
 - `src/marketing_effectiveness_lab/` - reusable Python package code
 - `scripts/` - runnable project scripts
 - `data/demo/` - generated demo data
+- `CONTRIBUTING.md` - contribution priorities and local development workflow
 - `SECURITY.md` - public demo data policy and production security notes
 - `LICENSE` - MIT license for reuse and review
 
@@ -88,8 +94,10 @@ Useful docs:
 - `docs/case-study.html` - designed business case study page
 - `docs/architecture.html` - designed current and future architecture page
 - `docs/data-contract.html` - designed data contract page
+- `docs/product-roadmap.html` - designed product roadmap and contribution page
 - `docs/case-study.md` - repo-native case study notes
 - `docs/architecture.md` - repo-native architecture notes
+- `docs/product-roadmap.md` - product mission, user groups, and production-grade roadmap
 - `docs/production-security-roadmap.md` - security and production roadmap
 - `docs/data-dictionary.md` - weekly schema, connector templates, and assembly mapping
 - `docs/phase-10-incrementality-calibration.md` - lift-test calibration workflow
@@ -121,6 +129,7 @@ Useful docs:
 - `docs/phase-36-crm-portfolio-calendar.md` - CRM launch calendar and contact-fatigue planning
 - `docs/phase-37-crm-portfolio-readout.md` - CRM post-launch readout packaging
 - `docs/phase-38-crm-learning-library.md` - reusable CRM experiment learning library
+- `docs/phase-39-product-repositioning.md` - product and contribution repositioning
 
 ## Quick Start
 
@@ -169,14 +178,13 @@ Streamlit Community Cloud settings:
 - Main file path: `streamlit_app.py`
 - App URL: `marketing-effectiveness-lab`
 
-GitHub Pages can host the static portfolio site from the `/docs` folder. Use it as the case-study website and link visitors to the Streamlit app for the interactive experience.
+GitHub Pages hosts the public product site from the `/docs` folder. Use it as the product and documentation entry point, with the Streamlit app as the current interactive prototype.
 
-## Positioning
+## Contribution Direction
 
-This project is aimed at the broad commercial data science lane:
+The project welcomes product-focused improvements in four lanes:
 
-- Marketing Data Scientist
-- Commercial Data Scientist
-- Product/Growth Analyst
-- Marketing Analytics Consultant
-- Retail/Fashion Data Scientist
+- Measurement reliability: MMM diagnostics, experiment calibration, uncertainty, and validation.
+- Data onboarding: connector templates, schema checks, diagnostics, and safer import workflows.
+- CRM experimentation: audience assignment, contact policy, readouts, and learning-library workflows.
+- Production readiness: authentication boundaries, persistence design, audit logging, deployment, and documentation.
