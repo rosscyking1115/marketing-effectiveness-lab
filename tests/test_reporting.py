@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import dataclasses
+import json
+
+import pandas as pd
+
 from marketing_effectiveness_lab.analytics import prepare_weekly_frame, summarize_kpis
 from marketing_effectiveness_lab.budget import (
     allocation_from_shares,
@@ -11,6 +16,7 @@ from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
 from marketing_effectiveness_lab.governance import assess_recommendation_readiness
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
 from marketing_effectiveness_lab.reporting import (
+    _top_channel,
     build_executive_summary,
     build_model_run_manifest,
     build_model_run_report,
@@ -68,6 +74,32 @@ def test_negative_scenario_summary_warns_against_advancing() -> None:
     assert scenario.summary["weekly_contribution_change_gbp"] < 0
     assert "weaker" in summary.headline.lower()
     assert "do not advance" in summary.recommendation.lower()
+
+
+def test_top_channel_returns_sentinel_for_empty_contribution_table() -> None:
+    empty = pd.DataFrame(columns=["channel", "estimated_contribution_gbp"])
+
+    top_channel = _top_channel(empty)
+
+    assert top_channel["channel"] == "No channel"
+    assert top_channel["estimated_contribution_gbp"] == 0.0
+
+
+def test_executive_summary_handles_empty_contribution_table() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    scenario = evaluate_budget_scenario(df, mmm_result, current, lookback_weeks=13)
+
+    empty_contribution = mmm_result.contribution_table.iloc[0:0]
+    degenerate_result = dataclasses.replace(mmm_result, contribution_table=empty_contribution)
+
+    summary = build_executive_summary(kpis, degenerate_result, scenario)
+
+    assert summary.headline
+    assert any("No channel" in highlight for highlight in summary.highlights)
 
 
 def test_model_run_report_contains_review_sections() -> None:
@@ -157,6 +189,65 @@ def test_model_run_manifest_is_stable_and_machine_readable() -> None:
     manifest_json = model_run_manifest_json(manifest)
     assert manifest_json.endswith("\n")
     assert '"run_id"' in manifest_json
+
+
+def test_manifest_json_sanitizes_non_finite_values() -> None:
+    manifest = {
+        "schema_version": "1.0",
+        "run_id": "deadbeef",
+        "model_diagnostics": {"holdout_mape": float("nan"), "holdout_rmse_gbp": float("inf")},
+        "scenario_summary": {"incremental_roi": float("-inf")},
+        "recommendation_readiness": {"checks": [{"detail": "ok", "value": float("nan")}]},
+    }
+
+    manifest_json = model_run_manifest_json(manifest)
+
+    assert "NaN" not in manifest_json
+    assert "Infinity" not in manifest_json
+
+    def _reject_constant(token: str) -> float:
+        raise AssertionError(f"Non-standard JSON token emitted: {token}")
+
+    parsed = json.loads(manifest_json, parse_constant=_reject_constant)
+    assert parsed["model_diagnostics"]["holdout_mape"] is None
+    assert parsed["model_diagnostics"]["holdout_rmse_gbp"] is None
+    assert parsed["scenario_summary"]["incremental_roi"] is None
+    assert parsed["recommendation_readiness"]["checks"][0]["value"] is None
+    assert parsed["recommendation_readiness"]["checks"][0]["detail"] == "ok"
+
+
+def test_neutral_scenario_manifest_serializes_to_strict_json() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    # A neutral scenario (proposed == current) yields NaN incremental ROI fields.
+    scenario = evaluate_budget_scenario(df, mmm_result, current, lookback_weeks=13)
+    summary = build_executive_summary(kpis, mmm_result, scenario)
+
+    assert pd.isna(scenario.summary["incremental_roi"])
+
+    manifest = build_model_run_manifest(
+        kpis,
+        mmm_result,
+        scenario,
+        summary,
+        data_source_label="Demo data",
+        model_label="MMM foundation",
+        row_count=len(prepared),
+        first_week=str(prepared["week_start"].min().date()),
+        last_week=str(prepared["week_start"].max().date()),
+    )
+    manifest_json = model_run_manifest_json(manifest)
+
+    assert "NaN" not in manifest_json
+    assert "Infinity" not in manifest_json
+
+    def _reject_constant(token: str) -> float:
+        raise AssertionError(f"Non-standard JSON token emitted: {token}")
+
+    json.loads(manifest_json, parse_constant=_reject_constant)
 
 
 def test_model_run_manifest_comparison_ranks_uploaded_artifacts() -> None:

@@ -8,6 +8,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from marketing_effectiveness_lab.data.features import (
+    holiday_flag,
+    promotion_flag,
+    season_autumn_winter_flag,
+    season_spring_summer_flag,
+)
 from marketing_effectiveness_lab.data.schema import schema_as_records, validate_weekly_dataset
 
 
@@ -50,11 +56,13 @@ def generate_weekly_demo_data(seed: int = 42) -> tuple[pd.DataFrame, dict[str, o
 
     seasonality = seasonal_boost(weeks)
     black_friday = (weeks.month == 11) & (weeks.day >= 20)
-    christmas = weeks.month == 12
     summer_sale = weeks.month.isin([6, 7])
-    holiday_flag = (black_friday | christmas | summer_sale).astype(int)
 
-    promotion_flag = (
+    # Latent promotion schedule that drives discount depth, media spend, and
+    # demand. The published ``promotion_flag`` column is derived from the
+    # resulting discount depth (see below) so it shares the connector-assembly
+    # definition rather than this internal schedule.
+    promotion_schedule = (
         black_friday
         | summer_sale
         | ((weeks.month == 3) & (weeks.day >= 18))
@@ -65,18 +73,18 @@ def generate_weekly_demo_data(seed: int = 42) -> tuple[pd.DataFrame, dict[str, o
         rng.normal(28, 4, n_weeks),
         np.where(summer_sale, rng.normal(18, 3, n_weeks), rng.normal(6, 3, n_weeks)),
     )
-    promotion_depth_pct = np.clip(promotion_depth_pct * (0.45 + promotion_flag), 0, 35)
+    promotion_depth_pct = np.clip(promotion_depth_pct * (0.45 + promotion_schedule), 0, 35)
 
     macro_trend = np.linspace(-3, 2, n_weeks)
     consumer_confidence_index = -18 + macro_trend + rng.normal(0, 2.2, n_weeks)
     inflation_rate_pct = 6.5 - np.linspace(0, 3.2, n_weeks) + rng.normal(0, 0.35, n_weeks)
 
-    base_media_multiplier = 1 + seasonality + (promotion_flag * 0.35)
+    base_media_multiplier = 1 + seasonality + (promotion_schedule * 0.35)
     paid_search_spend = rng.normal(62_000, 7_500, n_weeks) * base_media_multiplier
     paid_social_spend = rng.normal(78_000, 11_000, n_weeks) * (base_media_multiplier + 0.08)
     display_spend = rng.normal(33_000, 6_000, n_weeks) * (1 + seasonality * 0.6)
-    affiliates_spend = rng.normal(26_000, 4_500, n_weeks) * (1 + promotion_flag * 0.25)
-    email_spend = rng.normal(8_500, 1_700, n_weeks) * (1 + promotion_flag * 0.6)
+    affiliates_spend = rng.normal(26_000, 4_500, n_weeks) * (1 + promotion_schedule * 0.25)
+    email_spend = rng.normal(8_500, 1_700, n_weeks) * (1 + promotion_schedule * 0.6)
     influencer_spend = rng.normal(21_000, 6_500, n_weeks) * (
         1 + weeks.month.isin([3, 4, 9, 10]).astype(float) * 0.55
     )
@@ -110,7 +118,7 @@ def generate_weekly_demo_data(seed: int = 42) -> tuple[pd.DataFrame, dict[str, o
         510_000
         + week_index * 800
         + seasonality * 180_000
-        + promotion_flag * 65_000
+        + promotion_schedule * 65_000
         + rng.normal(0, 24_000, n_weeks)
     )
     organic_search_sessions = np.clip(organic_search_sessions, 280_000, None)
@@ -137,6 +145,10 @@ def generate_weekly_demo_data(seed: int = 42) -> tuple[pd.DataFrame, dict[str, o
     new_customer_rate = np.clip(0.28 + channel_spend["paid_social"] / 1_100_000 * 0.25, 0.22, 0.47)
     new_customers = np.round(orders * new_customer_rate + rng.normal(0, 600, n_weeks)).astype(int)
 
+    # Publish the rounded depth and derive the flag from that same value so the
+    # demo data is internally consistent with the connector-assembly rule.
+    published_promotion_depth_pct = np.round(promotion_depth_pct, 2)
+
     df = pd.DataFrame(
         {
             "week_start": weeks.strftime("%Y-%m-%d"),
@@ -151,11 +163,11 @@ def generate_weekly_demo_data(seed: int = 42) -> tuple[pd.DataFrame, dict[str, o
             "email_spend_gbp": np.round(channel_spend["email"], 2),
             "influencer_spend_gbp": np.round(channel_spend["influencer"], 2),
             "organic_search_sessions": np.round(organic_search_sessions).astype(int),
-            "promotion_depth_pct": np.round(promotion_depth_pct, 2),
-            "promotion_flag": promotion_flag,
-            "holiday_flag": holiday_flag,
-            "season_spring_summer": weeks.month.isin([3, 4, 5, 6, 7]).astype(int),
-            "season_autumn_winter": weeks.month.isin([9, 10, 11, 12]).astype(int),
+            "promotion_depth_pct": published_promotion_depth_pct,
+            "promotion_flag": promotion_flag(published_promotion_depth_pct),
+            "holiday_flag": holiday_flag(weeks.month),
+            "season_spring_summer": season_spring_summer_flag(weeks.month),
+            "season_autumn_winter": season_autumn_winter_flag(weeks.month),
             "consumer_confidence_index": np.round(consumer_confidence_index, 2),
             "inflation_rate_pct": np.round(inflation_rate_pct, 2),
         }
