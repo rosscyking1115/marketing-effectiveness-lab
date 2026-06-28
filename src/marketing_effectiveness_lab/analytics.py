@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 CHANNEL_LABELS = {
@@ -39,7 +40,10 @@ def prepare_weekly_frame(df: pd.DataFrame) -> pd.DataFrame:
     prepared["week_start"] = pd.to_datetime(prepared["week_start"])
     prepared = prepared.sort_values("week_start").reset_index(drop=True)
     prepared["total_media_spend_gbp"] = prepared[spend_columns(prepared)].sum(axis=1)
-    prepared["blended_roas"] = prepared["revenue_gbp"] / prepared["total_media_spend_gbp"]
+    # Weeks with zero media spend have an undefined ROAS; yield NaN rather than inf.
+    prepared["blended_roas"] = prepared["revenue_gbp"] / prepared["total_media_spend_gbp"].replace(
+        0, np.nan
+    )
     prepared["revenue_4w_avg"] = prepared["revenue_gbp"].rolling(4, min_periods=1).mean()
     prepared["media_spend_4w_avg"] = prepared["total_media_spend_gbp"].rolling(4, min_periods=1).mean()
     return prepared

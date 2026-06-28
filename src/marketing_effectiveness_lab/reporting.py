@@ -31,10 +31,13 @@ def build_executive_summary(
     """Create deterministic business-facing summary text from current analysis outputs."""
 
     top_channel = _top_channel(mmm_result.contribution_table)
-    scenario_lift = scenario.summary["weekly_contribution_change_gbp"]
-    scenario_lift_pct = scenario.summary["contribution_change_pct"]
+    # Scenario deltas: default to 0.0 ("no change") if absent, consistent with the
+    # optional weekly_profit_change_gbp handling below. (Model metrics keep direct
+    # access so a missing metric fails loudly rather than reporting a false zero.)
+    scenario_lift = scenario.summary.get("weekly_contribution_change_gbp", 0.0)
+    scenario_lift_pct = scenario.summary.get("contribution_change_pct", 0.0)
     scenario_profit_lift = scenario.summary.get("weekly_profit_change_gbp")
-    spend_change_pct = scenario.summary["spend_change_pct"]
+    spend_change_pct = scenario.summary.get("spend_change_pct", 0.0)
 
     if scenario_profit_lift is not None and scenario_profit_lift > 0:
         headline = (

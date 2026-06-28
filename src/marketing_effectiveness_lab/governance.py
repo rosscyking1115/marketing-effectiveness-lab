@@ -30,8 +30,8 @@ def assess_recommendation_readiness(
     rows = [
         _history_check(weekly_rows),
         _holdout_check(float(mmm_result.metrics["test_mape"])),
-        _profit_check(float(scenario.summary["weekly_profit_change_gbp"])),
-        _spend_change_check(float(scenario.summary["spend_change_pct"])),
+        _profit_check(float(scenario.summary.get("weekly_profit_change_gbp", 0.0))),
+        _spend_change_check(float(scenario.summary.get("spend_change_pct", 0.0))),
         _evidence_check(evidence_quality),
     ]
     checks = pd.DataFrame(rows, columns=["check", "status", "detail", "required_action"])

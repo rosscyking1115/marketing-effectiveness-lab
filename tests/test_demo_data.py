@@ -33,3 +33,12 @@ def test_schema_rejects_negative_spend() -> None:
     errors = validate_weekly_dataset(df)
 
     assert "paid_search_spend_gbp contains negative values." in errors
+
+
+def test_schema_rejects_non_iso_week_start() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    df.loc[0, "week_start"] = "13/01/2025"  # ambiguous non-ISO format
+
+    errors = validate_weekly_dataset(df)
+
+    assert "week_start contains invalid dates." in errors
