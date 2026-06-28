@@ -190,11 +190,13 @@ def _row(check: str, status: str, detail: str, required_action: str) -> dict[str
 
 
 def _gbp(value: float) -> str:
-    if value >= 1_000_000:
-        return f"GBP {value / 1_000_000:,.1f}M"
-    if value >= 1_000:
-        return f"GBP {value / 1_000:,.0f}K"
-    return f"GBP {value:,.0f}"
+    prefix = "-" if value < 0 else ""
+    absolute = abs(value)
+    if absolute >= 1_000_000:
+        return f"{prefix}GBP {absolute / 1_000_000:,.1f}M"
+    if absolute >= 1_000:
+        return f"{prefix}GBP {absolute / 1_000:,.0f}K"
+    return f"{prefix}GBP {absolute:,.0f}"
 
 
 def _pct(value: float) -> str:

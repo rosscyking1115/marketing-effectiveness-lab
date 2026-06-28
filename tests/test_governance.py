@@ -8,8 +8,16 @@ from marketing_effectiveness_lab.budget import (
 )
 from marketing_effectiveness_lab.calibration import assess_lift_test_evidence, demo_lift_test_calibrations
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
-from marketing_effectiveness_lab.governance import assess_recommendation_readiness
+from marketing_effectiveness_lab.governance import _gbp, assess_recommendation_readiness
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
+
+
+def test_gbp_formats_negative_values_with_abbreviation() -> None:
+    assert _gbp(-2_500_000) == "-GBP 2.5M"
+    assert _gbp(-12_400) == "-GBP 12K"
+    assert _gbp(-300) == "-GBP 300"
+    assert _gbp(2_500_000) == "GBP 2.5M"
+    assert _gbp(0) == "GBP 0"
 
 
 def test_recommendation_readiness_can_be_candidate_for_review() -> None:
