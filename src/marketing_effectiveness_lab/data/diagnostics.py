@@ -164,12 +164,19 @@ def _source_coverage_rows(
     for source in source_summary.to_dict("records"):
         weeks = int(source["weeks"])
         connector = str(source["connector"])
-        if expected_weeks and weeks < expected_weeks:
+        aligned = int(source.get("aligned_weeks", weeks))
+        if expected_weeks and aligned < expected_weeks:
             status = "Review"
-            detail = f"{connector} covers {weeks} of {expected_weeks} assembled weeks."
+            if aligned < weeks:
+                detail = (
+                    f"{connector} aligns {aligned} of {expected_weeks} assembled weeks; "
+                    f"{weeks - aligned} connector week(s) fall outside the assembled spine."
+                )
+            else:
+                detail = f"{connector} covers {aligned} of {expected_weeks} assembled weeks."
         else:
             status = "Pass"
-            detail = f"{connector} covers {weeks} weekly periods."
+            detail = f"{connector} aligns to {aligned} weekly periods."
         rows.append(_row("Source coverage", status, detail))
     return rows
 

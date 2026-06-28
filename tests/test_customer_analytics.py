@@ -66,6 +66,17 @@ def test_customer_kpis_summarize_ecommerce_economics() -> None:
     assert 0 < summary.contactable_rate <= 1
 
 
+def test_customer_kpis_handle_empty_segments() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=200)
+    tables = prepare_customer_tables(dataset.as_tables())
+    empty_segments = tables["customer_segments"].iloc[0:0]
+
+    summary = summarize_customer_kpis(tables["customers"], tables["orders"], empty_segments)
+
+    # No segments -> contactable rate must be a clean 0.0, not NaN.
+    assert summary.contactable_rate == 0.0
+
+
 def test_segment_summary_preserves_customer_counts() -> None:
     dataset = generate_customer_demo_data(seed=42, customer_count=800)
     tables = prepare_customer_tables(dataset.as_tables())
