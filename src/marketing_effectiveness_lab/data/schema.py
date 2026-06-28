@@ -53,7 +53,9 @@ def validate_weekly_dataset(df: pd.DataFrame) -> list[str]:
         errors.append(f"Missing required columns: {', '.join(missing)}")
         return errors
 
-    parsed_dates = pd.to_datetime(df["week_start"], errors="coerce")
+    # Parse strictly as ISO (YYYY-MM-DD) per the data contract so an ambiguous
+    # locale format (e.g. dd/mm vs mm/dd) is rejected rather than silently misread.
+    parsed_dates = pd.to_datetime(df["week_start"], format="%Y-%m-%d", errors="coerce")
     if parsed_dates.isna().any():
         errors.append("week_start contains invalid dates.")
     elif not parsed_dates.dt.dayofweek.eq(0).all():

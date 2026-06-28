@@ -269,7 +269,13 @@ def _coerce_for_assembly(frame: pd.DataFrame) -> pd.DataFrame:
         if column == "week_start":
             continue
         numeric_values = pd.to_numeric(typed[column], errors="coerce")
-        if not numeric_values.isna().any():
+        # Coerce any numeric-like column, including negative-allowed controls
+        # (consumer_confidence_index, inflation_rate_pct) that skip the connector
+        # numeric check. A genuine label column stays text because none of its
+        # values parse as numbers; a stray non-numeric cell in an otherwise
+        # numeric column becomes NaN instead of leaving the whole column as
+        # strings (which would break the downstream groupby/sum).
+        if numeric_values.notna().any():
             typed[column] = numeric_values
     return typed
 

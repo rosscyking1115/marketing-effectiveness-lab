@@ -1,14 +1,28 @@
 from __future__ import annotations
 
+import numpy as np
+
 from marketing_effectiveness_lab.analytics import (
     channel_summary,
     mmm_readiness_checks,
     prepare_weekly_frame,
     promotion_summary,
+    spend_columns,
     summarize_kpis,
     weekly_spend_long,
 )
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
+
+
+def test_blended_roas_is_nan_not_inf_for_zero_spend_weeks() -> None:
+    df, _ = generate_weekly_demo_data(seed=42)
+    df.loc[0, spend_columns(df)] = 0.0
+
+    prepared = prepare_weekly_frame(df)
+
+    # The zero-spend week has undefined ROAS (NaN), not inf, and only that week.
+    assert prepared["blended_roas"].isna().sum() == 1
+    assert not np.isinf(prepared["blended_roas"].to_numpy()).any()
 
 
 def test_dashboard_metrics_are_computed() -> None:
