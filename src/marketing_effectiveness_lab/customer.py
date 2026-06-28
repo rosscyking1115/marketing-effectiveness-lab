@@ -129,7 +129,12 @@ def cohort_retention(
     *,
     max_month_number: int = 12,
 ) -> pd.DataFrame:
-    """Return monthly acquisition cohort retention and value curves."""
+    """Return monthly acquisition cohort retention and value curves.
+
+    ``max_month_number`` is the last follow-on month included, inclusive of the
+    acquisition month (month 0). The default of 12 therefore yields 13 buckets:
+    the acquisition month plus 12 months of follow-on activity.
+    """
 
     customer_cohorts = customers[["customer_id", "first_order_date"]].copy()
     customer_cohorts["cohort_month"] = customer_cohorts["first_order_date"].dt.to_period("M").dt.to_timestamp()
@@ -383,14 +388,30 @@ def crm_incrementality_summary(crm_campaigns: pd.DataFrame, crm_events: pd.DataF
             float(holdout["gross_margin_gbp"].sum()),
             holdout_customers,
         )
-        incremental_margin_per_customer_gbp = (
-            target_margin_per_customer - holdout_margin_per_customer if has_measurement_groups else 0.0
+        # Value the incremental conversions (which already carry a confidence interval) at
+        # the margin earned per converting customer, rather than scaling the raw target-
+        # minus-holdout margin-per-customer difference by the full target count. The latter
+        # multiplies small-holdout sampling noise by the whole audience and leaves the
+        # headline profit with no variance control. Pooling target and holdout converters
+        # gives a more stable per-conversion value.
+        converted_events = campaign_events[campaign_events["converted_flag"] == 1]
+        margin_per_converting_customer_gbp = _safe_divide(
+            float(converted_events["gross_margin_gbp"].sum()),
+            target_conversions + holdout_conversions,
         )
         incremental_conversions = conversion_lift * target_customers
-        incremental_margin_gbp = incremental_margin_per_customer_gbp * target_customers
+        incremental_margin_gbp = incremental_conversions * margin_per_converting_customer_gbp
+        margin_bound_low = conversion_lift_lower * target_customers * margin_per_converting_customer_gbp
+        margin_bound_high = conversion_lift_upper * target_customers * margin_per_converting_customer_gbp
+        incremental_margin_lower_gbp = min(margin_bound_low, margin_bound_high)
+        incremental_margin_upper_gbp = max(margin_bound_low, margin_bound_high)
+        incremental_margin_per_customer_gbp = _safe_divide(incremental_margin_gbp, target_customers)
         campaign_cost_gbp = float(campaign["campaign_cost_gbp"])
         incentive_cost_gbp = sent_customers * float(campaign["incentive_cost_per_customer_gbp"])
-        incremental_profit_gbp = incremental_margin_gbp - campaign_cost_gbp - incentive_cost_gbp
+        fixed_cost_gbp = campaign_cost_gbp + incentive_cost_gbp
+        incremental_profit_gbp = incremental_margin_gbp - fixed_cost_gbp
+        incremental_profit_lower_gbp = incremental_margin_lower_gbp - fixed_cost_gbp
+        incremental_profit_upper_gbp = incremental_margin_upper_gbp - fixed_cost_gbp
 
         rows.append(
             {
@@ -412,11 +433,16 @@ def crm_incrementality_summary(crm_campaigns: pd.DataFrame, crm_events: pd.DataF
                 "incremental_conversions": incremental_conversions,
                 "target_margin_per_customer_gbp": target_margin_per_customer,
                 "holdout_margin_per_customer_gbp": holdout_margin_per_customer,
+                "margin_per_converting_customer_gbp": margin_per_converting_customer_gbp,
                 "incremental_margin_per_customer_gbp": incremental_margin_per_customer_gbp,
                 "incremental_margin_gbp": incremental_margin_gbp,
+                "incremental_margin_lower_gbp": incremental_margin_lower_gbp,
+                "incremental_margin_upper_gbp": incremental_margin_upper_gbp,
                 "campaign_cost_gbp": campaign_cost_gbp,
                 "incentive_cost_gbp": incentive_cost_gbp,
                 "incremental_profit_gbp": incremental_profit_gbp,
+                "incremental_profit_lower_gbp": incremental_profit_lower_gbp,
+                "incremental_profit_upper_gbp": incremental_profit_upper_gbp,
                 "incremental_profit_per_target_customer_gbp": _safe_divide(
                     incremental_profit_gbp,
                     target_customers,
@@ -1676,11 +1702,18 @@ def _customer_features_as_of(
         bins=[-1, 30, 120, 240, 10_000],
         labels=["New", "Active", "Lapsing", "Dormant"],
     ).astype(str)
-    features["value_segment"] = pd.qcut(
-        features["gross_margin_gbp"].rank(method="first"),
-        q=4,
-        labels=["Low value", "Mid value", "High value", "VIP"],
-    ).astype(str)
+    # Customers with no positive margin (e.g. no orders, or refunds cancelling
+    # margin) are deterministically "Low value". Spreading them across quartiles
+    # via rank(method="first") would otherwise assign value purely by row order,
+    # so two identical zero-margin customers could land in different segments.
+    features["value_segment"] = "Low value"
+    positive_margin = features["gross_margin_gbp"] > 0
+    if int(positive_margin.sum()) >= 4:
+        features.loc[positive_margin, "value_segment"] = pd.qcut(
+            features.loc[positive_margin, "gross_margin_gbp"].rank(method="first"),
+            q=4,
+            labels=["Low value", "Mid value", "High value", "VIP"],
+        ).astype(str)
     return features
 
 
@@ -1734,20 +1767,17 @@ def _safe_divide(numerator: float, denominator: float) -> float:
     return float(numerator / denominator) if denominator else 0.0
 
 
-def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame) -> dict[str, object]:
-    lifecycle_segment = str(segment["lifecycle_segment"])
-    value_segment = str(segment["value_segment"])
-    matched = crm_summary[
-        (crm_summary["target_segment"] == lifecycle_segment)
-        | (crm_summary["target_segment"] == value_segment)
-    ]
+def _dimension_crm_evidence(crm_summary: pd.DataFrame, target_segment: str) -> dict[str, object]:
+    """Summarize CRM evidence for campaigns that targeted a single segment label."""
+
+    matched = crm_summary[crm_summary["target_segment"] == target_segment]
     if matched.empty:
         return {
-            "matched_campaigns": 0,
-            "crm_evidence_status": "No prior test",
-            "avg_crm_conversion_lift": 0.0,
-            "avg_crm_profit_per_target_customer_gbp": 0.0,
-            "crm_incremental_profit_gbp": 0.0,
+            "campaigns": 0,
+            "evidence_status": "No prior test",
+            "conversion_lift": 0.0,
+            "profit_per_target_customer_gbp": 0.0,
+            "incremental_profit_gbp": 0.0,
         }
 
     status_priority = {
@@ -1761,13 +1791,48 @@ def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame)
         key=lambda status: status_priority.get(str(status), 0),
     )
     return {
-        "matched_campaigns": int(len(matched)),
-        "crm_evidence_status": str(evidence_status),
-        "avg_crm_conversion_lift": float(matched["conversion_lift"].mean()),
-        "avg_crm_profit_per_target_customer_gbp": float(
+        "campaigns": int(len(matched)),
+        "evidence_status": str(evidence_status),
+        "conversion_lift": float(matched["conversion_lift"].mean()),
+        "profit_per_target_customer_gbp": float(
             matched["incremental_profit_per_target_customer_gbp"].mean()
         ),
-        "crm_incremental_profit_gbp": float(matched["incremental_profit_gbp"].sum()),
+        "incremental_profit_gbp": float(matched["incremental_profit_gbp"].sum()),
+    }
+
+
+def _matched_crm_evidence(segment: dict[str, object], crm_summary: pd.DataFrame) -> dict[str, object]:
+    # A retention segment spans two dimensions (lifecycle and value), and each CRM
+    # campaign targets only one of them. Keep the two as distinct evidence signals
+    # rather than averaging campaigns that reached different audiences into one
+    # number. The decision signal prefers the value-targeted evidence (the action
+    # rules are value-centric) and falls back to the lifecycle-targeted evidence
+    # when no value-targeted campaign exists.
+    lifecycle = _dimension_crm_evidence(crm_summary, str(segment["lifecycle_segment"]))
+    value = _dimension_crm_evidence(crm_summary, str(segment["value_segment"]))
+
+    if value["campaigns"]:
+        primary, primary_dimension = value, "value"
+    elif lifecycle["campaigns"]:
+        primary, primary_dimension = lifecycle, "lifecycle"
+    else:
+        primary, primary_dimension = lifecycle, "none"
+
+    return {
+        "matched_campaigns": int(lifecycle["campaigns"]) + int(value["campaigns"]),
+        "lifecycle_crm_campaigns": lifecycle["campaigns"],
+        "lifecycle_crm_evidence_status": lifecycle["evidence_status"],
+        "lifecycle_crm_conversion_lift": lifecycle["conversion_lift"],
+        "lifecycle_crm_profit_per_target_customer_gbp": lifecycle["profit_per_target_customer_gbp"],
+        "value_crm_campaigns": value["campaigns"],
+        "value_crm_evidence_status": value["evidence_status"],
+        "value_crm_conversion_lift": value["conversion_lift"],
+        "value_crm_profit_per_target_customer_gbp": value["profit_per_target_customer_gbp"],
+        "crm_evidence_dimension": primary_dimension,
+        "crm_evidence_status": primary["evidence_status"],
+        "avg_crm_conversion_lift": primary["conversion_lift"],
+        "avg_crm_profit_per_target_customer_gbp": primary["profit_per_target_customer_gbp"],
+        "crm_incremental_profit_gbp": primary["incremental_profit_gbp"],
     }
 
 
