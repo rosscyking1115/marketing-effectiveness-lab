@@ -439,7 +439,9 @@ def validate_connector_frame(connector_key: str, df: pd.DataFrame) -> list[str]:
         if values.isna().any():
             errors.append(f"{column.name} contains null values.")
         if column.date_like:
-            parsed = pd.to_datetime(values, errors="coerce")
+            # Parse strictly as ISO (YYYY-MM-DD) per the data contract so an
+            # ambiguous locale format is rejected rather than silently misread.
+            parsed = pd.to_datetime(values, format="%Y-%m-%d", errors="coerce")
             if parsed.isna().any():
                 errors.append(f"{column.name} contains invalid dates.")
             elif not parsed.dt.dayofweek.eq(0).all():

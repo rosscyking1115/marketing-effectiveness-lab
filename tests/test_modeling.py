@@ -1,9 +1,23 @@
 from __future__ import annotations
 
+import math
+
+import pandas as pd
 import pytest
 
 from marketing_effectiveness_lab.data.generator import generate_weekly_demo_data
-from marketing_effectiveness_lab.modeling import fit_baseline_model, make_model_frame
+from marketing_effectiveness_lab.modeling import _mape, fit_baseline_model, make_model_frame
+
+
+def test_mape_ignores_zero_actuals() -> None:
+    actual = pd.Series([0.0, 100.0, 200.0])
+    predicted = pd.Series([10.0, 110.0, 180.0])
+
+    result = _mape(actual, predicted)
+
+    # The zero actual is excluded rather than producing inf/NaN.
+    assert math.isfinite(result)
+    assert result == pytest.approx((0.10 + 0.10) / 2)
 
 
 def test_make_model_frame_adds_expected_features() -> None:
