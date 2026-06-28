@@ -46,6 +46,7 @@ stakeholder communication.
 - Mutually exclusive CRM portfolio audience exports using rank-based assignment priority
 - CRM portfolio launch calendar planning with spacing, cooldown, and weekly contact-cap guardrails
 - CRM post-launch readout packaging with decision status, evidence context, and stakeholder briefs
+- CRM experiment learning library for reusable evidence by segment, channel, action, and decision outcome
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -69,6 +70,7 @@ stakeholder communication.
 - Portfolio-level CRM audience exports with overlap suppression
 - CRM launch calendar exports with contact-fatigue guardrails
 - CRM portfolio readout exports and markdown decision briefs
+- CRM experiment learning-library exports for future planning evidence
 
 The current version is polished for portfolio use and intentionally transparent about assumptions. The next product expansion would move from CSV contracts toward production-grade connector authentication, governed storage, model-run tracking, and role-based review workflows.
 
@@ -118,6 +120,7 @@ Useful docs:
 - `docs/phase-35-crm-portfolio-audience-export.md` - mutually exclusive portfolio audience exports
 - `docs/phase-36-crm-portfolio-calendar.md` - CRM launch calendar and contact-fatigue planning
 - `docs/phase-37-crm-portfolio-readout.md` - CRM post-launch readout packaging
+- `docs/phase-38-crm-learning-library.md` - reusable CRM experiment learning library
 
 ## Quick Start
 

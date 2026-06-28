@@ -7,6 +7,7 @@ from marketing_effectiveness_lab.customer import (
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
     build_crm_experiment_audience_assignment,
+    build_crm_experiment_learning_library,
     build_crm_experiment_portfolio_audience_assignment,
     build_crm_experiment_portfolio_calendar,
     build_crm_experiment_portfolio_readout,
@@ -18,6 +19,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
+    crm_experiment_learning_library_csv,
     crm_experiment_portfolio_audience_csv,
     crm_experiment_portfolio_calendar_csv,
     crm_experiment_portfolio_csv,
@@ -35,6 +37,7 @@ from marketing_effectiveness_lab.customer import (
     score_customer_lapse_value,
     segment_summary,
     summarize_crm_experiment_audience,
+    summarize_crm_experiment_learning_library,
     summarize_crm_experiment_portfolio,
     summarize_crm_experiment_portfolio_audience,
     summarize_crm_experiment_portfolio_calendar,
@@ -663,10 +666,14 @@ def test_crm_experiment_portfolio_readout_packages_decisions_and_brief() -> None
     summary = summarize_crm_experiment_portfolio_readout(readout)
     readout_csv = crm_experiment_portfolio_readout_csv(readout)
     readout_brief = crm_experiment_portfolio_readout_markdown(readout)
+    learning_library = build_crm_experiment_learning_library(readout)
+    learning_summary = summarize_crm_experiment_learning_library(learning_library)
+    learning_csv = crm_experiment_learning_library_csv(learning_library)
 
     assert readout.equals(duplicate_readout)
     assert len(readout) == len(calendar)
     assert readout["launch_sequence"].is_monotonic_increasing
+    assert readout["dominant_channel"].isin({"Email", "SMS", "Email + SMS", "Unknown"}).all()
     assert readout["observed_conversion_lift"].between(-1, 1).all()
     assert readout["incremental_profit_readout_gbp"].ge(0).all()
     assert set(readout["readout_confidence"]).issubset({"High", "Medium", "Low"})
@@ -684,6 +691,38 @@ def test_crm_experiment_portfolio_readout_packages_decisions_and_brief() -> None
     assert readout_csv.startswith("launch_sequence,portfolio_priority,comparison_rank")
     assert readout_brief.startswith("# CRM Experiment Portfolio Readout")
     assert "not production decision approval" in readout_brief
+    assert set(learning_library["learning_dimension"]) == {
+        "Segment",
+        "Channel",
+        "Offer / action",
+        "Decision outcome",
+        "Confidence",
+    }
+    assert learning_library["experiments"].ge(1).all()
+    assert learning_library["recommended_learning_action"].astype(str).str.len().gt(0).all()
+    assert learning_summary["dimensions"] == 5
+    assert learning_summary["library_rows"] == len(learning_library)
+    assert learning_summary["total_incremental_profit_readout_gbp"] == readout[
+        "incremental_profit_readout_gbp"
+    ].sum()
+    assert learning_summary["learning_status"] in {
+        "Reusable evidence ready",
+        "Needs more evidence",
+        "Learning archive only",
+    }
+    scale_learning_actions = learning_library.loc[
+        learning_library["learning_status"] == "Scale learning",
+        "recommended_learning_action",
+    ]
+    retest_learning_actions = learning_library.loc[
+        learning_library["learning_status"] == "Retest learning",
+        "recommended_learning_action",
+    ]
+    assert scale_learning_actions.empty or scale_learning_actions.str.startswith("Reuse ").all()
+    assert retest_learning_actions.empty or retest_learning_actions.str.startswith(
+        "Collect more evidence"
+    ).all()
+    assert learning_csv.startswith("learning_dimension,learning_key,experiments")
 
     with pytest.raises(ValueError, match="outside the selected comparison set"):
         build_crm_experiment_portfolio_readout(

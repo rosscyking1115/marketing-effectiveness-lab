@@ -40,6 +40,7 @@ from marketing_effectiveness_lab.customer import (
     assess_crm_experiment_portfolio_eligibility,
     build_crm_experiment_artifact,
     build_crm_experiment_audience_assignment,
+    build_crm_experiment_learning_library,
     build_crm_experiment_portfolio_audience_assignment,
     build_crm_experiment_portfolio_calendar,
     build_crm_experiment_portfolio_readout,
@@ -51,6 +52,7 @@ from marketing_effectiveness_lab.customer import (
     crm_experiment_brief_markdown,
     crm_experiment_checklist,
     crm_experiment_design,
+    crm_experiment_learning_library_csv,
     crm_experiment_portfolio_audience_csv,
     crm_experiment_portfolio_calendar_csv,
     crm_experiment_portfolio_csv,
@@ -68,6 +70,7 @@ from marketing_effectiveness_lab.customer import (
     score_customer_lapse_value,
     segment_summary,
     summarize_crm_experiment_audience,
+    summarize_crm_experiment_learning_library,
     summarize_crm_experiment_portfolio,
     summarize_crm_experiment_portfolio_audience,
     summarize_crm_experiment_portfolio_calendar,
@@ -1319,6 +1322,8 @@ else:
         portfolio_readout_summary = summarize_crm_experiment_portfolio_readout(
             portfolio_readout
         )
+        learning_library = build_crm_experiment_learning_library(portfolio_readout)
+        learning_library_summary = summarize_crm_experiment_learning_library(learning_library)
         selected_portfolio = (
             candidate_artifact_comparison.sort_values("comparison_rank")
             .head(portfolio_size)
@@ -1517,11 +1522,58 @@ else:
                 [
                     "launch_sequence",
                     "segment_label",
+                    "dominant_channel",
                     "decision_status",
                     "readout_confidence",
                     "observed_conversion_lift",
                     "incremental_profit_readout_gbp",
                     "recommended_next_action",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.markdown("**Experiment learning library**")
+        learning_cols = st.columns(5)
+        learning_cols[0].metric(
+            "Learning status",
+            str(learning_library_summary["learning_status"]),
+        )
+        learning_cols[1].metric(
+            "Library rows",
+            integer(learning_library_summary["library_rows"]),
+        )
+        learning_cols[2].metric(
+            "Dimensions",
+            integer(learning_library_summary["dimensions"]),
+        )
+        learning_cols[3].metric(
+            "Scale learnings",
+            integer(learning_library_summary["scale_learnings"]),
+        )
+        learning_cols[4].metric(
+            "Retest learnings",
+            integer(learning_library_summary["retest_learnings"]),
+        )
+        learning_display = learning_library.copy()
+        learning_display["average_observed_conversion_lift"] = learning_display[
+            "average_observed_conversion_lift"
+        ].map(percent)
+        for money_col in [
+            "total_incremental_profit_readout_gbp",
+            "average_profit_per_experiment_gbp",
+        ]:
+            learning_display[money_col] = learning_display[money_col].map(gbp)
+        st.dataframe(
+            learning_display[
+                [
+                    "learning_dimension",
+                    "learning_key",
+                    "experiments",
+                    "average_observed_conversion_lift",
+                    "total_incremental_profit_readout_gbp",
+                    "learning_status",
+                    "recommended_learning_action",
                 ]
             ],
             use_container_width=True,
@@ -1570,6 +1622,13 @@ else:
             data=crm_experiment_portfolio_readout_markdown(portfolio_readout),
             file_name="crm_experiment_portfolio_readout.md",
             mime="text/markdown",
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download experiment learning library",
+            data=crm_experiment_learning_library_csv(learning_library),
+            file_name="crm_experiment_learning_library.csv",
+            mime="text/csv",
             use_container_width=True,
         )
 

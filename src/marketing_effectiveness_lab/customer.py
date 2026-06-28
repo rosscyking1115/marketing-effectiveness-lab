@@ -1321,6 +1321,7 @@ def build_crm_experiment_portfolio_readout(
     readout["benchmark_incremental_profit_per_customer_gbp"] = evidence_benchmark[
         "benchmark_incremental_profit_per_customer_gbp"
     ]
+    readout["dominant_channel"] = readout.apply(_portfolio_readout_dominant_channel, axis=1)
     readout["observed_conversion_lift"] = readout.apply(
         lambda row: _portfolio_readout_observed_lift(row, evidence_benchmark),
         axis=1,
@@ -1449,6 +1450,117 @@ def crm_experiment_portfolio_readout_markdown(readout: pd.DataFrame) -> str:
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def build_crm_experiment_learning_library(readout: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate CRM experiment readouts into reusable learning-library rows."""
+
+    if readout.empty:
+        return pd.DataFrame(columns=_learning_library_columns())
+
+    required_columns = {
+        "artifact_id",
+        "segment_label",
+        "dominant_channel",
+        "recommended_action",
+        "decision_status",
+        "readout_confidence",
+        "observed_conversion_lift",
+        "incremental_profit_readout_gbp",
+    }
+    missing = sorted(required_columns.difference(readout.columns))
+    if missing:
+        msg = f"CRM readout is missing required learning-library field(s): {', '.join(missing)}."
+        raise ValueError(msg)
+
+    dimension_specs = [
+        ("Segment", "segment_label"),
+        ("Channel", "dominant_channel"),
+        ("Offer / action", "recommended_action"),
+        ("Decision outcome", "decision_status"),
+        ("Confidence", "readout_confidence"),
+    ]
+    library_rows: list[pd.DataFrame] = []
+    for dimension, column in dimension_specs:
+        grouped = (
+            readout.groupby(column, dropna=False)
+            .agg(
+                experiments=("artifact_id", "nunique"),
+                scale_decisions=("decision_status", lambda values: int((values == "Scale").sum())),
+                retest_decisions=("decision_status", lambda values: int((values == "Retest").sum())),
+                stop_decisions=("decision_status", lambda values: int((values == "Stop").sum())),
+                review_decisions=("decision_status", lambda values: int((values == "Review").sum())),
+                average_observed_conversion_lift=("observed_conversion_lift", "mean"),
+                total_incremental_profit_readout_gbp=("incremental_profit_readout_gbp", "sum"),
+            )
+            .reset_index()
+            .rename(columns={column: "learning_key"})
+        )
+        grouped["learning_dimension"] = dimension
+        grouped["average_profit_per_experiment_gbp"] = grouped[
+            "total_incremental_profit_readout_gbp"
+        ] / grouped["experiments"].clip(lower=1)
+        grouped["learning_status"] = grouped.apply(_learning_library_status, axis=1)
+        grouped["recommended_learning_action"] = grouped.apply(
+            _learning_library_next_action,
+            axis=1,
+        )
+        library_rows.append(grouped)
+
+    library = pd.concat(library_rows, ignore_index=True)
+    library["learning_key"] = library["learning_key"].fillna("Unknown").astype(str)
+    for column in _learning_library_columns():
+        if column not in library:
+            library[column] = ""
+    return library[_learning_library_columns()].sort_values(
+        ["learning_dimension", "total_incremental_profit_readout_gbp", "learning_key"],
+        ascending=[True, False, True],
+    ).reset_index(drop=True).pipe(
+        _attach_learning_library_attrs,
+        source_total_incremental_profit_readout_gbp=float(
+            readout["incremental_profit_readout_gbp"].sum()
+        ),
+    )
+
+
+def summarize_crm_experiment_learning_library(library: pd.DataFrame) -> dict[str, float | int | str]:
+    """Summarize CRM experiment learning-library coverage."""
+
+    rows = int(len(library))
+    if rows == 0:
+        return {
+            "library_rows": 0,
+            "dimensions": 0,
+            "scale_learnings": 0,
+            "retest_learnings": 0,
+            "total_incremental_profit_readout_gbp": 0.0,
+            "learning_status": "No learnings available",
+        }
+
+    scale_learnings = int((library["learning_status"] == "Scale learning").sum())
+    retest_learnings = int((library["learning_status"] == "Retest learning").sum())
+    review_learnings = int((library["learning_status"] == "Review learning").sum())
+    if scale_learnings > 0:
+        status = "Reusable evidence ready"
+    elif retest_learnings > 0 or review_learnings > 0:
+        status = "Needs more evidence"
+    else:
+        status = "Learning archive only"
+
+    return {
+        "library_rows": rows,
+        "dimensions": int(library["learning_dimension"].nunique()),
+        "scale_learnings": scale_learnings,
+        "retest_learnings": retest_learnings,
+        "total_incremental_profit_readout_gbp": _learning_library_source_profit(library),
+        "learning_status": status,
+    }
+
+
+def crm_experiment_learning_library_csv(library: pd.DataFrame) -> str:
+    """Serialize CRM experiment learning-library rows as CSV."""
+
+    return library.to_csv(index=False)
 
 
 def crm_experiment_brief_markdown(artifact: dict[str, object]) -> str:
@@ -1894,6 +2006,18 @@ def _portfolio_readout_next_action(row: pd.Series) -> str:
     return "Review with marketing and analytics stakeholders"
 
 
+def _portfolio_readout_dominant_channel(row: pd.Series) -> str:
+    email_customers = int(_optional_float(row.get("email_customers")))
+    sms_customers = int(_optional_float(row.get("sms_customers")))
+    if sms_customers > email_customers:
+        return "SMS"
+    if email_customers > sms_customers:
+        return "Email"
+    if sms_customers > 0 and email_customers > 0:
+        return "Email + SMS"
+    return "Unknown"
+
+
 def _portfolio_readout_note(row: pd.Series) -> str:
     return (
         f"{row.get('readout_confidence', 'Low')} confidence readout using "
@@ -1904,6 +2028,48 @@ def _portfolio_readout_note(row: pd.Series) -> str:
 
 def _markdown_table_cell(value: object) -> str:
     return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
+def _learning_library_status(row: pd.Series) -> str:
+    if int(row.get("scale_decisions", 0)) > 0:
+        return "Scale learning"
+    if int(row.get("retest_decisions", 0)) > 0:
+        return "Retest learning"
+    if int(row.get("review_decisions", 0)) > 0:
+        return "Review learning"
+    return "Archive learning"
+
+
+def _learning_library_next_action(row: pd.Series) -> str:
+    status = str(row.get("learning_status", ""))
+    dimension = str(row.get("learning_dimension", "learning"))
+    key = str(row.get("learning_key", "Unknown"))
+    if status == "Scale learning":
+        return f"Reuse {dimension.lower()} learning for {key} in future CRM planning"
+    if status == "Retest learning":
+        return f"Collect more evidence before scaling {key}"
+    if status == "Review learning":
+        return f"Review {key} with CRM and analytics stakeholders"
+    return f"Archive {key} as non-scaling evidence"
+
+
+def _attach_learning_library_attrs(
+    library: pd.DataFrame,
+    *,
+    source_total_incremental_profit_readout_gbp: float,
+) -> pd.DataFrame:
+    library.attrs["source_total_incremental_profit_readout_gbp"] = (
+        source_total_incremental_profit_readout_gbp
+    )
+    return library
+
+
+def _learning_library_source_profit(library: pd.DataFrame) -> float:
+    if "source_total_incremental_profit_readout_gbp" in library.attrs:
+        return float(library.attrs["source_total_incremental_profit_readout_gbp"])
+
+    dimensions = max(int(library["learning_dimension"].nunique()), 1)
+    return float(library["total_incremental_profit_readout_gbp"].sum() / dimensions)
 
 
 def _duplicate_values(frame: pd.DataFrame, column: str) -> list[str]:
@@ -1997,6 +2163,7 @@ def _portfolio_readout_columns() -> list[str]:
         "benchmark_positive_campaigns",
         "benchmark_conversion_lift",
         "benchmark_incremental_profit_per_customer_gbp",
+        "dominant_channel",
         "observed_conversion_lift",
         "lift_vs_benchmark",
         "incremental_margin_readout_gbp",
@@ -2005,6 +2172,23 @@ def _portfolio_readout_columns() -> list[str]:
         "decision_status",
         "recommended_next_action",
         "readout_note",
+    ]
+
+
+def _learning_library_columns() -> list[str]:
+    return [
+        "learning_dimension",
+        "learning_key",
+        "experiments",
+        "scale_decisions",
+        "retest_decisions",
+        "stop_decisions",
+        "review_decisions",
+        "average_observed_conversion_lift",
+        "total_incremental_profit_readout_gbp",
+        "average_profit_per_experiment_gbp",
+        "learning_status",
+        "recommended_learning_action",
     ]
 
 
