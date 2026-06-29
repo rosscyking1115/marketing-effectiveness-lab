@@ -25,6 +25,132 @@ class ExecutiveSummary:
     caveats: list[str]
 
 
+@dataclass(frozen=True)
+class BusinessImpactSummary:
+    """A one-page, stakeholder-facing roll-up of the analysis and its decision impact."""
+
+    headline: str
+    generated_for: str
+    commercial: dict[str, float]
+    confidence: dict[str, object]
+    recommendation: dict[str, object]
+    customer: dict[str, object] | None
+    caveats: list[str]
+
+
+def build_business_impact_summary(
+    kpis: KpiSummary,
+    mmm_result: MmmModelResult,
+    scenario: BudgetScenarioResult,
+    readiness: RecommendationReadiness,
+    executive_summary: ExecutiveSummary,
+    *,
+    data_source_label: str,
+    customer_highlights: Mapping[str, object] | None = None,
+) -> BusinessImpactSummary:
+    """Aggregate existing analysis outputs into a single business-impact summary.
+
+    Scenario deltas are read defensively (a missing delta means "no change"), but the
+    model metrics are required: a missing metric should surface as an error rather than
+    a misleading zero.
+    """
+
+    weekly_profit_change = float(scenario.summary.get("weekly_profit_change_gbp", 0.0))
+    commercial = {
+        "revenue_gbp": float(kpis.revenue_gbp),
+        "media_spend_gbp": float(kpis.media_spend_gbp),
+        "blended_roas": float(kpis.blended_roas),
+        "orders": int(kpis.orders),
+        "average_order_value_gbp": float(kpis.average_order_value_gbp),
+    }
+    confidence = {
+        "holdout_mape": float(mmm_result.metrics["test_mape"]),
+        "train_r_squared": float(mmm_result.metrics["train_r_squared"]),
+        "readiness_status": readiness.status,
+        "readiness_score": float(readiness.score),
+    }
+    recommendation = {
+        "action": executive_summary.recommendation,
+        "weekly_profit_change_gbp": weekly_profit_change,
+        "annualized_profit_change_gbp": weekly_profit_change * 52.0,
+        "weekly_spend_change_pct": float(scenario.summary.get("spend_change_pct", 0.0)),
+    }
+    return BusinessImpactSummary(
+        headline=executive_summary.headline,
+        generated_for=data_source_label,
+        commercial=commercial,
+        confidence=confidence,
+        recommendation=recommendation,
+        customer=dict(customer_highlights) if customer_highlights else None,
+        caveats=list(executive_summary.caveats),
+    )
+
+
+def business_impact_markdown(summary: BusinessImpactSummary) -> str:
+    """Render the business-impact summary as a dependency-free one-page brief."""
+
+    commercial = summary.commercial
+    confidence = summary.confidence
+    recommendation = summary.recommendation
+
+    lines = [
+        "# Marketing Effectiveness - Business Impact Brief",
+        "",
+        f"_Prepared from: {summary.generated_for}_",
+        "",
+        f"**{summary.headline}**",
+        "",
+        "## Commercial snapshot",
+        f"- Revenue: {_gbp(commercial['revenue_gbp'])}",
+        f"- Media spend: {_gbp(commercial['media_spend_gbp'])}",
+        f"- Blended ROAS: {commercial['blended_roas']:,.1f}x",
+        f"- Orders: {int(commercial['orders']):,} at {_gbp(commercial['average_order_value_gbp'])} AOV",
+        "",
+        "## Recommended action and impact",
+        f"- {recommendation['action']}",
+        f"- Estimated weekly profit impact: {_gbp(recommendation['weekly_profit_change_gbp'])}",
+        f"- Annualized (x52): {_gbp(recommendation['annualized_profit_change_gbp'])}",
+        f"- Weekly spend change: {_pct(recommendation['weekly_spend_change_pct'])}",
+        "",
+        "## Measurement confidence",
+        f"- MMM holdout accuracy (MAPE): {_pct(confidence['holdout_mape'])}",
+        f"- Model fit (train R-squared): {float(confidence['train_r_squared']):,.2f}",
+        f"- Recommendation readiness: {confidence['readiness_status']} "
+        f"(score {float(confidence['readiness_score']):,.0f}/100)",
+    ]
+
+    if summary.customer:
+        customer = summary.customer
+        lines.extend(["", "## Customer economics"])
+        if "source_label" in customer:
+            lines.append(f"- Source: {customer['source_label']}")
+        if "customers" in customer:
+            lines.append(f"- Customers analysed: {int(customer['customers']):,}")
+        if "repeat_purchase_rate" in customer:
+            lines.append(f"- Repeat-purchase rate: {_pct(float(customer['repeat_purchase_rate']))}")
+        if "mean_expected_future_margin_gbp" in customer:
+            lines.append(
+                f"- Mean 180-day expected future margin: "
+                f"GBP {float(customer['mean_expected_future_margin_gbp']):,.2f} per customer"
+            )
+        if "high_lapse_risk_customers" in customer:
+            lines.append(
+                f"- High lapse-risk customers: {int(customer['high_lapse_risk_customers']):,}"
+            )
+
+    lines.extend(["", "## Caveats"])
+    lines.extend(f"- {caveat}" for caveat in summary.caveats)
+    lines.extend(
+        [
+            "",
+            "_Directional decision support generated from current analysis outputs; "
+            "not a production approval record._",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def build_executive_summary(
     kpis: KpiSummary,
     mmm_result: MmmModelResult,
