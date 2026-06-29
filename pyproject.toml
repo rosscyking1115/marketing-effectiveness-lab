@@ -18,6 +18,16 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.8",
 ]
+# Optional: only needed to read the real public dataset (UCI Online Retail II .xlsx)
+# via scripts/load_public_data.py. The package and tests do not require it.
+data = [
+    "openpyxl>=3.1",
+]
+# Optional: only needed to render the stakeholder brief to PDF via
+# scripts/build_stakeholder_brief.py. The package and tests do not require it.
+brief = [
+    "reportlab>=4.0",
+]
 
 [build-system]
 requires = ["setuptools>=69"]
