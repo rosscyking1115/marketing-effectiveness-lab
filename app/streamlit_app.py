@@ -98,7 +98,11 @@ from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.governance import assess_recommendation_readiness
-from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
+from marketing_effectiveness_lab.mmm import (
+    MmmModelResult,
+    calibrate_mmm_parameters,
+    fit_mmm_foundation_model,
+)
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.reporting import (
     build_executive_summary,
@@ -272,6 +276,62 @@ def diagnose_assembled_weekly_data(
     )
 
 
+# Model fits are expensive and were previously recomputed on every rerun (every widget
+# interaction). Cache them keyed on the weekly frame so a fit only reruns when the
+# underlying data changes, not on unrelated interactions. Results are small and
+# picklable, so st.cache_data is safe.
+@st.cache_data(show_spinner="Fitting baseline econometric model...")
+def fit_baseline_model_cached(weekly_df: pd.DataFrame, holdout_weeks: int = 26):
+    return fit_baseline_model(weekly_df, holdout_weeks=holdout_weeks)
+
+
+@st.cache_data(show_spinner="Fitting MMM foundation model...")
+def fit_mmm_foundation_model_cached(weekly_df: pd.DataFrame, holdout_weeks: int = 26):
+    return fit_mmm_foundation_model(weekly_df, holdout_weeks=holdout_weeks)
+
+
+@st.cache_data(show_spinner="Calibrating MMM parameters...")
+def calibrate_mmm_parameters_cached(
+    weekly_df: pd.DataFrame, holdout_weeks: int = 26, validation_weeks: int = 20
+):
+    return calibrate_mmm_parameters(
+        weekly_df, holdout_weeks=holdout_weeks, validation_weeks=validation_weeks
+    )
+
+
+def _mmm_result_identity(result: MmmModelResult) -> tuple:
+    """Stable cache key for an MmmModelResult: its fitted coefficients.
+
+    Coefficients are deterministic for a given dataset and parameter set, so this keys
+    the uncertainty/Bayesian caches on the actual model (default vs calibrated) without
+    needing the result object to be hashable.
+    """
+
+    params = result.model.params
+    return (
+        tuple(str(name) for name in params.index),
+        tuple(round(float(value), 8) for value in params.to_numpy()),
+    )
+
+
+@st.cache_data(
+    show_spinner="Simulating MMM uncertainty...",
+    hash_funcs={MmmModelResult: _mmm_result_identity},
+)
+def simulate_mmm_uncertainty_cached(mmm_result: MmmModelResult, draws: int, seed: int = 42):
+    return simulate_mmm_uncertainty(mmm_result, draws=draws, seed=seed)
+
+
+@st.cache_data(
+    show_spinner="Fitting Bayesian MMM posterior...",
+    hash_funcs={MmmModelResult: _mmm_result_identity},
+)
+def fit_bayesian_mmm_cached(
+    mmm_result: MmmModelResult, lift_tests: pd.DataFrame | None, draws: int, seed: int = 42
+):
+    return fit_bayesian_mmm(mmm_result, lift_tests=lift_tests, draws=draws, seed=seed)
+
+
 def select_dataset() -> tuple[pd.DataFrame, str]:
     with st.sidebar:
         st.header("Data source")
@@ -285,7 +345,7 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
             data=template_csv(rows=12),
             file_name="marketing_effectiveness_template.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         with st.expander("Connector templates"):
             connector_labels = {spec.label: spec.key for spec in CONNECTOR_SPECS}
@@ -299,11 +359,11 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
                 data=connector_template_csv(selected_connector_key),
                 file_name=f"{selected_connector_key}_weekly_template.csv",
                 mime="text/csv",
-                use_container_width=True,
+                width="stretch",
             )
             st.dataframe(
                 connector_schema_dataframe(selected_connector_key),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
             connector_upload = st.file_uploader(
@@ -349,7 +409,7 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
             if not assembly_result.source_summary.empty:
                 st.dataframe(
                     assembly_result.source_summary,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
@@ -361,7 +421,7 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
             st.markdown("**Assembly diagnostics**")
             st.dataframe(
                 assembly_diagnostics,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -375,7 +435,7 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
                         data=assembly_result.weekly_dataset.to_csv(index=False),
                         file_name="assembled_marketing_effectiveness_weekly.csv",
                         mime="text/csv",
-                        use_container_width=True,
+                        width="stretch",
                     )
                 st.stop()
 
@@ -385,7 +445,7 @@ def select_dataset() -> tuple[pd.DataFrame, str]:
                 data=assembly_result.weekly_dataset.to_csv(index=False),
                 file_name="assembled_marketing_effectiveness_weekly.csv",
                 mime="text/csv",
-                use_container_width=True,
+                width="stretch",
             )
             if len(assembly_result.weekly_dataset) <= 56:
                 st.warning("MMM views need at least 57 weekly rows after assembly.")
@@ -541,7 +601,7 @@ with trend_left:
                 marker={"color": "#c65f4b", "size": 7},
             )
         )
-    st.plotly_chart(revenue_fig, use_container_width=True)
+    st.plotly_chart(revenue_fig, width="stretch")
 
 with trend_right:
     spend_fig = line_with_average(
@@ -552,7 +612,7 @@ with trend_right:
         y_title="Spend GBP",
         primary_color="#4b6f9c",
     )
-    st.plotly_chart(spend_fig, use_container_width=True)
+    st.plotly_chart(spend_fig, width="stretch")
 
 mix_left, mix_right = st.columns((1.05, 1))
 with mix_left:
@@ -576,7 +636,7 @@ with mix_left:
         legend_orientation="h",
         legend_y=1.08,
     )
-    st.plotly_chart(spend_mix_fig, use_container_width=True)
+    st.plotly_chart(spend_mix_fig, width="stretch")
 
 with mix_right:
     channel_df = channel_summary(selected_df)
@@ -600,7 +660,7 @@ with mix_right:
         paper_bgcolor="#ffffff",
         coloraxis_showscale=False,
     )
-    st.plotly_chart(bar_fig, use_container_width=True)
+    st.plotly_chart(bar_fig, width="stretch")
 
 st.subheader("Analyst Diagnostics")
 diag_left, diag_mid, diag_right = st.columns((1.1, 1, 1))
@@ -612,7 +672,7 @@ with diag_left:
     display_channel["avg_weekly_spend_gbp"] = display_channel["avg_weekly_spend_gbp"].map(gbp)
     display_channel["spend_share"] = (display_channel["spend_share"] * 100).map(lambda x: f"{x:,.1f}%")
     display_channel["corr_with_revenue"] = display_channel["corr_with_revenue"].map(lambda x: f"{x:,.2f}")
-    st.dataframe(display_channel, use_container_width=True, hide_index=True)
+    st.dataframe(display_channel, width="stretch", hide_index=True)
 
 with diag_mid:
     st.markdown("**Promotion comparison**")
@@ -624,12 +684,12 @@ with diag_mid:
         lambda x: f"{x:,.1f}%"
     )
     promo_display["avg_orders"] = promo_display["avg_orders"].map(integer)
-    st.dataframe(promo_display, use_container_width=True, hide_index=True)
+    st.dataframe(promo_display, width="stretch", hide_index=True)
 
 with diag_right:
     st.markdown("**MMM readiness**")
     readiness = pd.DataFrame(mmm_readiness_checks(selected_df))
-    st.dataframe(readiness, use_container_width=True, hide_index=True)
+    st.dataframe(readiness, width="stretch", hide_index=True)
 
 st.subheader("Customer & Cohort Intelligence")
 st.markdown(
@@ -680,7 +740,7 @@ with customer_left:
                 "avg_return_rate",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -705,7 +765,7 @@ with customer_right:
                 "contactable_rate",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -741,7 +801,7 @@ with cohort_left:
         legend_orientation="h",
         legend_y=1.08,
     )
-    st.plotly_chart(cohort_fig, use_container_width=True)
+    st.plotly_chart(cohort_fig, width="stretch")
 
 with cohort_right:
     order_mix = new_vs_returning_summary(
@@ -764,7 +824,7 @@ with cohort_right:
                 "refund_gbp",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -831,7 +891,7 @@ with clv_left:
                 "orders_180d",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -859,7 +919,7 @@ with clv_right:
         paper_bgcolor="#ffffff",
         showlegend=False,
     )
-    st.plotly_chart(risk_fig, use_container_width=True)
+    st.plotly_chart(risk_fig, width="stretch")
 
 clv_tables_left, clv_tables_right = st.columns((1, 1))
 with clv_tables_left:
@@ -887,7 +947,7 @@ with clv_tables_left:
                 "contactable_rate",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -922,7 +982,7 @@ with clv_tables_right:
                 "repeat_rate_in_horizon",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -970,7 +1030,7 @@ with crm_left:
         legend_orientation="h",
         legend_y=1.1,
     )
-    st.plotly_chart(crm_fig, use_container_width=True)
+    st.plotly_chart(crm_fig, width="stretch")
 
 with crm_right:
     crm_display = crm_lift.copy()
@@ -1007,7 +1067,7 @@ with crm_right:
                 "evidence_status",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -1066,7 +1126,7 @@ with retention_left:
         legend_orientation="h",
         legend_y=1.13,
     )
-    st.plotly_chart(retention_fig, use_container_width=True)
+    st.plotly_chart(retention_fig, width="stretch")
 
 with retention_right:
     retention_display = retention_plan.copy()
@@ -1099,7 +1159,7 @@ with retention_right:
                 "max_incentive_cost_per_customer_gbp",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -1190,7 +1250,7 @@ else:
             paper_bgcolor="#ffffff",
             showlegend=False,
         )
-        st.plotly_chart(audience_fig, use_container_width=True)
+        st.plotly_chart(audience_fig, width="stretch")
         st.caption(str(experiment_design["success_rule"]))
 
     with experiment_right:
@@ -1205,8 +1265,8 @@ else:
             ],
             columns=["field", "value"],
         )
-        st.dataframe(design_summary, use_container_width=True, hide_index=True)
-        st.dataframe(checklist, use_container_width=True, hide_index=True)
+        st.dataframe(design_summary, width="stretch", hide_index=True)
+        st.dataframe(checklist, width="stretch", hide_index=True)
 
     brief_col, artifact_col = st.columns(2)
     with brief_col:
@@ -1215,7 +1275,7 @@ else:
             data=crm_experiment_brief_markdown(experiment_artifact),
             file_name=f"crm_experiment_brief_{experiment_artifact['artifact_id']}.md",
             mime="text/markdown",
-            use_container_width=True,
+            width="stretch",
         )
     with artifact_col:
         st.download_button(
@@ -1223,7 +1283,7 @@ else:
             data=crm_experiment_artifact_json(experiment_artifact),
             file_name=f"crm_experiment_artifact_{experiment_artifact['artifact_id']}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
 
     with st.expander("Export CRM audience assignment"):
@@ -1256,7 +1316,7 @@ else:
                     "assignment_rank",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.download_button(
@@ -1264,7 +1324,7 @@ else:
             data=crm_experiment_audience_csv(audience_assignment),
             file_name=f"crm_experiment_audience_{experiment_artifact['artifact_id']}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     with st.expander("Plan CRM experiment portfolio"):
@@ -1419,13 +1479,13 @@ else:
                     "crm_evidence_status",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.markdown("**Eligibility and overlap checks**")
         st.dataframe(
             portfolio_eligibility,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.markdown("**Mutually exclusive audience export**")
@@ -1462,7 +1522,7 @@ else:
                     "segment_label",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.markdown("**Launch calendar and contact policy**")
@@ -1509,7 +1569,7 @@ else:
                     "calendar_guardrail",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.markdown("**Post-launch readout package**")
@@ -1559,7 +1619,7 @@ else:
                     "recommended_next_action",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.markdown("**Experiment learning library**")
@@ -1605,7 +1665,7 @@ else:
                     "recommended_learning_action",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.download_button(
@@ -1616,49 +1676,49 @@ else:
             ),
             file_name="crm_experiment_portfolio_plan.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         st.download_button(
             "Download eligibility checks",
             data=portfolio_eligibility.to_csv(index=False),
             file_name="crm_experiment_portfolio_eligibility.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         st.download_button(
             "Download portfolio audience CSV",
             data=crm_experiment_portfolio_audience_csv(portfolio_audience),
             file_name="crm_experiment_portfolio_audience.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         st.download_button(
             "Download portfolio launch calendar",
             data=crm_experiment_portfolio_calendar_csv(portfolio_calendar),
             file_name="crm_experiment_portfolio_calendar.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         st.download_button(
             "Download portfolio readout CSV",
             data=crm_experiment_portfolio_readout_csv(portfolio_readout),
             file_name="crm_experiment_portfolio_readout.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         st.download_button(
             "Download portfolio readout brief",
             data=crm_experiment_portfolio_readout_markdown(portfolio_readout),
             file_name="crm_experiment_portfolio_readout.md",
             mime="text/markdown",
-            use_container_width=True,
+            width="stretch",
         )
         st.download_button(
             "Download experiment learning library",
             data=crm_experiment_learning_library_csv(learning_library),
             file_name="crm_experiment_learning_library.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
         with st.expander("Persist CRM package to local registry"):
             st.caption(
@@ -1737,7 +1797,7 @@ else:
             if registry_display.empty:
                 st.info("No local artifacts have been persisted yet.")
             else:
-                st.dataframe(registry_display, use_container_width=True, hide_index=True)
+                st.dataframe(registry_display, width="stretch", hide_index=True)
 
     with st.expander("Compare saved CRM experiment artifacts"):
         st.caption(
@@ -1807,7 +1867,7 @@ else:
                             "recommended_action",
                         ]
                     ],
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
                 st.download_button(
@@ -1815,7 +1875,7 @@ else:
                     data=crm_experiment_artifact_comparison_csv(artifact_comparison),
                     file_name="crm_experiment_artifact_comparison.csv",
                     mime="text/csv",
-                    use_container_width=True,
+                    width="stretch",
                 )
         else:
             st.info("Download a few CRM experiment artifacts, then upload them here.")
@@ -1859,14 +1919,14 @@ corr_fig.update_layout(
     plot_bgcolor="#ffffff",
     paper_bgcolor="#ffffff",
 )
-st.plotly_chart(corr_fig, use_container_width=True)
+st.plotly_chart(corr_fig, width="stretch")
 
 with st.expander("Dataset contract"):
     st.write(
         "This dashboard is running on demo data generated from a real-data-ready weekly schema. "
         "A real company dataset can replace the demo file if it follows the documented fields."
     )
-    st.dataframe(selected_df.head(20), use_container_width=True, hide_index=True)
+    st.dataframe(selected_df.head(20), width="stretch", hide_index=True)
 
 st.divider()
 st.subheader("Baseline Econometrics")
@@ -1876,7 +1936,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-baseline = fit_baseline_model(df, holdout_weeks=26)
+baseline = fit_baseline_model_cached(df, holdout_weeks=26)
 model_metric_cols = st.columns(5)
 model_metric_cols[0].metric("Train R-squared", f"{baseline.metrics['train_r_squared']:,.2f}")
 model_metric_cols[1].metric(
@@ -1932,7 +1992,7 @@ fit_fig.update_layout(
     plot_bgcolor="#ffffff",
     paper_bgcolor="#ffffff",
 )
-st.plotly_chart(fit_fig, use_container_width=True)
+st.plotly_chart(fit_fig, width="stretch")
 
 coef_left, coef_right = st.columns((1.1, 1))
 with coef_left:
@@ -1943,7 +2003,7 @@ with coef_left:
     coef_display["p_value"] = coef_display["p_value"].map(lambda x: f"{x:,.3f}")
     st.dataframe(
         coef_display[["feature", "direction", "coefficient", "p_value"]],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -1953,7 +2013,7 @@ with coef_right:
     vif_display["vif"] = vif_display["vif"].map(lambda x: f"{x:,.1f}")
     st.dataframe(
         vif_display[["feature", "vif"]].head(12),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -1970,7 +2030,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+mmm_result = fit_mmm_foundation_model_cached(df, holdout_weeks=26)
 mmm_metric_cols = st.columns(5)
 mmm_metric_cols[0].metric("MMM Train R-squared", f"{mmm_result.metrics['train_r_squared']:,.2f}")
 mmm_metric_cols[1].metric("MMM Adj. R-squared", f"{mmm_result.metrics['train_adjusted_r_squared']:,.2f}")
@@ -2023,7 +2083,7 @@ mmm_fit_fig.update_layout(
     plot_bgcolor="#ffffff",
     paper_bgcolor="#ffffff",
 )
-st.plotly_chart(mmm_fit_fig, use_container_width=True)
+st.plotly_chart(mmm_fit_fig, width="stretch")
 
 contrib_left, contrib_right = st.columns((1, 1))
 with contrib_left:
@@ -2045,7 +2105,7 @@ with contrib_left:
         paper_bgcolor="#ffffff",
         coloraxis_showscale=False,
     )
-    st.plotly_chart(contribution_fig, use_container_width=True)
+    st.plotly_chart(contribution_fig, width="stretch")
 
 with contrib_right:
     response_fig = px.line(
@@ -2069,7 +2129,7 @@ with contrib_right:
         legend_orientation="h",
         legend_y=1.08,
     )
-    st.plotly_chart(response_fig, use_container_width=True)
+    st.plotly_chart(response_fig, width="stretch")
 
 mmm_table_left, mmm_table_right = st.columns((1.2, 1))
 with mmm_table_left:
@@ -2085,7 +2145,7 @@ with mmm_table_left:
         contribution_display[
             ["channel", "spend_gbp", "estimated_contribution_gbp", "estimated_roi", "contribution_share"]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -2095,7 +2155,7 @@ with mmm_table_right:
     parameter_display["adstock_decay"] = parameter_display["adstock_decay"].map(lambda x: f"{x:,.2f}")
     parameter_display["half_saturation_gbp"] = parameter_display["half_saturation_gbp"].map(gbp)
     parameter_display["slope"] = parameter_display["slope"].map(lambda x: f"{x:,.2f}")
-    st.dataframe(parameter_display, use_container_width=True, hide_index=True)
+    st.dataframe(parameter_display, width="stretch", hide_index=True)
 
 st.warning(
     "MMM foundations are directional estimates. The next phase should add calibrated parameter search "
@@ -2116,7 +2176,7 @@ st.markdown(
 run_calibration = st.checkbox("Run calibrated parameter search", value=False)
 if run_calibration:
     with st.spinner("Calibrating MMM parameters..."):
-        calibration = calibrate_mmm_parameters(df, holdout_weeks=26, validation_weeks=20)
+        calibration = calibrate_mmm_parameters_cached(df, holdout_weeks=26, validation_weeks=20)
 
     calibration_metrics = pd.DataFrame(
         [
@@ -2140,7 +2200,7 @@ if run_calibration:
     )
     calibration_display["holdout_mape"] = calibration_display["holdout_mape"].map(percent)
     calibration_display["holdout_rmse_gbp"] = calibration_display["holdout_rmse_gbp"].map(gbp)
-    st.dataframe(calibration_display, use_container_width=True, hide_index=True)
+    st.dataframe(calibration_display, width="stretch", hide_index=True)
 
     cal_left, cal_right = st.columns((1, 1))
     with cal_left:
@@ -2151,7 +2211,7 @@ if run_calibration:
         )
         calibrated_params["half_saturation_gbp"] = calibrated_params["half_saturation_gbp"].map(gbp)
         calibrated_params["slope"] = calibrated_params["slope"].map(lambda x: f"{x:,.2f}")
-        st.dataframe(calibrated_params, use_container_width=True, hide_index=True)
+        st.dataframe(calibrated_params, width="stretch", hide_index=True)
 
     with cal_right:
         st.markdown("**Best validation candidates by channel**")
@@ -2167,7 +2227,7 @@ if run_calibration:
         best_display["adstock_decay"] = best_display["adstock_decay"].map(lambda x: f"{x:,.2f}")
         best_display["half_saturation_gbp"] = best_display["half_saturation_gbp"].map(gbp)
         best_display["validation_mape"] = best_display["validation_mape"].map(percent)
-        st.dataframe(best_display, use_container_width=True, hide_index=True)
+        st.dataframe(best_display, width="stretch", hide_index=True)
 
     use_calibrated_for_planner = st.checkbox(
         "Use calibrated MMM for budget planner",
@@ -2188,7 +2248,7 @@ st.markdown(
 )
 
 draw_count = st.slider("Uncertainty simulation draws", 100, 1000, 500, 100)
-uncertainty = simulate_mmm_uncertainty(active_mmm_result, draws=draw_count, seed=42)
+uncertainty = simulate_mmm_uncertainty_cached(active_mmm_result, draws=draw_count, seed=42)
 
 uncertainty_left, uncertainty_right = st.columns((1.1, 1))
 with uncertainty_left:
@@ -2219,7 +2279,7 @@ with uncertainty_left:
         paper_bgcolor="#ffffff",
         showlegend=False,
     )
-    st.plotly_chart(interval_fig, use_container_width=True)
+    st.plotly_chart(interval_fig, width="stretch")
 
 with uncertainty_right:
     prediction_fig = go.Figure()
@@ -2274,7 +2334,7 @@ with uncertainty_right:
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
     )
-    st.plotly_chart(prediction_fig, use_container_width=True)
+    st.plotly_chart(prediction_fig, width="stretch")
 
 uncertainty_display = uncertainty.contribution_intervals.copy()
 for money_col in [
@@ -2297,7 +2357,7 @@ st.dataframe(
             "roi_upper",
         ]
     ],
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )
 
@@ -2394,7 +2454,7 @@ with calibration_left:
     ]
     st.dataframe(
         lift_display[lift_display_columns],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -2418,7 +2478,7 @@ with calibration_right:
         paper_bgcolor="#ffffff",
         coloraxis_showscale=False,
     )
-    st.plotly_chart(factor_fig, use_container_width=True)
+    st.plotly_chart(factor_fig, width="stretch")
 
 if apply_incrementality_calibration:
     calibrated_contribution = apply_lift_calibration(
@@ -2446,7 +2506,7 @@ if apply_incrementality_calibration:
             paper_bgcolor="#ffffff",
             coloraxis_showscale=False,
         )
-        st.plotly_chart(calibrated_fig, use_container_width=True)
+        st.plotly_chart(calibrated_fig, width="stretch")
 
     with calibrated_right:
         calibrated_interval_display = calibrated_intervals.copy()
@@ -2471,7 +2531,7 @@ if apply_incrementality_calibration:
                     "roi_mean_calibrated",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -2497,7 +2557,7 @@ if apply_incrementality_calibration:
                 "calibration_factor",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 else:
@@ -2533,10 +2593,10 @@ with bayesian_right_control:
 bayesian_lift_tests = (
     calibration_lift_tests if use_experiment_priors and not calibration_lift_tests.empty else None
 )
-bayesian_result = fit_bayesian_mmm(
+bayesian_result = fit_bayesian_mmm_cached(
     active_mmm_result,
-    lift_tests=bayesian_lift_tests,
-    draws=bayesian_draws,
+    bayesian_lift_tests,
+    bayesian_draws,
     seed=42,
 )
 
@@ -2592,7 +2652,7 @@ with bayesian_left:
         paper_bgcolor="#ffffff",
         showlegend=False,
     )
-    st.plotly_chart(bayesian_interval_fig, use_container_width=True)
+    st.plotly_chart(bayesian_interval_fig, width="stretch")
 
 with bayesian_right:
     bayesian_prediction = bayesian_result.prediction_intervals.copy()
@@ -2647,7 +2707,7 @@ with bayesian_right:
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
     )
-    st.plotly_chart(bayesian_prediction_fig, use_container_width=True)
+    st.plotly_chart(bayesian_prediction_fig, width="stretch")
 
 bayesian_tables_left, bayesian_tables_right = st.columns((1.1, 1))
 with bayesian_tables_left:
@@ -2674,7 +2734,7 @@ with bayesian_tables_left:
                 "roi_upper",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -2700,7 +2760,7 @@ with bayesian_tables_right:
                 "probability_positive",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -2859,7 +2919,7 @@ with planner_right:
             }.get(trace.name, trace.name)
         )
     )
-    st.plotly_chart(scenario_chart, use_container_width=True)
+    st.plotly_chart(scenario_chart, width="stretch")
 
 scenario_display = scenario.channel_table.copy()
 for money_col in [
@@ -2895,7 +2955,7 @@ st.dataframe(
             "incremental_profit_roi",
         ]
     ],
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )
 
@@ -2930,7 +2990,7 @@ if optimization_result is not None:
                 "constraint_status",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
     st.caption(
@@ -2969,7 +3029,7 @@ readiness_cols[0].metric("Review status", recommendation_readiness.status)
 readiness_cols[1].metric("Readiness score", f"{recommendation_readiness.score:,.1f}/100")
 st.dataframe(
     recommendation_readiness.checks,
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )
 if recommendation_readiness.required_actions:
@@ -3008,7 +3068,7 @@ with download_report_col:
         data=model_run_report,
         file_name="marketing_effectiveness_model_run_report.md",
         mime="text/markdown",
-        use_container_width=True,
+        width="stretch",
     )
 with download_manifest_col:
     st.download_button(
@@ -3016,7 +3076,7 @@ with download_manifest_col:
         data=model_run_manifest_json(model_run_manifest),
         file_name="marketing_effectiveness_model_run_manifest.json",
         mime="application/json",
-        use_container_width=True,
+        width="stretch",
     )
 
 with st.expander("Persist current model run to local registry"):
@@ -3060,7 +3120,7 @@ with st.expander("Persist current model run to local registry"):
     if registry_display.empty:
         st.info("No local artifacts have been persisted yet.")
     else:
-        st.dataframe(registry_display, use_container_width=True, hide_index=True)
+        st.dataframe(registry_display, width="stretch", hide_index=True)
 
 with st.expander("Compare saved run manifests"):
     st.caption(
@@ -3125,7 +3185,7 @@ with st.expander("Compare saved run manifests"):
                         "active_model",
                     ]
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
             st.download_button(
@@ -3133,7 +3193,7 @@ with st.expander("Compare saved run manifests"):
                 data=model_run_manifest_comparison_csv(manifest_comparison),
                 file_name="marketing_effectiveness_manifest_comparison.csv",
                 mime="text/csv",
-                use_container_width=True,
+                width="stretch",
             )
     else:
         st.info("Download manifests from a few scenario settings, then upload them here.")
