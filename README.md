@@ -53,6 +53,7 @@ stakeholder communication.
 - CRM post-launch readout packaging with decision status, evidence context, and stakeholder briefs
 - CRM experiment learning library for reusable evidence by segment, channel, action, and decision outcome
 - Local artifact registry for persisted model reports, run manifests, CRM readouts, launch calendars, and learning records
+- Access-governance demonstration: role-based permissions, an approval workflow with separation of duties, and a tamper-evident audit log
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -134,6 +135,7 @@ Useful docs:
 - `docs/phase-40-local-artifact-registry.md` - local persistence foundation for generated artifacts
 - `docs/phase-41-real-public-data.md` - running the customer analytics on the real UCI Online Retail II dataset
 - `docs/phase-42-stakeholder-impact-brief.md` - one-page stakeholder business-impact brief (Markdown + PDF)
+- `docs/phase-43-access-governance.md` - RBAC, approval workflow, and tamper-evident audit log demonstration
 
 ## Quick Start
 
