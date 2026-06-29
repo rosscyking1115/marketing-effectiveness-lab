@@ -11,3 +11,6 @@ __pycache__/
 data/demo/*.csv
 data/demo/*.parquet
 data/demo/*.json
+
+# Real public datasets (downloaded locally, never committed) and their outputs.
+data/public/
