@@ -98,7 +98,11 @@ from marketing_effectiveness_lab.data.generator import generate_and_validate
 from marketing_effectiveness_lab.data.importer import template_csv, validate_csv_text
 from marketing_effectiveness_lab.data.schema import validate_weekly_dataset
 from marketing_effectiveness_lab.governance import assess_recommendation_readiness
-from marketing_effectiveness_lab.mmm import calibrate_mmm_parameters, fit_mmm_foundation_model
+from marketing_effectiveness_lab.mmm import (
+    MmmModelResult,
+    calibrate_mmm_parameters,
+    fit_mmm_foundation_model,
+)
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.reporting import (
     build_executive_summary,
@@ -293,6 +297,39 @@ def calibrate_mmm_parameters_cached(
     return calibrate_mmm_parameters(
         weekly_df, holdout_weeks=holdout_weeks, validation_weeks=validation_weeks
     )
+
+
+def _mmm_result_identity(result: MmmModelResult) -> tuple:
+    """Stable cache key for an MmmModelResult: its fitted coefficients.
+
+    Coefficients are deterministic for a given dataset and parameter set, so this keys
+    the uncertainty/Bayesian caches on the actual model (default vs calibrated) without
+    needing the result object to be hashable.
+    """
+
+    params = result.model.params
+    return (
+        tuple(str(name) for name in params.index),
+        tuple(round(float(value), 8) for value in params.to_numpy()),
+    )
+
+
+@st.cache_data(
+    show_spinner="Simulating MMM uncertainty...",
+    hash_funcs={MmmModelResult: _mmm_result_identity},
+)
+def simulate_mmm_uncertainty_cached(mmm_result: MmmModelResult, draws: int, seed: int = 42):
+    return simulate_mmm_uncertainty(mmm_result, draws=draws, seed=seed)
+
+
+@st.cache_data(
+    show_spinner="Fitting Bayesian MMM posterior...",
+    hash_funcs={MmmModelResult: _mmm_result_identity},
+)
+def fit_bayesian_mmm_cached(
+    mmm_result: MmmModelResult, lift_tests: pd.DataFrame | None, draws: int, seed: int = 42
+):
+    return fit_bayesian_mmm(mmm_result, lift_tests=lift_tests, draws=draws, seed=seed)
 
 
 def select_dataset() -> tuple[pd.DataFrame, str]:
@@ -2211,7 +2248,7 @@ st.markdown(
 )
 
 draw_count = st.slider("Uncertainty simulation draws", 100, 1000, 500, 100)
-uncertainty = simulate_mmm_uncertainty(active_mmm_result, draws=draw_count, seed=42)
+uncertainty = simulate_mmm_uncertainty_cached(active_mmm_result, draws=draw_count, seed=42)
 
 uncertainty_left, uncertainty_right = st.columns((1.1, 1))
 with uncertainty_left:
@@ -2556,10 +2593,10 @@ with bayesian_right_control:
 bayesian_lift_tests = (
     calibration_lift_tests if use_experiment_priors and not calibration_lift_tests.empty else None
 )
-bayesian_result = fit_bayesian_mmm(
+bayesian_result = fit_bayesian_mmm_cached(
     active_mmm_result,
-    lift_tests=bayesian_lift_tests,
-    draws=bayesian_draws,
+    bayesian_lift_tests,
+    bayesian_draws,
     seed=42,
 )
 
