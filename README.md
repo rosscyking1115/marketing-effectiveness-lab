@@ -136,6 +136,7 @@ Useful docs:
 - `docs/phase-41-real-public-data.md` - running the customer analytics on the real UCI Online Retail II dataset
 - `docs/phase-42-stakeholder-impact-brief.md` - one-page stakeholder business-impact brief (Markdown + PDF)
 - `docs/phase-43-access-governance.md` - RBAC, approval workflow, and tamper-evident audit log demonstration
+- `docs/phase-44-real-connector-mmm.md` - assembling a weekly MMM outcome dataset from the real Online Retail II transactions
 
 ## Quick Start
 
@@ -156,6 +157,13 @@ uv run --group data python scripts/load_public_data.py
 This downloads real UK online-retail transactions, maps them to the customer/order
 schema, and writes a provenance-documented summary to `data/public/` (git-ignored).
 See `docs/phase-41-real-public-data.md` for what is real versus imputed.
+
+Assemble a weekly MMM outcome dataset from the same real transactions through the
+connector pipeline (`docs/phase-44-real-connector-mmm.md`):
+
+```powershell
+uv run --group data python scripts/build_public_mmm_dataset.py
+```
 
 Launch the analyst dashboard:
 
