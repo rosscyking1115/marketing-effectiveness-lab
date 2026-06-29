@@ -132,6 +132,7 @@ Useful docs:
 - `docs/phase-38-crm-learning-library.md` - reusable CRM experiment learning library
 - `docs/phase-39-product-repositioning.md` - product and contribution repositioning
 - `docs/phase-40-local-artifact-registry.md` - local persistence foundation for generated artifacts
+- `docs/phase-42-stakeholder-impact-brief.md` - one-page stakeholder business-impact brief (Markdown + PDF)
 
 ## Quick Start
 
@@ -156,6 +157,16 @@ The repository also includes a root Streamlit Cloud entrypoint:
 ```powershell
 uv run streamlit run streamlit_app.py
 ```
+
+Generate a one-page stakeholder business-impact brief (Markdown, plus PDF with the
+optional `brief` group):
+
+```powershell
+uv run --group brief python scripts/build_stakeholder_brief.py
+```
+
+The brief is written to `.local/stakeholder_brief/` (git-ignored). See
+`docs/phase-42-stakeholder-impact-brief.md`.
 
 Run the test suite:
 
