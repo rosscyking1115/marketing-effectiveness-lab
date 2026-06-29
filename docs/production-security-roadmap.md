@@ -19,15 +19,23 @@ For real company data, the project should follow these principles:
 
 ## Application Security Roadmap
 
+A design demonstration of the governance core now exists in
+`marketing_effectiveness_lab.access` (see `docs/phase-43-access-governance.md`): a
+role-based permission matrix, an approval workflow with separation of duties, and an
+append-only, hash-chained (tamper-evident) audit log, with a runnable demonstration in
+`scripts/governance_demo.py`. This covers **authorization and audit**; **authentication**
+(identity) and durable storage are still outstanding.
+
 Future production versions should include:
 
-- Authentication through SSO, OIDC, SAML, Auth0, Okta, or Microsoft Entra.
-- Role-based access control.
-- Tenant isolation if used by multiple brands or clients.
-- Row-level security in Postgres where applicable.
-- Encrypted data at rest and in transit.
-- Least-privilege warehouse/service credentials.
-- Structured audit logs.
+- Authentication through SSO, OIDC, SAML, Auth0, Okta, or Microsoft Entra. **(outstanding)**
+- Role-based access control. **(demonstrated in `access`)**
+- Tenant isolation if used by multiple brands or clients. **(outstanding)**
+- Row-level security in Postgres where applicable. **(outstanding)**
+- Encrypted data at rest and in transit. **(outstanding)**
+- Least-privilege warehouse/service credentials. **(outstanding)**
+- Structured audit logs. **(demonstrated in `access` - hash-chained)**
+- Approval workflow with separation of duties. **(demonstrated in `access`)**
 
 ## Engineering Roadmap
 

@@ -53,6 +53,7 @@ stakeholder communication.
 - CRM post-launch readout packaging with decision status, evidence context, and stakeholder briefs
 - CRM experiment learning library for reusable evidence by segment, channel, action, and decision outcome
 - Local artifact registry for persisted model reports, run manifests, CRM readouts, launch calendars, and learning records
+- Access-governance demonstration: role-based permissions, an approval workflow with separation of duties, and a tamper-evident audit log
 - Baseline econometrics with time-aware holdout validation
 - MMM-style adstock, saturation, contribution, ROI, and response curves
 - Uncertainty intervals and a lightweight Bayesian posterior layer
@@ -132,6 +133,7 @@ Useful docs:
 - `docs/phase-38-crm-learning-library.md` - reusable CRM experiment learning library
 - `docs/phase-39-product-repositioning.md` - product and contribution repositioning
 - `docs/phase-40-local-artifact-registry.md` - local persistence foundation for generated artifacts
+- `docs/phase-43-access-governance.md` - RBAC, approval workflow, and tamper-evident audit log demonstration
 
 ## Quick Start
 
