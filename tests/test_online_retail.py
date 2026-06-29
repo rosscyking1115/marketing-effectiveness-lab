@@ -6,6 +6,8 @@ from marketing_effectiveness_lab.customer import (
     cohort_retention,
     customer_value_windows,
 )
+from marketing_effectiveness_lab.data.assembly import assemble_weekly_dataset_from_connectors
+from marketing_effectiveness_lab.data.connectors import validate_connector_frame
 from marketing_effectiveness_lab.data.customer_schema import (
     CUSTOMER_CHANNELS,
     LIFECYCLE_SEGMENTS,
@@ -13,6 +15,7 @@ from marketing_effectiveness_lab.data.customer_schema import (
 )
 from marketing_effectiveness_lab.data.online_retail import (
     build_customer_tables_from_online_retail,
+    build_shopify_connector_from_online_retail,
     dataset_provenance,
 )
 
@@ -26,6 +29,8 @@ def _raw_fixture() -> pd.DataFrame:
     rows = [
         ("536365", "X", 6, "2010-12-01 08:26", 2.55, 17850, uk),
         ("536365", "Y", 2, "2010-12-01 08:26", 3.39, 17850, uk),
+        # Cancellation in the same week as 536365 -> a real weekly return.
+        ("C536366", "X", -2, "2010-12-02 09:00", 2.55, 17850, uk),
         ("536400", "Z", 4, "2011-03-15 10:00", 5.00, 17850, uk),
         ("536500", "X", 10, "2011-06-20 12:00", 1.50, 12583, "France"),
         ("C536600", "X", -6, "2011-07-01 09:00", 2.55, 17850, uk),
@@ -92,3 +97,31 @@ def test_dataset_provenance_documents_real_and_imputed_fields() -> None:
     assert "Online Retail II" in str(provenance["source"])
     assert "gross_margin_gbp" in provenance["imputed_fields"]
     assert any("order_date" in field for field in provenance["real_fields"])
+
+
+def test_shopify_connector_from_online_retail_aggregates_weekly_outcomes() -> None:
+    connector = build_shopify_connector_from_online_retail(_raw_fixture())
+
+    # A valid shopify connector export on Monday week-starts.
+    assert validate_connector_frame("shopify", connector) == []
+    assert (pd.to_datetime(connector["week_start"]).dt.dayofweek == 0).all()
+
+    # The acquisition week (Mon 2010-11-29) nets the cancellation against gross sales.
+    row = connector.set_index("week_start").loc["2010-11-29"]
+    assert row["gross_sales_gbp"] == round(6 * 2.55 + 2 * 3.39, 2)
+    assert row["returns_gbp"] == round(2 * 2.55, 2)
+    assert row["net_sales_gbp"] == round(row["gross_sales_gbp"] - row["returns_gbp"], 2)
+    assert row["orders"] == 1
+    assert row["new_customer_orders"] == 1
+
+
+def test_shopify_connector_assembles_into_weekly_dataset() -> None:
+    connector = build_shopify_connector_from_online_retail(_raw_fixture())
+
+    result = assemble_weekly_dataset_from_connectors({"shopify": connector})
+
+    # Real net sales flow through to the assembled weekly outcome; with no media
+    # connector supplied, paid-media spend is zero (the honest gap).
+    assert not result.weekly_dataset.empty
+    assert result.weekly_dataset["revenue_gbp"].sum() > 0
+    assert result.weekly_dataset["paid_search_spend_gbp"].sum() == 0

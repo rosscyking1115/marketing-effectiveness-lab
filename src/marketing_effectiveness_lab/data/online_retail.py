@@ -62,6 +62,87 @@ def build_customer_tables_from_online_retail(
     return {"customers": customers, "orders": orders}
 
 
+def build_shopify_connector_from_online_retail(raw: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate raw Online Retail II rows into a weekly Shopify/ecommerce connector export.
+
+    The output matches the ``shopify`` connector template, so it can be fed straight into
+    ``assemble_weekly_dataset_from_connectors`` as a real outcome source. Gross sales,
+    orders, returns (from cancellation invoices), net sales, new-customer orders, and AOV
+    are all derived from the real transactions; ``discounts_gbp`` is 0 because the source
+    does not record order-level discounts.
+    """
+
+    missing = [column for column in RAW_COLUMNS if column not in raw.columns]
+    if missing:
+        raise ValueError(f"Online Retail II export is missing columns: {', '.join(missing)}")
+
+    frame = raw.loc[:, list(RAW_COLUMNS)].copy()
+    frame["Invoice"] = frame["Invoice"].astype(str).str.strip()
+    frame["Quantity"] = pd.to_numeric(frame["Quantity"], errors="coerce")
+    frame["Price"] = pd.to_numeric(frame["Price"], errors="coerce")
+    frame = frame.dropna(subset=["Quantity", "Price", "InvoiceDate"])
+    frame["line_revenue_gbp"] = frame["Quantity"] * frame["Price"]
+    order_date = pd.to_datetime(frame["InvoiceDate"]).dt.normalize()
+    # Monday of each transaction's week, per the weekly data contract.
+    frame["week_start"] = order_date - pd.to_timedelta(order_date.dt.dayofweek, unit="D")
+    frame["order_date"] = order_date
+    is_cancellation = frame["Invoice"].str.upper().str.startswith("C")
+
+    sales = frame[(~is_cancellation) & (frame["Quantity"] > 0) & (frame["Price"] > 0)]
+    if sales.empty:
+        raise ValueError("No usable sale invoices found in the Online Retail II export.")
+
+    invoices = sales.groupby("Invoice").agg(
+        week_start=("week_start", "min"),
+        invoice_revenue_gbp=("line_revenue_gbp", "sum"),
+    )
+    invoices = invoices[invoices["invoice_revenue_gbp"] > 0]
+    weekly = invoices.groupby("week_start").agg(
+        gross_sales_gbp=("invoice_revenue_gbp", "sum"),
+        orders=("invoice_revenue_gbp", "size"),
+    )
+
+    returns = (
+        frame[is_cancellation].groupby("week_start")["line_revenue_gbp"].sum().abs().rename("returns_gbp")
+    )
+
+    identified = sales.dropna(subset=["Customer ID"]).copy()
+    identified["Customer ID"] = pd.to_numeric(identified["Customer ID"], errors="coerce")
+    identified = identified.dropna(subset=["Customer ID"])
+    invoice_customer = identified.groupby("Invoice").agg(
+        customer_id=("Customer ID", "first"),
+        week_start=("week_start", "min"),
+        order_date=("order_date", "min"),
+    )
+    first_order = invoice_customer.groupby("customer_id")["order_date"].transform("min")
+    new_orders = invoice_customer[invoice_customer["order_date"] == first_order]
+    weekly_new = new_orders.groupby("week_start").size().rename("new_customer_orders")
+
+    weekly = weekly.join(returns, how="left").join(weekly_new, how="left").reset_index()
+    weekly["returns_gbp"] = weekly["returns_gbp"].fillna(0.0)
+    weekly["new_customer_orders"] = weekly["new_customer_orders"].fillna(0).astype(int)
+    weekly["discounts_gbp"] = 0.0
+    weekly["net_sales_gbp"] = (weekly["gross_sales_gbp"] - weekly["returns_gbp"]).clip(lower=0)
+    weekly["average_order_value_gbp"] = weekly["gross_sales_gbp"] / weekly["orders"]
+
+    for column in ["gross_sales_gbp", "discounts_gbp", "returns_gbp", "net_sales_gbp", "average_order_value_gbp"]:
+        weekly[column] = weekly[column].round(2)
+    weekly["orders"] = weekly["orders"].astype(int)
+    weekly["week_start"] = weekly["week_start"].dt.strftime("%Y-%m-%d")
+
+    columns = [
+        "week_start",
+        "gross_sales_gbp",
+        "discounts_gbp",
+        "returns_gbp",
+        "net_sales_gbp",
+        "orders",
+        "new_customer_orders",
+        "average_order_value_gbp",
+    ]
+    return weekly[columns].sort_values("week_start").reset_index(drop=True)
+
+
 def dataset_provenance() -> dict[str, object]:
     """Return a machine-readable note on what is real versus imputed."""
 
@@ -195,6 +276,7 @@ def _stable_choice(value: str, options: tuple[str, ...]) -> str:
 
 __all__ = [
     "build_customer_tables_from_online_retail",
+    "build_shopify_connector_from_online_retail",
     "dataset_provenance",
     "DEFAULT_GROSS_MARGIN_RATE",
 ]
