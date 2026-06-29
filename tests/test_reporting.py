@@ -17,9 +17,11 @@ from marketing_effectiveness_lab.governance import assess_recommendation_readine
 from marketing_effectiveness_lab.mmm import fit_mmm_foundation_model
 from marketing_effectiveness_lab.reporting import (
     _top_channel,
+    build_business_impact_summary,
     build_executive_summary,
     build_model_run_manifest,
     build_model_run_report,
+    business_impact_markdown,
     compare_model_run_manifests,
     model_run_manifest_comparison_csv,
     model_run_manifest_json,
@@ -100,6 +102,77 @@ def test_executive_summary_handles_empty_contribution_table() -> None:
 
     assert summary.headline
     assert any("No channel" in highlight for highlight in summary.highlights)
+
+
+def _impact_inputs():
+    df, _ = generate_weekly_demo_data(seed=42)
+    prepared = prepare_weekly_frame(df)
+    kpis = summarize_kpis(prepared)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+    current = current_weekly_spend(df, lookback_weeks=13)
+    proposed = roi_weighted_allocation(current, mmm_result, sum(current.values()), tilt_strength=0.6)
+    scenario = evaluate_budget_scenario(df, mmm_result, proposed, lookback_weeks=13)
+    executive_summary = build_executive_summary(kpis, mmm_result, scenario)
+    readiness = assess_recommendation_readiness(
+        mmm_result, scenario, weekly_rows=len(prepared), evidence_quality=None
+    )
+    return kpis, mmm_result, scenario, readiness, executive_summary
+
+
+def test_business_impact_summary_packages_decision_and_impact() -> None:
+    kpis, mmm_result, scenario, readiness, executive_summary = _impact_inputs()
+
+    impact = build_business_impact_summary(
+        kpis,
+        mmm_result,
+        scenario,
+        readiness,
+        executive_summary,
+        data_source_label="Demo data",
+        customer_highlights={
+            "source_label": "UCI Online Retail II",
+            "customers": 5878,
+            "repeat_purchase_rate": 0.83,
+            "mean_expected_future_margin_gbp": 468.18,
+            "high_lapse_risk_customers": 2471,
+        },
+    )
+
+    assert impact.headline == executive_summary.headline
+    assert impact.recommendation["annualized_profit_change_gbp"] == (
+        impact.recommendation["weekly_profit_change_gbp"] * 52.0
+    )
+    assert impact.commercial["revenue_gbp"] > 0
+    assert impact.confidence["readiness_status"] == readiness.status
+
+    md = business_impact_markdown(impact)
+    assert md.startswith("# Marketing Effectiveness - Business Impact Brief")
+    expected_sections = (
+        "Commercial snapshot",
+        "Recommended action and impact",
+        "Measurement confidence",
+        "Customer economics",
+        "Caveats",
+    )
+    for section in expected_sections:
+        assert f"## {section}" in md
+    assert "UCI Online Retail II" in md
+
+
+def test_business_impact_markdown_omits_customer_section_when_absent() -> None:
+    kpis, mmm_result, scenario, readiness, executive_summary = _impact_inputs()
+
+    impact = build_business_impact_summary(
+        kpis,
+        mmm_result,
+        scenario,
+        readiness,
+        executive_summary,
+        data_source_label="Demo data",
+    )
+
+    assert impact.customer is None
+    assert "## Customer economics" not in business_impact_markdown(impact)
 
 
 def test_model_run_report_contains_review_sections() -> None:
