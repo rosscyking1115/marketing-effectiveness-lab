@@ -28,6 +28,11 @@ data = [
 brief = [
     "reportlab>=4.0",
 ]
+# Optional: only needed to render the README output visuals via
+# scripts/generate_readme_assets.py. The package and tests do not require it.
+viz = [
+    "matplotlib>=3.8",
+]
 
 [build-system]
 requires = ["setuptools>=69"]

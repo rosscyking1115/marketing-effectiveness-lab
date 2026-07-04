@@ -1,5 +1,11 @@
 # Marketing Effectiveness Lab
 
+[![CI](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Lint](https://img.shields.io/badge/lint-ruff-261230)
+![Tests](https://img.shields.io/badge/tests-pytest-0a9edc)
+
 An open, transparent workbench for marketing measurement: marketing mix modeling (MMM),
 incrementality evidence, CRM experimentation, connector data quality, and profit-aware
 budget decisions — built as a reusable Python package with a Streamlit dashboard.
@@ -16,6 +22,19 @@ budget decisions — built as a reusable Python package with a Streamlit dashboa
 The point of the project is not a single model number — it is the **end-to-end workflow**:
 data contract → source validation → diagnostics → modeling → incrementality evidence →
 uncertainty → budget optimization → stakeholder communication → governance.
+
+```mermaid
+flowchart LR
+  A[Connector exports<br/>+ data contracts] --> B[Validation &<br/>source diagnostics]
+  B --> C[Weekly MMM dataset]
+  C --> D[MMM<br/>adstock · saturation · contribution]
+  C --> E[CRM experiments<br/>& incrementality]
+  D --> F[Uncertainty &<br/>Bayesian intervals]
+  E --> G[Experiment evidence<br/>& calibration]
+  F --> H[Profit-aware<br/>budget optimization]
+  G --> H
+  H --> I[Stakeholder brief<br/>& access governance]
+```
 
 ## What it does
 
@@ -48,6 +67,18 @@ uncertainty → budget optimization → stakeholder communication → governance
 - An access-governance demonstration: role-based permissions, an approval workflow with
   separation of duties, and a tamper-evident (hash-chained) audit log.
 
+## Example outputs
+
+Real figures produced by the package on the demo data (regenerate with
+`uv run --group viz python scripts/generate_readme_assets.py`).
+
+| | |
+| --- | --- |
+| ![MMM response curves](docs/assets/readme/mmm-response-curves.png) | ![Channel contribution and ROI](docs/assets/readme/channel-contribution.png) |
+| **Response curves** — diminishing returns by channel, used to decide where the next pound of spend pays back. | **Contribution & ROI** — where revenue actually comes from, and which channels earn their spend. |
+| ![Holdout fit with uncertainty band](docs/assets/readme/holdout-uncertainty.png) | ![CRM incrementality with 95% intervals](docs/assets/readme/crm-incrementality.png) |
+| **Holdout uncertainty** — actual vs predicted revenue with a 90% band, so a recommendation carries its own confidence. | **CRM incrementality** — conversion lift with 95% intervals; green campaigns show evidence of real lift, grey/red do not. |
+
 ## Tech stack
 
 | Area | Tools |
@@ -56,7 +87,7 @@ uncertainty → budget optimization → stakeholder communication → governance
 | Data & modeling | pandas, NumPy, statsmodels |
 | App & charts | Streamlit, Plotly |
 | Tooling | uv (env & lockfile), pytest, ruff |
-| Optional groups | `data` (openpyxl, for real public data), `brief` (reportlab, for the PDF brief) |
+| Optional groups | `data` (openpyxl, real public data), `brief` (reportlab, PDF brief), `viz` (matplotlib, README figures) |
 
 ## Quick start
 
