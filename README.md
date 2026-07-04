@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-Apache_2.0-green)
 ![Lint](https://img.shields.io/badge/lint-ruff-261230)
 ![Tests](https://img.shields.io/badge/tests-pytest-0a9edc)
 
@@ -178,4 +178,6 @@ marketing-effectiveness-lab/
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution lanes (measurement reliability,
 data onboarding, CRM experimentation, production readiness), [`SECURITY.md`](SECURITY.md)
-for the public-data policy, and [`LICENSE`](LICENSE) (MIT).
+for the public-data policy, and [`LICENSE`](LICENSE) (Apache-2.0). This repository is the
+open-source **engine**; the commercial multi-tenant application built on it is a separate,
+proprietary work.
