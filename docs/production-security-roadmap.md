@@ -1,10 +1,18 @@
-# Production and Security Roadmap
+# Security and Data-Handling Notes
+
+This is a **portfolio / reference implementation**, not a product. This page records the
+security posture honestly: what the code demonstrates, and what a real deployment on private
+company data would need but is deliberately **out of scope** here.
 
 ## Current State
 
-The current project is a local prototype. It does not yet handle real private marketing data, multi-user access, authentication, or production deployment.
+The project runs locally on deterministic demo data and real *public* datasets. It does not
+handle private marketing data, multi-user access, authentication, or a hosted deployment, and
+does not aim to.
 
-The current CSV upload workflow parses files in memory and does not persist uploaded data to disk. A production version should add authentication, explicit storage controls, audit logging, and retention policies before accepting private company data.
+The CSV upload workflow parses files in memory and does not persist uploaded data to disk.
+Anyone adapting this engine for private company data would need to add authentication,
+explicit storage controls, audit logging, and retention policies first — see the list below.
 
 ## Data Security Principles
 

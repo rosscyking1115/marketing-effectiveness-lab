@@ -6,7 +6,7 @@
     <title>Architecture | Marketing Effectiveness Lab</title>
     <meta
       name="description"
-      content="Architecture overview for the Marketing Effectiveness Lab product prototype."
+      content="Architecture overview for Marketing Effectiveness Lab, an open reference implementation for marketing measurement."
     />
     <link
       rel="canonical"
@@ -17,7 +17,7 @@
     <meta property="og:title" content="Architecture | Marketing Effectiveness Lab" />
     <meta
       property="og:description"
-      content="Architecture overview for the Marketing Effectiveness Lab product prototype."
+      content="Architecture overview for Marketing Effectiveness Lab, an open reference implementation for marketing measurement."
     />
     <meta
       property="og:url"
@@ -27,7 +27,7 @@
     <meta name="twitter:title" content="Architecture | Marketing Effectiveness Lab" />
     <meta
       name="twitter:description"
-      content="Architecture overview for the Marketing Effectiveness Lab product prototype."
+      content="Architecture overview for Marketing Effectiveness Lab, an open reference implementation for marketing measurement."
     />
     <link rel="stylesheet" href="assets/site-pages.css" />
   </head>
@@ -48,11 +48,12 @@
     <main>
       <div class="shell page-hero">
         <div class="eyebrow">Architecture</div>
-        <h1>A transparent analytics product path from data contracts to budget decisions.</h1>
+        <h1>A transparent analytics path from data contracts to budget decisions.</h1>
         <p class="lead">
           The project is structured as a reusable Python package plus a Streamlit analyst interface,
-          with clear boundaries between source validation, model diagnostics, evidence calibration,
-          and commercial planning.
+          with clear, independently testable boundaries between source validation, model diagnostics,
+          evidence calibration, and budget planning. That separation is what makes the methodology
+          legible and the engine reusable.
         </p>
         <div class="actions">
           <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app/">
@@ -179,11 +180,11 @@
             </div>
           </div>
           <div class="callout">
-            <h2>Production Roadmap</h2>
+            <h2>Out Of Scope</h2>
             <p>
-              A production version would add authentication, role-based access, storage policy,
-              audit logs, warehouse connectors, model tracking, dependency scanning, and signed
-              release provenance before handling private company data.
+              This is a reference implementation, not a hosted product. Authentication, role-based
+              access, governed storage, warehouse connectors, and release provenance are what a real
+              deployment on private company data would need — deliberately out of scope here.
             </p>
           </div>
         </div>
@@ -191,31 +192,36 @@
 
       <section>
         <div class="shell">
-          <h2>Future Product Architecture</h2>
+          <h2>Where The Modeling Lives</h2>
           <div class="flow">
             <div class="flow-card">
-              <h3>Warehouse Imports</h3>
-              <p class="muted">BigQuery, Snowflake, Postgres, or governed CSV ingestion.</p>
+              <h3>Transformations</h3>
+              <p class="muted">Geometric adstock and Hill saturation in <code>mmm.py</code>, with time-aware holdout validation.</p>
             </div>
             <div class="flow-card blue">
-              <h3>Feature Pipeline</h3>
-              <p class="muted">dbt marts, Dagster orchestration, validation, and data versioning.</p>
+              <h3>Uncertainty</h3>
+              <p class="muted">Coefficient Monte Carlo in <code>uncertainty.py</code> and a conjugate Bayesian layer in <code>bayesian.py</code>.</p>
             </div>
             <div class="flow-card coral">
-              <h3>Model Jobs</h3>
-              <p class="muted">Scheduled MMM runs, calibration records, model registry, and artifacts.</p>
+              <h3>Calibration</h3>
+              <p class="muted">Geo-lift / conversion-lift evidence, quality scoring, and calibration factors in <code>calibration.py</code>.</p>
             </div>
             <div class="flow-card gold">
-              <h3>Web App and API</h3>
-              <p class="muted">FastAPI, Next.js, RBAC, scenario exports, and audit logs.</p>
+              <h3>Decisions</h3>
+              <p class="muted">Marginal, constrained budget optimization in <code>budget.py</code> and readiness gates in <code>governance.py</code>.</p>
             </div>
           </div>
+          <p class="muted">
+            The methodology behind each of these — adstock, saturation, priors, holdout and
+            geo-lift calibration, and how each is validated — is documented in
+            <a href="https://github.com/rosscyking1115/marketing-effectiveness-lab/blob/main/docs/methodology.md">methodology.md</a>.
+          </p>
         </div>
       </section>
     </main>
 
     <footer>
-      <div class="shell">Architecture designed to show production awareness without hiding prototype boundaries.</div>
+      <div class="shell">A portfolio / reference implementation — architecture organized so the methodology stays legible and each stage is independently testable.</div>
     </footer>
   </body>
 </html>

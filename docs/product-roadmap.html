@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Product Roadmap | Marketing Effectiveness Lab</title>
+    <title>Roadmap | Marketing Effectiveness Lab</title>
     <meta
       name="description"
-      content="Product roadmap for Marketing Effectiveness Lab, an open marketing measurement workbench."
+      content="Roadmap for Marketing Effectiveness Lab, an open reference implementation for marketing measurement. Deeper methodology, not a product."
     />
     <link
       rel="canonical"
@@ -14,20 +14,20 @@
     />
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="Marketing Effectiveness Lab" />
-    <meta property="og:title" content="Product Roadmap | Marketing Effectiveness Lab" />
+    <meta property="og:title" content="Roadmap | Marketing Effectiveness Lab" />
     <meta
       property="og:description"
-      content="Product roadmap for Marketing Effectiveness Lab, an open marketing measurement workbench."
+      content="Roadmap for Marketing Effectiveness Lab, an open reference implementation for marketing measurement. Deeper methodology, not a product."
     />
     <meta
       property="og:url"
       content="https://rosscyking1115.github.io/marketing-effectiveness-lab/product-roadmap.html"
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Product Roadmap | Marketing Effectiveness Lab" />
+    <meta name="twitter:title" content="Roadmap | Marketing Effectiveness Lab" />
     <meta
       name="twitter:description"
-      content="Product roadmap for Marketing Effectiveness Lab, an open marketing measurement workbench."
+      content="Roadmap for Marketing Effectiveness Lab, an open reference implementation for marketing measurement. Deeper methodology, not a product."
     />
     <link rel="stylesheet" href="assets/site-pages.css" />
   </head>
@@ -47,12 +47,13 @@
 
     <main>
       <div class="shell page-hero">
-        <div class="eyebrow">Product Roadmap</div>
-        <h1>An open workbench for practical marketing measurement.</h1>
+        <div class="eyebrow">Roadmap</div>
+        <h1>Deepening the methodology, not building a product.</h1>
         <p class="lead">
-          The goal is to help teams validate marketing data, estimate channel impact,
-          compare causal evidence, plan budgets, design CRM experiments, and retain reusable
-          learning without pretending the current prototype is already an enterprise system.
+          This is a portfolio / reference implementation. The roadmap is about making the
+          causal measurement deeper and better-validated — richer Bayesian MMM, stronger
+          calibration, more validation. There is no proprietary application, pricing, or
+          go-to-market; those are explicit non-goals.
         </p>
         <div class="actions">
           <a class="button primary" href="https://marketing-effectiveness-lab.streamlit.app/">
@@ -68,69 +69,69 @@
         <div class="shell grid">
           <article class="card metric">
             <small>Current State</small>
-            <strong>Streamlit prototype</strong>
-            <p>Reusable package code, deterministic demo data, documented contracts, exportable artifacts, and a local registry.</p>
+            <strong>Reusable package + app</strong>
+            <p>Python package and Streamlit dashboard, deterministic demo data, real public data, documented contracts, and a tested modeling pipeline.</p>
           </article>
           <article class="card metric">
-            <small>Product Boundary</small>
-            <strong>Not confidential-data ready</strong>
-            <p>No authentication, governed storage, tenant isolation, or approval audit log yet.</p>
+            <small>Scope</small>
+            <strong>Reference, not product</strong>
+            <p>No pricing, packaging, or go-to-market — and no authentication or governed storage for confidential company data.</p>
           </article>
           <article class="card metric">
-            <small>Next Product Layer</small>
-            <strong>Governed persistence</strong>
-            <p>Move the local artifact registry toward authenticated, durable, audited storage.</p>
+            <small>Next</small>
+            <strong>Deeper methodology</strong>
+            <p>A fuller Bayesian MMM sampler, time-series cross-validation, and prior sensitivity analysis.</p>
           </article>
         </div>
       </section>
 
       <section>
         <div class="shell">
-          <h2>Near-Term Priorities</h2>
+          <h2>Methodology Directions</h2>
           <div class="timeline">
             <div class="step">
               <div>
-                <h3>Governed Artifact Storage</h3>
+                <h3>Deeper Bayesian MMM</h3>
                 <p class="muted">
-                  Extend local artifact persistence for model runs, uploaded evidence, CRM briefs,
-                  audience files, readouts, and learning records with ownership, versioning,
-                  approval status, and export history.
+                  Move from the conjugate posterior over the fixed design matrix toward a sampler
+                  that also treats adstock and saturation parameters as random, with posterior
+                  predictive checks.
                 </p>
               </div>
             </div>
             <div class="step">
               <div>
-                <h3>Safer Data Onboarding</h3>
+                <h3>Stronger Calibration</h3>
                 <p class="muted">
-                  Strengthen connector validation, remediation guidance, and warehouse-friendly
-                  contracts for aggregated weekly marketing data.
+                  Richer geo-lift and incrementality designs, and a clearer reconciliation between
+                  experiment evidence and modeled contribution.
                 </p>
               </div>
             </div>
             <div class="step">
               <div>
-                <h3>Experiment Registry</h3>
+                <h3>Validation Depth</h3>
                 <p class="muted">
-                  Store planned, launched, completed, and archived experiments, then connect design,
-                  audience assignment, calendar, readout, and learning outcomes.
+                  Time-series cross-validation, backtesting across multiple holdout windows, and
+                  sensitivity analysis on priors and transformation parameters.
                 </p>
               </div>
             </div>
             <div class="step">
               <div>
-                <h3>Multi-User Governance</h3>
+                <h3>Identifiability</h3>
                 <p class="muted">
-                  Separate analyst draft work from approved stakeholder decisions with role
-                  boundaries, approval states, and audit events.
+                  Diagnostics for collinearity between channels and controls, and for how well
+                  spend variation identifies each response curve.
                 </p>
               </div>
             </div>
             <div class="step">
               <div>
-                <h3>Deployment Architecture</h3>
+                <h3>Engineering Quality</h3>
                 <p class="muted">
-                  Move from Streamlit-only prototype toward an API plus production web app,
-                  database, background jobs, observability, dependency scanning, and secure config.
+                  Type checking, expanded test coverage on modeling paths, and reproducibility via
+                  pinned environments, run manifests, and deterministic seeds.
                 </p>
               </div>
             </div>
@@ -155,8 +156,8 @@
               <p>Audience logic, contact policy, readouts, experiment registry, and learning library.</p>
             </article>
             <article class="card">
-              <h3>Product Engineering</h3>
-              <p>API design, persistence, authentication boundaries, audit logs, and deployment.</p>
+              <h3>Engineering Quality</h3>
+              <p>Type checking, test coverage on modeling paths, reproducibility, and run manifests.</p>
             </article>
             <article class="card">
               <h3>Documentation</h3>
@@ -171,6 +172,7 @@
           <div>
             <h2>Non-Goals For Now</h2>
             <div class="pill-row">
+              <span class="pill">A proprietary app, pricing, or go-to-market</span>
               <span class="pill">Raw PII in the public demo</span>
               <span class="pill">Production approval claims</span>
               <span class="pill">Vendor replacement claims</span>
@@ -189,7 +191,7 @@
     </main>
 
     <footer>
-      <div class="shell">Built for practical marketing measurement, with production controls treated as product requirements.</div>
+      <div class="shell">A portfolio / reference implementation for marketing measurement — optimized for being legible and inspectable, not for being a product.</div>
     </footer>
   </body>
 </html>

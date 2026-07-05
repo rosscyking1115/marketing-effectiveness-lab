@@ -10,7 +10,7 @@ The commercial question is not only which channels correlate with revenue. The t
 
 How should a fashion ecommerce brand allocate weekly marketing budget across channels to improve commercial outcomes while accounting for data quality, uncertainty, experiment calibration, and practical business constraints?
 
-## Product Workflow
+## Measurement Workflow
 
 The lab is designed around the way marketing effectiveness work happens in practice:
 
@@ -62,16 +62,17 @@ The Bayesian layer adds posterior uncertainty over the active MMM design matrix 
 
 ## Data Notes
 
-The included dataset is generated from deterministic code for product development and public demo use. It is not ASOS data and does not copy any private brand data. The app can also validate uploaded weekly datasets or assemble connector exports that follow the documented contracts.
+The included dataset is generated from deterministic code for development and public demo use. It is not ASOS data and does not copy any private brand data. The app can also validate uploaded weekly datasets or assemble connector exports that follow the documented contracts.
 
-Uploaded files are parsed in memory in the current Streamlit version. A production version should add authentication, storage policy, audit logging, secrets management, and warehouse integrations before handling private company data.
+Uploaded files are parsed in memory in the current Streamlit version. This is a reference implementation, not a hosted product: anyone adapting it for private company data would need to add authentication, storage policy, audit logging, and secrets management first.
 
-## Product Direction
+## Why This Is A Portfolio Piece
 
-The project is being developed as an open marketing measurement workbench. The product direction is to help users:
+This is a reference implementation, not a commercial product. It exists to demonstrate end-to-end causal-measurement skill:
 
-- Validate marketing and CRM data before modeling.
-- Compare transparent MMM, lift-test, and CRM experiment evidence.
-- Translate model outputs into budget and launch decisions.
-- Preserve reusable learning across experiments and planning cycles.
-- Move toward governed production use with authentication, storage, audit logs, and role-aware workflows.
+- Validating marketing and CRM data before modeling.
+- Comparing transparent MMM, lift-test, and CRM experiment evidence.
+- Translating model outputs into budget and launch decisions under uncertainty.
+- Communicating assumptions, limitations, and where human judgment remains necessary.
+
+For the modeling detail — adstock, saturation, priors, holdout and geo-lift calibration, and how each is validated — see [`methodology.md`](methodology.md).

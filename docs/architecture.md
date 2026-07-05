@@ -2,7 +2,8 @@
 
 ## Current Architecture
 
-The current project is a local analytics product prototype.
+The project is a reusable Python analytics package with a Streamlit dashboard — a reference
+implementation for marketing measurement, run locally on demo and public data.
 
 ```mermaid
 flowchart LR
@@ -47,28 +48,12 @@ flowchart LR
 - `app/streamlit_app.py` renders the analyst dashboard.
 - `tests/` covers reusable logic.
 
-## Future Product Architecture
+## Design Notes
 
-The project can evolve into a multi-user internal tool or SaaS product:
+The module boundaries are the point of the architecture: each stage of the measurement
+workflow — contracts, assembly, diagnostics, modeling, uncertainty, calibration, budgeting,
+governance, reporting — is a separate, independently testable module with a narrow interface.
+That separation is what makes the methodology legible and the engine reusable.
 
-```mermaid
-flowchart LR
-    A["Warehouse or CSV Imports"] --> B["Data Contracts and Validation"]
-    B --> C["Feature Pipeline"]
-    C --> D["Model Jobs"]
-    D --> E["Model Registry"]
-    E --> F["API"]
-    F --> G["Web App"]
-    F --> H["Exports and Reports"]
-    I["Auth and RBAC"] --> F
-    J["Audit Logs"] --> F
-```
-
-Suggested future stack:
-
-- FastAPI for backend APIs
-- Postgres for app metadata, users, scenarios, and audit logs
-- Dagster for orchestration
-- MLflow for model tracking
-- dbt for governed marketing marts
-- Next.js for a production web app
+For the modeling methodology behind `mmm.py`, `uncertainty.py`, `bayesian.py`,
+`calibration.py`, and `budget.py`, see [`methodology.md`](methodology.md).
