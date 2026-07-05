@@ -1,5 +1,11 @@
 # Phase 0 Project Brief: Marketing Effectiveness Lab
 
+> **Historical note.** This is the original Phase 0 brief, kept as a design record. The
+> project is a **portfolio / reference implementation**, not a product — any "SaaS" or
+> "product path" language below is superseded and retained only for provenance. See
+> [`methodology.md`](methodology.md) and [`product-roadmap.md`](product-roadmap.md) for the
+> current direction.
+
 ## Working Title
 
 Marketing Effectiveness Lab
@@ -38,7 +44,7 @@ Version 1 should be small but polished:
 2. An analyst dashboard that lets a user inspect trends, model results, contribution, ROI, and uncertainty.
 3. A later decision-tool layer for budget simulation and optimization.
 
-The app should not be a full SaaS product at first. It should be a product-quality demo on top of a serious analytical foundation.
+The deliverable is a demo-quality analyst app on top of a serious analytical foundation — a portfolio piece, not a product.
 
 This hybrid is stronger than a notebook-only project because it shows:
 
@@ -46,8 +52,7 @@ This hybrid is stronger than a notebook-only project because it shows:
 - Engineering discipline
 - Business usability
 - Communication of uncertainty
-- Product sense
-- Future SaaS potential
+- Clear methodology and validation
 
 ## Target User
 
@@ -191,7 +196,6 @@ Potential expansion after version 1:
 - Profit-aware optimization
 - Customer cohort analysis
 - MMM vs MTA comparison module
-- Tenant-aware SaaS architecture
-- Audit logs and secure model run history
+- Fuller Bayesian MMM sampler with posterior predictive checks
+- Time-series cross-validation and prior sensitivity analysis
 - Executive PDF export
-- Deployment on cloud infrastructure
