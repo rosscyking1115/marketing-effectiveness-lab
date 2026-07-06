@@ -152,6 +152,8 @@ MMM is observational; experiments are causal. The engine reconciles the two.
   (`apply_lift_calibration_to_intervals`), and as a **prior mean shift** in the Bayesian layer
   (priors tagged `Experiment-informed`). This is the "MMM + incrementality" loop: an
   experiment doesn't just sit beside the model, it moves it.
+- **Worked end to end** in [`reconciliation.md`](reconciliation.md): against known ground truth,
+  calibration cuts the observational ROI bias by ~91%.
 
 ## 8. From estimates to a budget decision
 

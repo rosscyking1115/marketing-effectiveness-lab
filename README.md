@@ -95,6 +95,14 @@ its uncertainty honest? Full write-up in [`docs/validation.md`](docs/validation.
 Building this surfaced (and fixed) a real numerical bug — an ill-conditioned Bayesian posterior
 that had collapsed interval coverage to zero. See the write-up for the diagnosis and fix.
 
+**The pay-off — closing the causal loop.** The bias above is an identification problem, not a
+tuning problem; only an experiment can fix it. Simulating honest geo-lift tests against the known
+ground truth and running them through the calibration layer pulls the inflated ROI back toward
+truth — mean error **4.78× → 0.45× (91% closer)**. Full write-up in
+[`docs/reconciliation.md`](docs/reconciliation.md).
+
+![MMM–experiment reconciliation](docs/assets/validation/mmm-experiment-reconciliation.png)
+
 ## Tech stack
 
 | Area | Tools |
@@ -178,8 +186,15 @@ marketing-effectiveness-lab/
   saturation, priors, holdout and geo-lift calibration, and how each step is validated.
 - [`docs/validation.md`](docs/validation.md) — **parameter recovery & uncertainty
   calibration**: because the demo data has known generating parameters, whether the model
-  recovers the truth and whether its intervals are honest (regenerate with
-  `uv run --group viz python scripts/validate_recovery.py`).
+  recovers the truth and whether its intervals are honest (`scripts/validate_recovery.py`).
+- [`docs/reconciliation.md`](docs/reconciliation.md) — **MMM ↔ experiment reconciliation**: the
+  causal loop — simulated geo-lift evidence calibrates the biased MMM toward truth
+  (`scripts/reconcile_mmm_experiments.py`).
+- [`docs/cross-validation.md`](docs/cross-validation.md) — **rolling-origin backtesting** across
+  five quarters, plus an honest benchmark note vs Meridian / Robyn / PyMC-Marketing
+  (`scripts/rolling_origin_cv.py`).
+- [`docs/model-card.md`](docs/model-card.md) — **model card**: intended use, metrics,
+  limitations, and when *not* to trust the model.
 - The **project site** is a visual entry point: workflow, architecture, and data-contract
   pages under <https://rosscyking1115.github.io/marketing-effectiveness-lab/>.
 - [`docs/data-dictionary.md`](docs/data-dictionary.md) — weekly schema, connector
