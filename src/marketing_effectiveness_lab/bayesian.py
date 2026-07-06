@@ -169,32 +169,52 @@ def _sample_normal_inverse_gamma_posterior(
     draws: int,
     rng: np.random.Generator,
 ) -> tuple[np.ndarray, np.ndarray]:
+    # The design matrix mixes columns on wildly different scales -- saturated media
+    # features live in [0, 1) while trend_squared reaches the tens of thousands -- so
+    # X'X is severely ill-conditioned (cond ~1e12). Forming and inverting the posterior
+    # precision in that raw basis corrupts the large-scale coefficients (e.g. the
+    # trend_squared posterior mean drifts ~100x off the OLS estimate, producing holdout
+    # predictions an order of magnitude too high). We whiten each column by its L2 norm,
+    # solve the Normal-Inverse-Gamma posterior in the well-conditioned scaled basis
+    # (cond ~1e2), and map the draws back to the original coefficient scale. The
+    # transform is exact: with S = diag(column norms), X_s = X S^-1 and beta_s = S beta
+    # give X_s beta_s = X beta, and the prior N(beta0, V0) becomes N(S beta0, S V0 S).
     prior_variance = np.square(np.clip(prior_std, 1e-6, None))
-    v0_inv = np.diag(1 / prior_variance)
-    xtx = x_train.T @ x_train
+
+    scales = np.linalg.norm(x_train, axis=0)
+    scales = np.where(scales <= 1e-12, 1.0, scales)
+    x_scaled = x_train / scales
+    beta0_scaled = beta0 * scales
+    prior_variance_scaled = prior_variance * np.square(scales)
+
+    v0_inv = np.diag(1 / prior_variance_scaled)
+    xtx = x_scaled.T @ x_scaled
     v_n_inv = _symmetric_matrix(v0_inv + xtx)
     v_n = _positive_semidefinite(np.linalg.pinv(v_n_inv))
-    beta_n = v_n @ (v0_inv @ beta0 + x_train.T @ y_train)
+    beta_n = v_n @ (v0_inv @ beta0_scaled + x_scaled.T @ y_train)
 
-    n_obs = x_train.shape[0]
+    n_obs = x_scaled.shape[0]
     a0 = 2.0
     y_variance = float(np.var(y_train, ddof=1)) if n_obs > 1 else 1.0
     b0 = max(y_variance, 1.0)
     a_n = a0 + n_obs / 2
+    # The quadratic forms below are coordinate-invariant, so b_n is unchanged by the
+    # rescaling; it is computed in the scaled basis purely for numerical stability.
     b_n = b0 + 0.5 * (
         float(y_train.T @ y_train)
-        + float(beta0.T @ v0_inv @ beta0)
+        + float(beta0_scaled.T @ v0_inv @ beta0_scaled)
         - float(beta_n.T @ v_n_inv @ beta_n)
     )
     b_n = max(b_n, 1.0)
 
     sigma2_draws = b_n / rng.gamma(shape=a_n, scale=1.0, size=draws)
-    beta_draws = np.vstack(
+    beta_draws_scaled = np.vstack(
         [
             rng.multivariate_normal(beta_n, _positive_semidefinite(sigma2 * v_n))
             for sigma2 in sigma2_draws
         ]
     )
+    beta_draws = beta_draws_scaled / scales  # S^-1: back to the original coefficient scale
     return beta_draws, sigma2_draws
 
 

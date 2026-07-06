@@ -1,0 +1,121 @@
+{
+  "holdout_weeks": 26,
+  "posterior_draws": 1200,
+  "coverage_at_90pct": 0.8076923076923077,
+  "roi_within_90pct_interval": 6,
+  "effect_within_90pct_interval": 6,
+  "channels": 6,
+  "mean_abs_roi_error": 3.7572134264876644,
+  "coverage_curve": [
+    {
+      "nominal": 0.5,
+      "empirical_coverage": 0.5,
+      "holdout_mape": 0.050854360320756846
+    },
+    {
+      "nominal": 0.6,
+      "empirical_coverage": 0.5,
+      "holdout_mape": 0.050854360320756846
+    },
+    {
+      "nominal": 0.7,
+      "empirical_coverage": 0.6538461538461539,
+      "holdout_mape": 0.050854360320756846
+    },
+    {
+      "nominal": 0.8,
+      "empirical_coverage": 0.7692307692307693,
+      "holdout_mape": 0.050854360320756846
+    },
+    {
+      "nominal": 0.9,
+      "empirical_coverage": 0.8076923076923077,
+      "holdout_mape": 0.050854360320756846
+    },
+    {
+      "nominal": 0.95,
+      "empirical_coverage": 0.8076923076923077,
+      "holdout_mape": 0.050854360320756846
+    }
+  ],
+  "recovery_table": [
+    {
+      "channel": "Paid search",
+      "true_effect": 520000.0,
+      "recovered_effect": 983375.660142444,
+      "effect_lower": 155754.5309748833,
+      "effect_upper": 1784389.4828541107,
+      "effect_covered": true,
+      "true_roi": 3.657775372547019,
+      "recovered_roi": 6.965056093196798,
+      "roi_lower": 1.0956059376202687,
+      "roi_upper": 12.551722895030144,
+      "roi_covered": true
+    },
+    {
+      "channel": "Paid social",
+      "true_effect": 470000.0,
+      "recovered_effect": 1371990.8761458872,
+      "effect_lower": 462203.0481348535,
+      "effect_upper": 2268924.998321864,
+      "effect_covered": true,
+      "true_roi": 2.8609168417421,
+      "recovered_roi": 8.352645522337761,
+      "roi_lower": 2.8134563504543344,
+      "roi_upper": 13.81107604329508,
+      "roi_covered": true
+    },
+    {
+      "channel": "Display",
+      "true_effect": 180000.0,
+      "recovered_effect": 683987.7606198358,
+      "effect_lower": -6582.963056398097,
+      "effect_upper": 1310727.5009263505,
+      "effect_covered": true,
+      "true_roi": 2.7046368075474345,
+      "recovered_roi": 10.41973630698316,
+      "roi_lower": 0.0,
+      "roi_upper": 19.694676909278176,
+      "roi_covered": true
+    },
+    {
+      "channel": "Affiliates",
+      "true_effect": 210000.0,
+      "recovered_effect": -212338.85093785083,
+      "effect_lower": -746884.6329198717,
+      "effect_upper": 322735.5967568753,
+      "effect_covered": true,
+      "true_roi": 2.9412373941288767,
+      "recovered_roi": 0.7577785628100124,
+      "roi_lower": 0.0,
+      "roi_upper": 4.520200026656285,
+      "roi_covered": true
+    },
+    {
+      "channel": "Email",
+      "true_effect": 160000.0,
+      "recovered_effect": -70969.98516457717,
+      "effect_lower": -557918.421735144,
+      "effect_upper": 405410.2218579833,
+      "effect_covered": true,
+      "true_roi": 5.386964106086573,
+      "recovered_roi": 2.8296675848089277,
+      "roi_lower": 0.0,
+      "roi_upper": 13.649564458684692,
+      "roi_covered": true
+    },
+    {
+      "channel": "Influencer",
+      "true_effect": 190000.0,
+      "recovered_effect": 52616.3587095285,
+      "effect_lower": -352432.928888182,
+      "effect_upper": 451239.7564757362,
+      "effect_covered": true,
+      "true_roi": 3.6444992828084546,
+      "recovered_roi": 2.3560829771601455,
+      "roi_lower": 0.0,
+      "roi_upper": 8.65548930973938,
+      "roi_covered": true
+    }
+  ]
+}
