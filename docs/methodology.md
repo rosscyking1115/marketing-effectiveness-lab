@@ -126,7 +126,11 @@ non-negative. Media priors can be **shifted by experiment evidence** (next secti
 
 **Validation of the intervals:** `_diagnostics()` reports **holdout coverage** — the fraction
 of held-out weeks that actually fall inside the posterior predictive interval. Coverage near
-the nominal width (e.g. ~90%) is evidence the uncertainty is calibrated, not decorative.
+the nominal width is evidence the uncertainty is calibrated, not decorative. The
+[validation study](validation.md) measures this against the diagonal across nominal levels
+(90% intervals cover ~81% of held-out weeks) and, because the demo data has known
+data-generating parameters, checks whether the model **recovers the truth** — see
+[`validation.md`](validation.md).
 
 ## 7. Incrementality / geo-lift calibration
 

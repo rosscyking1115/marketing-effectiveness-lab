@@ -81,6 +81,20 @@ Real figures produced by the package on the demo data (regenerate with
 | ![Holdout fit with uncertainty band](docs/assets/readme/holdout-uncertainty.png) | ![CRM incrementality with 95% intervals](docs/assets/readme/crm-incrementality.png) |
 | **Holdout uncertainty** — actual vs predicted revenue with a 90% band, so a recommendation carries its own confidence. | **CRM incrementality** — conversion lift with 95% intervals; green campaigns show evidence of real lift, grey/red do not. |
 
+## Does the model actually work?
+
+Because the demo data is *generated from known* adstock, saturation, and effect parameters, the
+model can be held to the two questions a reviewer really asks — does it recover the truth, and is
+its uncertainty honest? Full write-up in [`docs/validation.md`](docs/validation.md).
+
+| | |
+| --- | --- |
+| ![Uncertainty calibration](docs/assets/validation/calibration-coverage.png) | ![Parameter recovery](docs/assets/validation/parameter-recovery-roi.png) |
+| **Calibration** — empirical holdout coverage vs nominal; the 90% posterior interval covers ~81% of held-out weeks, measured against the diagonal, not asserted. | **Recovery** — all 6 true channel ROIs land inside their 90% intervals, but the point estimates are inflated ~2–3× by media/seasonality confounding: honest uncertainty, biased central estimate, and precisely why experiment calibration exists. |
+
+Building this surfaced (and fixed) a real numerical bug — an ill-conditioned Bayesian posterior
+that had collapsed interval coverage to zero. See the write-up for the diagnosis and fix.
+
 ## Tech stack
 
 | Area | Tools |
@@ -162,6 +176,10 @@ marketing-effectiveness-lab/
 
 - [`docs/methodology.md`](docs/methodology.md) — **start here for the modeling**: adstock,
   saturation, priors, holdout and geo-lift calibration, and how each step is validated.
+- [`docs/validation.md`](docs/validation.md) — **parameter recovery & uncertainty
+  calibration**: because the demo data has known generating parameters, whether the model
+  recovers the truth and whether its intervals are honest (regenerate with
+  `uv run --group viz python scripts/validate_recovery.py`).
 - The **project site** is a visual entry point: workflow, architecture, and data-contract
   pages under <https://rosscyking1115.github.io/marketing-effectiveness-lab/>.
 - [`docs/data-dictionary.md`](docs/data-dictionary.md) — weekly schema, connector
