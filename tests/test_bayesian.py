@@ -25,6 +25,31 @@ def test_bayesian_mmm_returns_posterior_outputs() -> None:
     ).all()
 
 
+def test_bayesian_posterior_is_well_conditioned() -> None:
+    # Regression guard: the Normal-Inverse-Gamma sampler must whiten the design matrix
+    # before inverting the posterior precision. Without it, X'X is ill-conditioned
+    # (cond ~1e12) and the large-scale trend_squared coefficient drifts ~100x off the
+    # OLS estimate, driving holdout predictions an order of magnitude too high and
+    # collapsing interval coverage to zero.
+    df, _ = generate_weekly_demo_data(seed=42)
+    mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
+
+    result = fit_bayesian_mmm(mmm_result, draws=400, seed=42, interval_width=0.90)
+
+    # Posterior means track the OLS fit in the well-identified directions.
+    summary = result.coefficient_summary.set_index("feature")
+    ols = mmm_result.model.params
+    trend_sq_recovered = summary.loc["trend_squared", "posterior_mean"]
+    assert trend_sq_recovered == pytest.approx(ols["trend_squared"], rel=0.5)
+
+    # Posterior-predictive point estimates match the OLS holdout prediction, so the
+    # sampler is not blowing up the large-scale trend term.
+    assert result.diagnostics["holdout_mape"] < 0.15
+
+    # Intervals are wide enough to be usable: coverage is in a sane range, not zero.
+    assert 0.5 <= result.diagnostics["holdout_coverage"] <= 1.0
+
+
 def test_bayesian_mmm_can_use_experiment_informed_priors() -> None:
     df, _ = generate_weekly_demo_data(seed=42)
     mmm_result = fit_mmm_foundation_model(df, holdout_weeks=26)
