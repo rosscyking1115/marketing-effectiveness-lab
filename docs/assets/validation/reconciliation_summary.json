@@ -1,0 +1,56 @@
+{
+  "experiment_weeks": 8,
+  "mean_abs_roi_error_observational": 4.777434254137384,
+  "mean_abs_roi_error_calibrated": 0.4537273727555283,
+  "bias_reduction_pct": 90.50269771137953,
+  "table": [
+    {
+      "channel": "Paid search",
+      "true_roi": 3.657775372547019,
+      "mmm_roi": 6.681335300166924,
+      "calibrated_roi": 3.6580003537797916,
+      "calibration_status": "Experiment-calibrated",
+      "calibration_factor": 0.5474954016584681
+    },
+    {
+      "channel": "Paid social",
+      "true_roi": 2.8609168417421,
+      "mmm_roi": 8.58774255223487,
+      "calibrated_roi": 2.903651148724764,
+      "calibration_status": "Experiment-calibrated",
+      "calibration_factor": 0.33811576570482066
+    },
+    {
+      "channel": "Display",
+      "true_roi": 2.7046368075474345,
+      "mmm_roi": 10.374299526525599,
+      "calibrated_roi": 2.6675646408496965,
+      "calibration_status": "Experiment-calibrated",
+      "calibration_factor": 0.257132024579502
+    },
+    {
+      "channel": "Affiliates",
+      "true_roi": 2.9412373941288767,
+      "mmm_roi": 0.0,
+      "calibrated_roi": 0.0,
+      "calibration_status": "Uncalibrated",
+      "calibration_factor": 1.0
+    },
+    {
+      "channel": "Email",
+      "true_roi": 5.386964106086573,
+      "mmm_roi": 0.0,
+      "calibrated_roi": 0.0,
+      "calibration_status": "Uncalibrated",
+      "calibration_factor": 1.0
+    },
+    {
+      "channel": "Influencer",
+      "true_roi": 3.6444992828084546,
+      "mmm_roi": 0.954810623349758,
+      "calibrated_roi": 1.909621246699516,
+      "calibration_status": "Experiment-calibrated",
+      "calibration_factor": 2.0
+    }
+  ]
+}

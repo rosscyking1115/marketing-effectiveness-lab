@@ -1,0 +1,51 @@
+{
+  "horizon_weeks": 13,
+  "initial_train_weeks": 91,
+  "folds": 5,
+  "mean_test_mape": 0.042805395806030475,
+  "std_test_mape": 0.009211346087077861,
+  "worst_test_mape": 0.05274208885527712,
+  "best_test_mape": 0.032709622263248146,
+  "fold_table": [
+    {
+      "fold": 1,
+      "train_weeks": 91,
+      "forecast_start": "2024-09-30",
+      "forecast_end": "2024-12-23",
+      "test_mape": 0.05274208885527712,
+      "train_r_squared": 0.8775360998875612
+    },
+    {
+      "fold": 2,
+      "train_weeks": 104,
+      "forecast_start": "2024-12-30",
+      "forecast_end": "2025-03-24",
+      "test_mape": 0.032709622263248146,
+      "train_r_squared": 0.8745115983757281
+    },
+    {
+      "fold": 3,
+      "train_weeks": 117,
+      "forecast_start": "2025-03-31",
+      "forecast_end": "2025-06-23",
+      "test_mape": 0.03346656231080342,
+      "train_r_squared": 0.8702519420281317
+    },
+    {
+      "fold": 4,
+      "train_weeks": 130,
+      "forecast_start": "2025-06-30",
+      "forecast_end": "2025-09-22",
+      "test_mape": 0.04934517365145557,
+      "train_r_squared": 0.890391439389366
+    },
+    {
+      "fold": 5,
+      "train_weeks": 143,
+      "forecast_start": "2025-09-29",
+      "forecast_end": "2025-12-22",
+      "test_mape": 0.04576353194936814,
+      "train_r_squared": 0.899089069070873
+    }
+  ]
+}

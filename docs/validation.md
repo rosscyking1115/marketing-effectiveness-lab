@@ -79,8 +79,9 @@ caused. A decision-maker who trusted the point estimates would over-invest.
 **This is exactly why the engine has an incrementality-calibration layer.** An experiment (geo
 holdout, conversion lift) provides an unconfounded causal anchor; the
 [calibration](../src/marketing_effectiveness_lab/calibration.py) step reconciles the biased
-observational estimate toward it (see [`methodology.md`](methodology.md) §7). Recovery quantifies
-the size of the bias the experiments are there to remove.
+observational estimate toward it. The [reconciliation study](reconciliation.md) closes this loop
+end to end — calibration cuts the ROI bias measured here by ~91%. Recovery quantifies the size of
+the bias the experiments are there to remove.
 
 ## What this demonstrates
 
