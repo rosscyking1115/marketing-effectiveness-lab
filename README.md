@@ -6,17 +6,19 @@
 ![Lint](https://img.shields.io/badge/lint-ruff-261230)
 ![Tests](https://img.shields.io/badge/tests-pytest-0a9edc)
 
-An open, transparent workbench for marketing measurement: marketing mix modeling (MMM),
+A **reference implementation** for marketing measurement: marketing mix modeling (MMM),
 incrementality evidence, CRM experimentation, connector data quality, and profit-aware
 budget decisions — built as a reusable Python package with a Streamlit dashboard.
 
 > [!NOTE]
-> This is a working prototype for learning, portfolio review, and workflow design. It runs
-> on deterministic demo data and real *public* datasets — it is **not** yet a production
-> system for confidential company data (authentication and governed storage are the named
-> next phase). Boundaries are documented rather than hidden.
+> This is a **portfolio / reference project** that demonstrates end-to-end causal-measurement
+> work — the methodology, validation, and engineering — not a commercial product. It runs on
+> deterministic demo data and real *public* datasets, and every modeling assumption and
+> boundary is documented rather than hidden. See
+> [`docs/methodology.md`](docs/methodology.md) for the measurement approach and how it is
+> validated.
 
-- **Product site:** <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
+- **Project site:** <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
 - **Live dashboard:** <https://marketing-effectiveness-lab.streamlit.app/>
 
 The point of the project is not a single model number — it is the **end-to-end workflow**:
@@ -158,13 +160,15 @@ marketing-effectiveness-lab/
 
 ## Documentation
 
-- The **product site** is the entry point: case study, architecture, data contract, and
-  product roadmap pages under <https://rosscyking1115.github.io/marketing-effectiveness-lab/>.
+- [`docs/methodology.md`](docs/methodology.md) — **start here for the modeling**: adstock,
+  saturation, priors, holdout and geo-lift calibration, and how each step is validated.
+- The **project site** is a visual entry point: workflow, architecture, and data-contract
+  pages under <https://rosscyking1115.github.io/marketing-effectiveness-lab/>.
 - [`docs/data-dictionary.md`](docs/data-dictionary.md) — weekly schema, connector
   templates, and assembly mapping.
-- [`docs/production-security-roadmap.md`](docs/production-security-roadmap.md) — security
-  and production roadmap, with RBAC/audit marked *demonstrated* and authentication/storage
-  *outstanding*.
+- [`docs/production-security-roadmap.md`](docs/production-security-roadmap.md) — security and
+  data-handling notes, with RBAC/audit marked *demonstrated* and authentication/storage
+  called out as *out of scope* for this reference.
 - `docs/phase-*.md` — chronological design notes for each capability, from baseline
   econometrics through real public data, the stakeholder brief, and access governance.
 
@@ -177,7 +181,7 @@ marketing-effectiveness-lab/
 ---
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution lanes (measurement reliability,
-data onboarding, CRM experimentation, production readiness), [`SECURITY.md`](SECURITY.md)
-for the public-data policy, and [`LICENSE`](LICENSE) (Apache-2.0). This repository is the
-open-source **engine**; the commercial multi-tenant application built on it is a separate,
-proprietary work.
+data onboarding, CRM experimentation, engineering quality), [`SECURITY.md`](SECURITY.md)
+for the public-data policy, and [`LICENSE`](LICENSE) (Apache-2.0). This is an open,
+Apache-2.0 reference implementation for marketing measurement — free to read, run, and
+build on.
