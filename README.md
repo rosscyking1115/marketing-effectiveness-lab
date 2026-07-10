@@ -11,12 +11,11 @@ incrementality evidence, CRM experimentation, connector data quality, and profit
 budget decisions — built as a reusable Python package with a Streamlit dashboard.
 
 > [!NOTE]
-> This is a **portfolio / reference project** that demonstrates end-to-end causal-measurement
-> work — the methodology, validation, and engineering — not a commercial product. It runs on
-> deterministic demo data and real *public* datasets, and every modeling assumption and
-> boundary is documented rather than hidden. See
-> [`docs/methodology.md`](docs/methodology.md) for the measurement approach and how it is
-> validated.
+> A **reference implementation** of end-to-end causal-measurement work — the methodology,
+> validation, and engineering — not a commercial product. It runs on deterministic demo data
+> and real *public* datasets, and every modeling assumption and boundary is documented rather
+> than hidden. See [`docs/methodology.md`](docs/methodology.md) for the measurement approach
+> and how it is validated.
 
 - **Project site:** <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
 - **Live dashboard:** <https://marketing-effectiveness-lab.streamlit.app/>
@@ -66,7 +65,7 @@ flowchart LR
 **Governance & reproducibility**
 - Machine-readable model-run manifests, a local artifact registry, and a manifest
   comparison workflow.
-- An access-governance demonstration: role-based permissions, an approval workflow with
+- Access governance: role-based permissions, an approval workflow with
   separation of duties, and a tamper-evident (hash-chained) audit log.
 
 ## Example outputs
