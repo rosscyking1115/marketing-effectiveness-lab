@@ -88,6 +88,13 @@
         text-decoration: underline;
       }
 
+      a:focus-visible,
+      .button:focus-visible {
+        outline: 2px solid var(--green);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+
       .shell {
         width: min(1160px, calc(100% - 40px));
         margin: 0 auto;
@@ -419,7 +426,7 @@
           </div>
         </div>
 
-        <div class="dashboard" aria-label="Dashboard preview">
+        <div class="dashboard" aria-hidden="true">
           <div class="dashboard-bar">
             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
           </div>

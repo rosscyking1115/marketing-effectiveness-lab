@@ -5,6 +5,8 @@ description = "Marketing effectiveness, MMM, causal inference, and budget optimi
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+authors = [{ name = "Cheng-Yuan King", email = "rosscyking1115@gmail.com" }]
+keywords = ["marketing-mix-modeling", "mmm", "causal-inference", "incrementality", "budget-optimization"]
 dependencies = [
     "numpy>=1.26",
     "pandas>=2.2",
@@ -33,6 +35,11 @@ brief = [
 viz = [
     "matplotlib>=3.8",
 ]
+
+[project.urls]
+Homepage = "https://rosscyking1115.github.io/marketing-effectiveness-lab/"
+Repository = "https://github.com/rosscyking1115/marketing-effectiveness-lab"
+Documentation = "https://github.com/rosscyking1115/marketing-effectiveness-lab/blob/main/docs/methodology.md"
 
 [build-system]
 requires = ["setuptools>=69"]
