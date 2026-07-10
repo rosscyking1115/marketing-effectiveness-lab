@@ -14,3 +14,7 @@ data/demo/*.json
 
 # Real public datasets (downloaded locally, never committed) and their outputs.
 data/public/
+
+# internal working docs — kept local, not for the public repo
+/docs/phase-0-project-brief.md
+/docs/phase-39-product-repositioning.md
