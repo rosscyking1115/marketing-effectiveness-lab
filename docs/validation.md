@@ -83,7 +83,7 @@ observational estimate toward it. The [reconciliation study](reconciliation.md) 
 end to end — calibration cuts the ROI bias measured here by ~91%. Recovery quantifies the size of
 the bias the experiments are there to remove.
 
-## What this demonstrates
+## What this validates
 
 - A recovery harness against known ground truth — the single most convincing evidence an estimator
   works, and something real-data MMM cannot provide.

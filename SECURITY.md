@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-Marketing Effectiveness Lab is a public portfolio project and should be treated as a demo analytics application, not a production system.
+Marketing Effectiveness Lab is a public reference project and should be treated as a demo analytics application, not a production system.
 
 ## Current Data Policy
 

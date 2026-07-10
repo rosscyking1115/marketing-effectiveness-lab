@@ -66,9 +66,9 @@ The included dataset is generated from deterministic code for development and pu
 
 Uploaded files are parsed in memory in the current Streamlit version. This is a reference implementation, not a hosted product: anyone adapting it for private company data would need to add authentication, storage policy, audit logging, and secrets management first.
 
-## Why This Is A Portfolio Piece
+## Scope
 
-This is a reference implementation, not a commercial product. It exists to demonstrate end-to-end causal-measurement skill:
+This is a reference implementation, not a commercial product. It shows end-to-end causal-measurement work:
 
 - Validating marketing and CRM data before modeling.
 - Comparing transparent MMM, lift-test, and CRM experiment evidence.
