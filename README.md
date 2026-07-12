@@ -1,5 +1,21 @@
 # Marketing Effectiveness Lab
 
+> [!IMPORTANT]
+> **📦 Archived — this work continues in [responsible-neobank-growth](https://github.com/rosscyking1115/responsible-neobank-growth).**
+>
+> This lab's marketing-measurement methodology has been folded into the
+> [Responsible Neobank Growth](https://github.com/rosscyking1115/responsible-neobank-growth)
+> platform, where the same causal-inference stack (CUPED, diff-in-diff, geo-lift,
+> synthetic control) now lives alongside experimentation governance and release gating:
+>
+> - **MMM ↔ experiment reconciliation** ("closing the causal loop", 4.78×→0.45× error) → [`docs/case-studies/mmm-experiment-reconciliation.md`](https://github.com/rosscyking1115/responsible-neobank-growth/blob/main/docs/case-studies/mmm-experiment-reconciliation.md)
+> - **Parameter-recovery & calibration validation** → [`docs/methodology/parameter-recovery-validation.md`](https://github.com/rosscyking1115/responsible-neobank-growth/blob/main/docs/methodology/parameter-recovery-validation.md)
+> - **Benchmark note vs Meridian / Robyn / PyMC-Marketing** → [`docs/methodology/mmm-benchmark-note.md`](https://github.com/rosscyking1115/responsible-neobank-growth/blob/main/docs/methodology/mmm-benchmark-note.md)
+>
+> The code here remains complete and runnable as of the final release; the live
+> dashboard and docs stay available as a historical reference. No further development
+> happens in this repository.
+
 [![CI](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache_2.0-green)
