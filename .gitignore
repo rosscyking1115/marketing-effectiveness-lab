@@ -8,6 +8,10 @@ __pycache__/
 *.egg-info/
 .local/
 
+# Local environment / secrets (never committed)
+.env
+.env.*
+
 data/demo/*.csv
 data/demo/*.parquet
 data/demo/*.json
