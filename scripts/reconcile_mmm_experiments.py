@@ -54,7 +54,9 @@ HOLDOUT_WEEKS = 26
 SLOPE = 1.35
 EXPERIMENT_WEEKS = 8
 # Channels a team would realistically run paid-media geo-lift / conversion-lift tests on.
-EXPERIMENT_CHANNELS = {"Paid search", "Paid social", "Display", "Influencer"}
+# An ordered tuple, not a set: the loop draws measurement noise from RNG in iteration order, and
+# set ordering depends on hash randomisation, which would make the result vary between runs.
+EXPERIMENT_CHANNELS = ("Paid search", "Paid social", "Display", "Influencer")
 EXPERIMENT_TYPES = {
     "Paid search": "Geo holdout",
     "Paid social": "Conversion lift",
