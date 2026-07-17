@@ -22,23 +22,22 @@
 ![Lint](https://img.shields.io/badge/lint-ruff-261230)
 ![Tests](https://img.shields.io/badge/tests-pytest-0a9edc)
 
-A **reference implementation** for marketing measurement: marketing mix modeling (MMM),
-incrementality evidence, CRM experimentation, connector data quality, and profit-aware
-budget decisions — built as a reusable Python package with a Streamlit dashboard.
+Marketing mix modelling (MMM), incrementality evidence, CRM experimentation, connector data
+quality, and profit-aware budget decisions, built as a reusable Python package with a
+Streamlit dashboard.
 
 > [!NOTE]
-> A **reference implementation** of end-to-end causal-measurement work — the methodology,
-> validation, and engineering — not a commercial product. It runs on deterministic demo data
-> and real *public* datasets, and every modeling assumption and boundary is documented rather
-> than hidden. See [`docs/methodology.md`](docs/methodology.md) for the measurement approach
-> and how it is validated.
+> This is a reference implementation, not a commercial product. It runs on deterministic demo
+> data and real *public* datasets, and every modelling assumption and boundary is written down
+> instead of hidden. [`docs/methodology.md`](docs/methodology.md) covers the measurement
+> approach and how it is validated.
 
-- **Project site:** <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
-- **Live dashboard:** <https://marketing-effectiveness-lab.streamlit.app/>
+- Project site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
+- Live dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
 
-The point of the project is not a single model number — it is the **end-to-end workflow**:
-data contract → source validation → diagnostics → modeling → incrementality evidence →
-uncertainty → budget optimization → stakeholder communication → governance.
+A single ROI number is easy to produce. What makes one worth acting on is the chain behind it:
+data contract → source validation → diagnostics → modelling → incrementality evidence →
+uncertainty → budget optimisation → stakeholder communication → governance.
 
 ```mermaid
 flowchart LR
@@ -48,41 +47,44 @@ flowchart LR
   C --> E[CRM experiments<br/>& incrementality]
   D --> F[Uncertainty &<br/>Bayesian intervals]
   E --> G[Experiment evidence<br/>& calibration]
-  F --> H[Profit-aware<br/>budget optimization]
+  F --> H[Profit-aware<br/>budget optimisation]
   G --> H
   H --> I[Stakeholder brief<br/>& access governance]
 ```
 
 ## What it does
 
-**Data onboarding**
-- Versioned data contracts and connector templates for ecommerce, web analytics, paid
-  media, CRM, affiliate, influencer, display, and external-control exports.
-- Connector assembly into an MMM-ready weekly dataset, with source-coverage and
-  data-quality diagnostics.
+### Data onboarding
 
-**Measurement & modeling**
+Versioned data contracts and connector templates for ecommerce, web analytics, paid media,
+CRM, affiliate, influencer, display, and external-control exports. Connectors assemble into an
+MMM-ready weekly dataset, with source-coverage and data-quality diagnostics.
+
+### Measurement and modelling
+
 - Baseline econometrics with time-aware holdout validation.
 - MMM-style adstock, saturation, contribution, ROI, and response curves.
 - Uncertainty intervals and a lightweight Bayesian posterior layer.
 - Lift-test evidence upload, quality governance, and experiment-informed calibration.
 
-**Decisions**
-- Profit-aware scenario planning and constrained budget optimization.
-- Recommendation-readiness gates, executive summaries, and a one-page stakeholder
-  business-impact brief (Markdown + PDF).
+### Decisions
 
-**Customer & CRM growth**
-- Cohort, CLV, and lapse-risk analytics; target/holdout CRM incrementality with
-  confidence intervals.
-- Retention action planning and an end-to-end CRM experiment workflow: design, audience
+Profit-aware scenario planning and constrained budget optimisation, with readiness gates that
+a recommendation has to clear before anyone sees it. Outputs an executive summary and a
+one-page stakeholder brief (Markdown, plus PDF).
+
+### Customer and CRM growth
+
+- Cohort, CLV, and lapse-risk analytics; target/holdout CRM incrementality with confidence
+  intervals.
+- Retention action planning, and a CRM experiment workflow covering design, audience
   assignment, launch calendar, post-launch readouts, and a reusable learning library.
 
-**Governance & reproducibility**
-- Machine-readable model-run manifests, a local artifact registry, and a manifest
-  comparison workflow.
-- Access governance: role-based permissions, an approval workflow with
-  separation of duties, and a tamper-evident (hash-chained) audit log.
+### Governance and reproducibility
+
+Machine-readable model-run manifests, a local artifact registry, and a workflow for comparing
+manifests. Access governance covers role-based permissions, an approval workflow with
+separation of duties, and a hash-chained audit log that makes tampering visible.
 
 ## Example outputs
 
@@ -92,29 +94,29 @@ Real figures produced by the package on the demo data (regenerate with
 | | |
 | --- | --- |
 | ![MMM response curves](docs/assets/readme/mmm-response-curves.png) | ![Channel contribution and ROI](docs/assets/readme/channel-contribution.png) |
-| **Response curves** — diminishing returns by channel, used to decide where the next pound of spend pays back. | **Contribution & ROI** — where revenue actually comes from, and which channels earn their spend. |
+| Response curves: diminishing returns by channel, used to decide where the next pound of spend pays back. | Contribution and ROI: where revenue comes from, and which channels earn their spend. |
 | ![Holdout fit with uncertainty band](docs/assets/readme/holdout-uncertainty.png) | ![CRM incrementality with 95% intervals](docs/assets/readme/crm-incrementality.png) |
-| **Holdout uncertainty** — actual vs predicted revenue with a 90% band, so a recommendation carries its own confidence. | **CRM incrementality** — conversion lift with 95% intervals; green campaigns show evidence of real lift, grey/red do not. |
+| Holdout uncertainty: actual against predicted revenue with a 90% band, so a recommendation carries its own confidence. | CRM incrementality: conversion lift with 95% intervals. Green campaigns show evidence of real lift; grey and red do not. |
 
 ## Does the model actually work?
 
-Because the demo data is *generated from known* adstock, saturation, and effect parameters, the
-model can be held to the two questions a reviewer really asks — does it recover the truth, and is
-its uncertainty honest? Full write-up in [`docs/validation.md`](docs/validation.md).
+The demo data is generated from known adstock, saturation, and effect parameters, so the model
+can be checked against the truth rather than judged on plausibility. Two questions follow: does
+it recover those parameters, and is its uncertainty honest? Write-up in
+[`docs/validation.md`](docs/validation.md).
 
 | | |
 | --- | --- |
 | ![Uncertainty calibration](docs/assets/validation/calibration-coverage.png) | ![Parameter recovery](docs/assets/validation/parameter-recovery-roi.png) |
-| **Calibration** — empirical holdout coverage vs nominal; the 90% posterior interval covers ~81% of held-out weeks, measured against the diagonal, not asserted. | **Recovery** — all 6 true channel ROIs land inside their 90% intervals, but the point estimates are inflated ~2–3× by media/seasonality confounding: honest uncertainty, biased central estimate, and precisely why experiment calibration exists. |
+| Calibration: empirical holdout coverage against nominal. The 90% posterior interval covers about 81% of held-out weeks, measured rather than asserted. | Recovery: all 6 true channel ROIs land inside their 90% intervals, but the point estimates are inflated by roughly 2–3× through media/seasonality confounding. The uncertainty is honest; the central estimate is biased. |
 
-Building this surfaced (and fixed) a real numerical bug — an ill-conditioned Bayesian posterior
-that had collapsed interval coverage to zero. See the write-up for the diagnosis and fix.
+Building this turned up a real numerical bug, an ill-conditioned Bayesian posterior that had
+collapsed interval coverage to zero. The write-up has the diagnosis and the fix.
 
-**The pay-off — closing the causal loop.** The bias above is an identification problem, not a
-tuning problem; only an experiment can fix it. Simulating honest geo-lift tests against the known
-ground truth and running them through the calibration layer pulls the inflated ROI back toward
-truth — mean error **4.78× → 0.45× (91% closer)**. Full write-up in
-[`docs/reconciliation.md`](docs/reconciliation.md).
+That bias is an identification problem, so no amount of tuning removes it. An experiment can.
+Simulating geo-lift tests against the known ground truth and running them through the
+calibration layer pulls the inflated ROI back towards truth, cutting mean error from 4.78× to
+0.45×, about 91% closer. Write-up in [`docs/reconciliation.md`](docs/reconciliation.md).
 
 ![MMM–experiment reconciliation](docs/assets/validation/mmm-experiment-reconciliation.png)
 
@@ -123,7 +125,7 @@ truth — mean error **4.78× → 0.45× (91% closer)**. Full write-up in
 | Area | Tools |
 | --- | --- |
 | Language | Python ≥ 3.11 |
-| Data & modeling | pandas, NumPy, statsmodels |
+| Data & modelling | pandas, NumPy, statsmodels |
 | App & charts | Streamlit, Plotly |
 | Tooling | uv (env & lockfile), pytest, ruff |
 | Optional groups | `data` (openpyxl, real public data), `brief` (reportlab, PDF brief), `viz` (matplotlib, README figures) |
@@ -148,8 +150,8 @@ The repository also includes a root `streamlit_app.py` entrypoint used by Stream
 
 ## Working with real public data
 
-The pipeline runs on the real **UCI Online Retail II** dataset (a UK online retailer), not
-only synthetic data.
+The pipeline runs on the UCI Online Retail II dataset (a UK online retailer), not only on
+synthetic data.
 
 ```powershell
 # Customer / cohort / CLV analytics on real transactions
@@ -191,45 +193,44 @@ marketing-effectiveness-lab/
 │                              # online_retail adapter, shared feature definitions
 ├─ scripts/                    # demo data, real-data, stakeholder brief, governance demo
 ├─ tests/                      # pytest suite (19 files)
-├─ docs/                       # product site (HTML) + phase notes (Markdown)
+├─ docs/                       # project site (HTML) + phase notes (Markdown)
 └─ data/demo/                  # generated demo data (git-ignored)
 ```
 
 ## Documentation
 
-- [`docs/methodology.md`](docs/methodology.md) — **start here for the modeling**: adstock,
-  saturation, priors, holdout and geo-lift calibration, and how each step is validated.
-- [`docs/validation.md`](docs/validation.md) — **parameter recovery & uncertainty
-  calibration**: because the demo data has known generating parameters, whether the model
-  recovers the truth and whether its intervals are honest (`scripts/validate_recovery.py`).
-- [`docs/reconciliation.md`](docs/reconciliation.md) — **MMM ↔ experiment reconciliation**: the
-  causal loop — simulated geo-lift evidence calibrates the biased MMM toward truth
+Start with [`docs/methodology.md`](docs/methodology.md), which covers adstock, saturation,
+priors, holdout and geo-lift calibration, and how each step is validated.
+
+- [`docs/validation.md`](docs/validation.md) asks whether the model recovers the known
+  generating parameters and whether its intervals are honest (`scripts/validate_recovery.py`).
+- [`docs/reconciliation.md`](docs/reconciliation.md) closes the causal loop: simulated geo-lift
+  evidence calibrates the biased MMM back towards truth
   (`scripts/reconcile_mmm_experiments.py`).
-- [`docs/cross-validation.md`](docs/cross-validation.md) — **rolling-origin backtesting** across
-  five quarters, plus an honest benchmark note vs Meridian / Robyn / PyMC-Marketing
+- [`docs/cross-validation.md`](docs/cross-validation.md) covers rolling-origin backtesting
+  across five quarters, and how this compares with Meridian, Robyn, and PyMC-Marketing
   (`scripts/rolling_origin_cv.py`).
-- [`docs/model-card.md`](docs/model-card.md) — **model card**: intended use, metrics,
-  limitations, and when *not* to trust the model.
-- The **project site** is a visual entry point: workflow, architecture, and data-contract
-  pages under <https://rosscyking1115.github.io/marketing-effectiveness-lab/>.
-- [`docs/data-dictionary.md`](docs/data-dictionary.md) — weekly schema, connector
+- [`docs/model-card.md`](docs/model-card.md) states intended use, metrics, limitations, and
+  when not to trust the model.
+- [`docs/data-dictionary.md`](docs/data-dictionary.md) documents the weekly schema, connector
   templates, and assembly mapping.
-- [`docs/production-security-roadmap.md`](docs/production-security-roadmap.md) — security and
-  data-handling notes, with RBAC/audit marked *demonstrated* and authentication/storage
-  called out as *out of scope* for this reference.
-- `docs/phase-*.md` — chronological design notes for each capability, from baseline
-  econometrics through real public data, the stakeholder brief, and access governance.
+- [`docs/production-security-roadmap.md`](docs/production-security-roadmap.md) records the
+  security and data-handling position: RBAC and audit are demonstrated, authentication and
+  storage are out of scope here.
+- `docs/phase-*.md` are the dated design notes for each capability, from baseline econometrics
+  through to real public data, the stakeholder brief, and access governance.
+
+The project site at <https://rosscyking1115.github.io/marketing-effectiveness-lab/> is the
+visual way in, with workflow, architecture, and data-contract pages.
 
 ## Deployment
 
-- **Dashboard** — Streamlit Community Cloud, repository `rosscyking1115/marketing-effectiveness-lab`,
-  branch `main`, main file `streamlit_app.py`.
-- **Product site** — GitHub Pages serves the `/docs` folder.
+The dashboard runs on Streamlit Community Cloud from `rosscyking1115/marketing-effectiveness-lab`,
+branch `main`, main file `streamlit_app.py`. GitHub Pages serves the project site from the
+`/docs` folder.
 
 ---
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution lanes (measurement reliability,
-data onboarding, CRM experimentation, engineering quality), [`SECURITY.md`](SECURITY.md)
-for the public-data policy, and [`LICENSE`](LICENSE) (Apache-2.0). This is an open,
-Apache-2.0 reference implementation for marketing measurement — free to read, run, and
-build on.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) lists the contribution lanes, [`SECURITY.md`](SECURITY.md)
+covers the public-data policy, and the [`LICENSE`](LICENSE) is Apache-2.0, so this is free to
+read, run, and build on.

@@ -1,18 +1,18 @@
-# Security and Data-Handling Notes
+# Security and data-handling notes
 
-This is a **portfolio / reference implementation**, not a product. This page records the
-security posture honestly: what the code demonstrates, and what a real deployment on private
-company data would need but is deliberately **out of scope** here.
+This is a reference implementation, not a product. This page records the security position: what
+the code covers, and what a real deployment on private company data would need but is left out
+here on purpose.
 
-## Current State
+## Current state
 
-The project runs locally on deterministic demo data and real *public* datasets. It does not
-handle private marketing data, multi-user access, authentication, or a hosted deployment, and
-does not aim to.
+The project runs locally on deterministic demo data and real public datasets. It does not handle
+private marketing data, multi-user access, authentication, or a hosted deployment, and does not
+aim to.
 
-The CSV upload workflow parses files in memory and does not persist uploaded data to disk.
-Anyone adapting this engine for private company data would need to add authentication,
-explicit storage controls, audit logging, and retention policies first — see the list below.
+The CSV upload workflow parses files in memory and does not persist uploaded data to disk. Anyone
+adapting this engine for private company data would need authentication, explicit storage
+controls, audit logging, and retention policies first. The list below covers what that involves.
 
 ## Data Security Principles
 

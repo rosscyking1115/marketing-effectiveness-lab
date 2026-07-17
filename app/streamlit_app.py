@@ -1907,7 +1907,7 @@ label_lookup = {
 corr_df = corr_df.rename(index=label_lookup, columns=label_lookup)
 corr_fig = px.imshow(
     corr_df,
-    title="Correlation matrix for early modeling review",
+    title="Correlation matrix for early modelling review",
     color_continuous_scale=["#c65f4b", "#f7f7f7", "#2f7d64"],
     zmin=-1,
     zmax=1,
@@ -2019,7 +2019,7 @@ with coef_right:
 
 st.info(
     "This baseline is for diagnostic comparison, not final budget allocation. "
-    "The next modeling phase should add adstock, saturation, priors, and uncertainty-aware MMM."
+    "The next modelling phase should add adstock, saturation, priors, and uncertainty-aware MMM."
 )
 
 st.divider()
@@ -2169,7 +2169,7 @@ st.divider()
 st.subheader("Calibrated MMM Search")
 st.markdown(
     '<p class="mel-caption">Optional time-aware search over adstock and saturation assumptions. '
-    "Use this as a bridge toward Bayesian MMM, not as final uncertainty modeling.</p>",
+    "Use this as a bridge toward Bayesian MMM, not as final uncertainty modelling.</p>",
     unsafe_allow_html=True,
 )
 
@@ -2816,7 +2816,7 @@ with planner_left:
         optimization_result = None
     elif allocation_profile == "Optimized allocation":
         if optimize_budget_allocation is None:
-            st.warning("The optimizer is unavailable while the app environment refreshes.")
+            st.warning("The optimiser is unavailable while the app environment refreshes.")
             proposed_spend = allocation_from_shares(
                 current_spend,
                 {column: spend for column, spend in current_spend.items()},
@@ -2825,7 +2825,7 @@ with planner_left:
             optimization_result = None
         else:
             optimization_objective_label = st.radio(
-                "Optimization objective",
+                "Optimisation objective",
                 ["Profit after media", "Contribution revenue"],
                 horizontal=False,
             )
@@ -2966,7 +2966,7 @@ st.info(
 )
 
 if optimization_result is not None:
-    st.markdown("**Optimization diagnostics**")
+    st.markdown("**Optimisation diagnostics**")
     opt_diag = optimization_result.diagnostics.copy()
     for money_col in [
         "current_mix_weekly_spend_gbp",
@@ -2994,7 +2994,7 @@ if optimization_result is not None:
         hide_index=True,
     )
     st.caption(
-        "The optimizer uses greedy marginal response steps with min/max channel share constraints. "
+        "The optimiser uses greedy marginal response steps with min/max channel share constraints. "
         "It is designed for transparent directional planning."
     )
 
