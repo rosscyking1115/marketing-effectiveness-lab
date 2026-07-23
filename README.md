@@ -12,9 +12,10 @@
 > - **Parameter-recovery & calibration validation** → [`docs/methodology/parameter-recovery-validation.md`](https://github.com/rosscyking1115/responsible-neobank-growth/blob/main/docs/methodology/parameter-recovery-validation.md)
 > - **Benchmark note vs Meridian / Robyn / PyMC-Marketing** → [`docs/methodology/mmm-benchmark-note.md`](https://github.com/rosscyking1115/responsible-neobank-growth/blob/main/docs/methodology/mmm-benchmark-note.md)
 >
-> The code here remains complete and runnable as of the final release; the live
-> dashboard and docs stay available as a historical reference. No further development
-> happens in this repository.
+> The code here remains complete and runnable as of the final release; the project site
+> and docs stay available as a historical reference. The Streamlit source remains runnable
+> locally, but its hosted reference surface may sleep or require access and is not an
+> always-on public demo. No further development happens in this repository.
 
 [![CI](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/marketing-effectiveness-lab/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
@@ -33,7 +34,6 @@ Streamlit dashboard.
 > approach and how it is validated.
 
 - Project site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
-- Live dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
 
 A single ROI number is easy to produce. What makes one worth acting on is the chain behind it:
 data contract → source validation → diagnostics → modelling → incrementality evidence →
@@ -225,9 +225,9 @@ visual way in, with workflow, architecture, and data-contract pages.
 
 ## Deployment
 
-The dashboard runs on Streamlit Community Cloud from `rosscyking1115/marketing-effectiveness-lab`,
-branch `main`, main file `streamlit_app.py`. GitHub Pages serves the project site from the
-`/docs` folder.
+The archived `streamlit_app.py` entrypoint remains available for local use. Its hosted reference
+surface may sleep or require access and is not an always-on public demo. GitHub Pages serves the
+project site from the `/docs` folder.
 
 ---
 
