@@ -3,12 +3,16 @@
 Live project links:
 
 - Portfolio site: <https://rosscyking1115.github.io/marketing-effectiveness-lab/>
-- Interactive dashboard: <https://marketing-effectiveness-lab.streamlit.app/>
 - GitHub repo: <https://github.com/rosscyking1115/marketing-effectiveness-lab>
 
-## Streamlit Community Cloud
+## Archived Streamlit reference
 
-Use these settings in the deploy form:
+The Streamlit entrypoint is retained for local use. Its hosted reference surface may sleep or
+require access and is not an always-on public demo.
+
+### Prior Streamlit Community Cloud configuration
+
+The prior deployment used these settings:
 
 - Repository: `rosscyking1115/marketing-effectiveness-lab`
 - Branch: `main`
