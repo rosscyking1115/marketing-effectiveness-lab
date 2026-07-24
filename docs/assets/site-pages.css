@@ -48,6 +48,18 @@ header {
   border-bottom: 1px solid var(--line);
 }
 
+.archive-banner {
+  padding: 12px 20px;
+  border-bottom: 1px solid #bdd8ca;
+  background: #f3faf6;
+  color: var(--ink);
+  text-align: center;
+}
+
+.archive-banner strong {
+  margin-right: 4px;
+}
+
 nav {
   display: flex;
   align-items: center;
