@@ -1,0 +1,146 @@
+{
+  "seed": 42,
+  "holdout_weeks": 26,
+  "validation_weeks": 20,
+  "slope_assumed_not_recovered": 1.35,
+  "decay_candidates": [
+    0.05,
+    0.15,
+    0.25,
+    0.35,
+    0.45,
+    0.55,
+    0.65,
+    0.75
+  ],
+  "half_saturation_candidates_gbp": [
+    20000.0,
+    40000.0,
+    60000.0,
+    80000.0,
+    100000.0,
+    120000.0,
+    140000.0,
+    160000.0,
+    180000.0,
+    200000.0
+  ],
+  "channels": 6,
+  "decay_at_nearest_grid_point": 1,
+  "half_saturation_at_nearest_grid_point": 0,
+  "mean_decay_abs_error": 0.3499999999999999,
+  "mean_half_saturation_abs_pct_error": 1.5945125727734426,
+  "grid_points_per_channel": 80,
+  "validation_mape_min": 0.030880038985665208,
+  "validation_mape_max": 0.03602808886327197,
+  "max_validation_mape_spread": 0.0738657113187548,
+  "recovery_table": [
+    {
+      "channel": "Paid search",
+      "true_decay": 0.25,
+      "recovered_decay": 0.65,
+      "decay_abs_error": 0.4,
+      "decay_grid_floor": 0.0,
+      "true_half_saturation_gbp": 92000.0,
+      "recovered_half_saturation_gbp": 200000.0,
+      "half_saturation_abs_pct_error": 1.173913043478261,
+      "half_saturation_grid_floor_pct": 0.08695652173913043,
+      "best_validation_mape": 0.033549901522628815,
+      "worst_validation_mape": 0.03602808886327197,
+      "validation_mape_spread": 0.0738657113187548
+    },
+    {
+      "channel": "Paid social",
+      "true_decay": 0.45,
+      "recovered_decay": 0.75,
+      "decay_abs_error": 0.3,
+      "decay_grid_floor": 0.0,
+      "true_half_saturation_gbp": 130000.0,
+      "recovered_half_saturation_gbp": 200000.0,
+      "half_saturation_abs_pct_error": 0.5384615384615384,
+      "half_saturation_grid_floor_pct": 0.07692307692307693,
+      "best_validation_mape": 0.032697271743507866,
+      "worst_validation_mape": 0.03365131196868883,
+      "validation_mape_spread": 0.029177976458246484
+    },
+    {
+      "channel": "Display",
+      "true_decay": 0.55,
+      "recovered_decay": 0.65,
+      "decay_abs_error": 0.09999999999999998,
+      "decay_grid_floor": 0.0,
+      "true_half_saturation_gbp": 72000.0,
+      "recovered_half_saturation_gbp": 200000.0,
+      "half_saturation_abs_pct_error": 1.7777777777777777,
+      "half_saturation_grid_floor_pct": 0.1111111111111111,
+      "best_validation_mape": 0.031756947730711874,
+      "worst_validation_mape": 0.03358078942090269,
+      "validation_mape_spread": 0.05743126529842766
+    },
+    {
+      "channel": "Affiliates",
+      "true_decay": 0.15,
+      "recovered_decay": 0.75,
+      "decay_abs_error": 0.6,
+      "decay_grid_floor": 0.0,
+      "true_half_saturation_gbp": 45000.0,
+      "recovered_half_saturation_gbp": 20000.0,
+      "half_saturation_abs_pct_error": 0.5555555555555556,
+      "half_saturation_grid_floor_pct": 0.1111111111111111,
+      "best_validation_mape": 0.03155989706368769,
+      "worst_validation_mape": 0.03194259406072758,
+      "validation_mape_spread": 0.012126053398324134
+    },
+    {
+      "channel": "Email",
+      "true_decay": 0.1,
+      "recovered_decay": 0.75,
+      "decay_abs_error": 0.65,
+      "decay_grid_floor": 0.04999999999999999,
+      "true_half_saturation_gbp": 18000.0,
+      "recovered_half_saturation_gbp": 80000.0,
+      "half_saturation_abs_pct_error": 3.4444444444444446,
+      "half_saturation_grid_floor_pct": 0.1111111111111111,
+      "best_validation_mape": 0.03122933259721323,
+      "worst_validation_mape": 0.032487437540168765,
+      "validation_mape_spread": 0.04028600159927222
+    },
+    {
+      "channel": "Influencer",
+      "true_decay": 0.6,
+      "recovered_decay": 0.55,
+      "decay_abs_error": 0.04999999999999993,
+      "decay_grid_floor": 0.04999999999999993,
+      "true_half_saturation_gbp": 65000.0,
+      "recovered_half_saturation_gbp": 200000.0,
+      "half_saturation_abs_pct_error": 2.076923076923077,
+      "half_saturation_grid_floor_pct": 0.07692307692307693,
+      "best_validation_mape": 0.030880038985665208,
+      "worst_validation_mape": 0.03189532197511457,
+      "validation_mape_spread": 0.032878293642072974
+    }
+  ],
+  "parameter_sensitivity": [
+    {
+      "scenario": "Generator truth (repo default)",
+      "holdout_mape": 0.05112262213574507,
+      "holdout_rmse_gbp": 276255.7364430234,
+      "train_r_squared": 0.8958170863120487,
+      "mean_estimated_roi": 4.433031333712858
+    },
+    {
+      "scenario": "Neutral (decay 0.35, half-sat GBP 100k)",
+      "holdout_mape": 0.04979303191429914,
+      "holdout_rmse_gbp": 270508.05938430125,
+      "train_r_squared": 0.8931475826422264,
+      "mean_estimated_roi": 3.838293236264518
+    },
+    {
+      "scenario": "Independent search result",
+      "holdout_mape": 0.06651752806787868,
+      "holdout_rmse_gbp": 332764.501107511,
+      "train_r_squared": 0.8910601925677776,
+      "mean_estimated_roi": 3.808882445905685
+    }
+  ]
+}

@@ -86,6 +86,36 @@ def test_calibrate_mmm_parameters_returns_search_results() -> None:
     assert calibration.mmm_result.metrics["test_mape"] < 0.2
 
 
+def test_calibrate_mmm_parameters_accepts_an_independent_grid() -> None:
+    """The search must be runnable without anchoring on ``DEFAULT_MEDIA_PARAMETERS``.
+
+    On the demo data those defaults are the generating values, so a search seeded and
+    scaled by them cannot test whether the transforms are identifiable. Absolute grids
+    plus a neutral seed are what ``scripts/validate_transform_recovery.py`` needs.
+    """
+
+    df, _ = generate_weekly_demo_data(seed=42)
+    neutral = {
+        column: {"adstock_decay": 0.35, "half_saturation": 100_000.0, "slope": 1.35}
+        for column in DEFAULT_MEDIA_PARAMETERS
+    }
+    calibration = calibrate_mmm_parameters(
+        df,
+        holdout_weeks=26,
+        validation_weeks=16,
+        decay_candidates=(0.2, 0.6),
+        half_saturation_candidates_gbp=(30_000.0, 150_000.0),
+        initial_parameters=neutral,
+    )
+
+    assert len(calibration.search_table) == 24
+    searched = set(calibration.search_table["half_saturation_gbp"])
+    assert searched == {30_000.0, 150_000.0}
+    for params in calibration.best_parameters.values():
+        assert params["half_saturation"] in {30_000.0, 150_000.0}
+        assert params["adstock_decay"] in {0.2, 0.6}
+
+
 def test_mmm_foundation_model_rejects_tiny_data() -> None:
     df, _ = generate_weekly_demo_data(seed=42)
 
