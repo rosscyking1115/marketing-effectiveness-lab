@@ -11,6 +11,30 @@ with measurements that can.
 
 ### Fixed
 
+- **The test suite could not tell the analytics apart from a constant.** An external sabotage
+  sweep flagged it and the finding reproduced: freezing `analytics.summarize_kpis`,
+  `channel_summary` and `promotion_summary` to shape-preserving constants produced **zero** red
+  tests, and only 20 of 139 tests noticed a fully frozen model. The cause was assertions about
+  shape, column names, row counts and `> 0` ranges — all satisfied by a constant. The worst
+  example was `test_dashboard_metrics_are_computed`, whose name promised computation while its
+  assertions checked only that three numbers were positive.
+
+  Added `tests/test_metric_sensitivity.py`: 13 tests, one per metric-bearing path (KPI totals,
+  channel summary, Hill saturation, MMM features, MMM predictions, holdout error, contribution and
+  ROI, baseline econometrics, budget scenario, budget optimiser, uncertainty intervals). Each is
+  either an oracle that recomputes the metric independently or a sensitivity check that perturbs an
+  input and requires the output to move, and **each was proven to fail under injection** before
+  being committed. Detection under a full freeze rose from 20 to 32; the previously blind
+  `analytics` path went from 0 to 3.
+
+  Added `scripts/sabotage_sweep.py` so the audit is repeatable rather than a one-off claim. A
+  variant that detects nothing is a finding, not a pass.
+
+  Note: `test_hill_saturation_is_bounded_and_monotonic` survives a frozen curve, because a constant
+  array is trivially sorted and trivially within `[0, 1]`. It is kept, and the new
+  `test_hill_saturation_responds_to_spend_and_half_saturation` is what actually holds the curve to
+  its definition.
+
 - `customer_future_value_backtest()` took each segment's expected future margin from the mean of
   the actual future margins it then scored against, making `mean_absolute_error_gbp` an in-sample
   dispersion rather than forecast error. Expectations are now estimated on a non-overlapping
