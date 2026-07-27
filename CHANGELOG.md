@@ -12,23 +12,28 @@ with measurements that can.
 ### Fixed
 
 - **The test suite could not tell the analytics apart from a constant.** An external sabotage
-  sweep flagged it and the finding reproduced: freezing `analytics.summarize_kpis`,
-  `channel_summary` and `promotion_summary` to shape-preserving constants produced **zero** red
-  tests, and only 20 of 139 tests noticed a fully frozen model. The cause was assertions about
-  shape, column names, row counts and `> 0` ranges — all satisfied by a constant. The worst
-  example was `test_dashboard_metrics_are_computed`, whose name promised computation while its
-  assertions checked only that three numbers were positive.
+  sweep flagged it and the finding reproduced: freezing metric-bearing functions to
+  shape-preserving constants left the suite green. Four functions were completely undetectable —
+  `analytics.summarize_kpis`, `analytics.channel_summary`, `analytics.promotion_summary` and
+  `uncertainty.simulate_mmm_uncertainty` each produced **zero** red tests — and only 20 of 139
+  tests noticed a fully frozen model. The cause was assertions about shape, column names, row
+  counts and `> 0` ranges, all satisfied by a constant. `test_dashboard_metrics_are_computed`
+  promised computation in its name while asserting only that three numbers were positive, and
+  `test_simulate_mmm_uncertainty_returns_intervals` asserted `lower <= upper`, equally true of a
+  constant.
 
-  Added `tests/test_metric_sensitivity.py`: 13 tests, one per metric-bearing path (KPI totals,
-  channel summary, Hill saturation, MMM features, MMM predictions, holdout error, contribution and
-  ROI, baseline econometrics, budget scenario, budget optimiser, uncertainty intervals). Each is
-  either an oracle that recomputes the metric independently or a sensitivity check that perturbs an
-  input and requires the output to move, and **each was proven to fail under injection** before
-  being committed. Detection under a full freeze rose from 20 to 32; the previously blind
-  `analytics` path went from 0 to 3.
+  Added `tests/test_metric_sensitivity.py`: 15 tests covering the derived dashboard columns, KPI
+  totals, channel summary, promotion summary, Hill saturation, MMM features, MMM predictions,
+  holdout error under a scrambled target, contribution and ROI, baseline econometrics, budget
+  scenario, budget optimiser, and uncertainty intervals. Each is either an oracle that recomputes
+  the metric independently or a sensitivity check that perturbs an input and requires the output to
+  move, and **each was proven to fail under injection** before being committed.
 
-  Added `scripts/sabotage_sweep.py` so the audit is repeatable rather than a one-off claim. A
-  variant that detects nothing is a finding, not a pass.
+  Added `scripts/sabotage_sweep.py` so the audit is repeatable rather than a one-off claim. It
+  freezes one function at a time, reports per function, and exits non-zero if any function survives
+  undetected. All 14 audited functions are now detected; per-function detection counts went 0 → 2
+  (`summarize_kpis`), 0 → 1 (`channel_summary`), 0 → 1 (`promotion_summary`), 0 → 2
+  (`simulate_mmm_uncertainty`) and 3 → 10 (`hill_saturation`).
 
   Note: `test_hill_saturation_is_bounded_and_monotonic` survives a frozen curve, because a constant
   array is trivially sorted and trivially within `[0, 1]`. It is kept, and the new

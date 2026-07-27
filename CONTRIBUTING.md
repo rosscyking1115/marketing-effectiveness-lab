@@ -54,14 +54,16 @@ A green suite is not evidence that anything is computed. Freeze a function so it
 constant of the right shape and dtype, and every assertion about shapes, column names, row
 counts and `> 0` ranges still passes.
 
-This repo failed that check. Freezing `analytics.summarize_kpis`, `channel_summary` and
-`promotion_summary` to constants produced **zero** red tests — `test_dashboard_metrics_are_computed`
-asserted `revenue > 0`, `spend > 0` and `roas > 0`, all true of a constant `1.0`. Across the whole
-suite, 20 of 139 tests noticed a fully frozen model; 119 did not.
+This repo failed that check. Four functions were completely undetectable — freezing any of
+`analytics.summarize_kpis`, `analytics.channel_summary`, `analytics.promotion_summary` or
+`uncertainty.simulate_mmm_uncertainty` produced **zero** red tests. `test_dashboard_metrics_are_computed`
+asserted `revenue > 0`, `spend > 0` and `roas > 0`, all true of a constant `1.0`;
+`test_simulate_mmm_uncertainty_returns_intervals` asserted `lower <= upper`, also true of a
+constant. Across the whole suite, 20 of 139 tests noticed a fully frozen model; 119 did not.
 
 Two things guard it now:
 
-- [`tests/test_metric_sensitivity.py`](tests/test_metric_sensitivity.py) — one test per
+- [`tests/test_metric_sensitivity.py`](tests/test_metric_sensitivity.py) — a test per
   metric-bearing path, each written so a constant or scrambled output makes it red. Either an
   **oracle** (recompute the metric independently and require equality) or a **sensitivity** check
   (perturb an input, require the output to move).
@@ -72,12 +74,24 @@ Two things guard it now:
   uv run python scripts/sabotage_sweep.py
   ```
 
-  Every variant must report a non-zero detection count. **A variant that detects nothing is a
-  finding, not a pass.**
+  It freezes **one function at a time** and reports per function, then exits non-zero if any
+  function survived undetected. Per function matters: an earlier version froze three functions
+  together and reported a single "3 detected", which hid the fact that `promotion_summary` was
+  still completely blind. **A function that detects nothing is a finding, not a pass.**
 
-If you add a function that produces a number anyone would quote, add a test to
-`test_metric_sensitivity.py` and prove it bites: freeze the function, watch your test go red, then
-unfreeze. A test that passes under sabotage is not testing the thing you think it is.
+If you add a function that produces a number anyone would quote, add it to the sweep's target list,
+add a test to `test_metric_sensitivity.py`, and prove it bites:
+
+```powershell
+uv run python scripts/sabotage_sweep.py --target analytics.summarize_kpis
+```
+
+A test that passes under sabotage is not testing the thing you think it is.
+
+One trap worth knowing: consumers import by value (`from ...mmm import hill_saturation`), so
+patching only the defining module leaves those consumers running the real code. The sweep rebinds
+every alias across the package for this reason — if you write your own injection by hand, do the
+same, or you will credit coverage that does not exist.
 
 ### Type checking
 

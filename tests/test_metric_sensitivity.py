@@ -1,21 +1,28 @@
 """Tests that fail when a metric-bearing path stops computing.
 
 Most of this suite checks that code *runs* and returns the right shape. A sabotage
-sweep exposed the gap: freeze the analytics functions so they return constants of
-the right shape and dtype, and 121 of 139 tests still pass. Shape, range and
-ordering assertions are all satisfied by a constant.
+sweep exposed the gap: freeze the analytics functions so they return constants of the
+right shape and dtype, and the suite stayed green. Only 20 of 139 tests noticed a fully
+frozen model; 119 did not. Freezing the three `analytics` summary functions on their own
+produced zero red tests.
 
 Every test here is written so that a constant or scrambled output makes it red. Two
 styles are used:
 
 * **oracle** — recompute the metric independently and require equality, so a made-up
   number cannot match;
-* **sensitivity** — perturb an input and require the output to move, so an output
-  that ignores its input cannot pass.
+* **sensitivity** — perturb an input and require the output to move, so an output that
+  ignores its input cannot pass.
 
-If you add a metric-bearing function, add a test here too. To check that a test in
-this file really bites, monkeypatch the function it covers to return a constant and
-confirm the test goes red — that is the property being asserted, not a nice-to-have.
+This file covers the paths that produce numbers a reader would quote: the analytics
+summaries, the MMM transforms and fit, baseline econometrics, budget scenarios and
+optimisation, and uncertainty intervals. It is not exhaustive over the package — the
+`calibration`, `bayesian` and `customer` modules are covered by their own suites, and
+`tests/test_customer_analytics.py` carries the equivalent guard for the CLV backtest.
+
+If you add a metric-bearing function, add a test here and prove it bites: freeze the
+function to a constant, watch your test go red, then unfreeze.
+`scripts/sabotage_sweep.py` automates exactly that.
 """
 
 from __future__ import annotations
@@ -27,6 +34,7 @@ import pytest
 from marketing_effectiveness_lab.analytics import (
     channel_summary,
     prepare_weekly_frame,
+    promotion_summary,
     spend_columns,
     summarize_kpis,
 )
@@ -43,6 +51,17 @@ from marketing_effectiveness_lab.mmm import (
 )
 from marketing_effectiveness_lab.modeling import fit_baseline_model
 from marketing_effectiveness_lab.uncertainty import simulate_mmm_uncertainty
+
+# Declared locally rather than imported, so an oracle never reuses the implementation's
+# own lookup table to build its expectation.
+CHANNEL_LABELS_FOR_ORACLE = {
+    "paid_search_spend_gbp": "Paid search",
+    "paid_social_spend_gbp": "Paid social",
+    "display_spend_gbp": "Display",
+    "affiliates_spend_gbp": "Affiliates",
+    "email_spend_gbp": "Email",
+    "influencer_spend_gbp": "Influencer",
+}
 
 
 @pytest.fixture(scope="module")
@@ -61,6 +80,24 @@ def fitted_mmm(demo_frame: pd.DataFrame):
 # --------------------------------------------------------------------------------------
 
 
+def test_prepare_weekly_frame_derived_columns_are_computed(demo_frame: pd.DataFrame) -> None:
+    """Oracle: the derived dashboard columns must match direct computation."""
+
+    prepared = prepare_weekly_frame(demo_frame)
+    expected_total = prepared[spend_columns(prepared)].sum(axis=1)
+
+    assert np.allclose(prepared["total_media_spend_gbp"].to_numpy(float), expected_total.to_numpy(float))
+    assert np.allclose(
+        prepared["blended_roas"].to_numpy(float),
+        (prepared["revenue_gbp"] / expected_total).to_numpy(float),
+    )
+    # Rolling averages: first row is itself, fourth row is the mean of the first four.
+    assert prepared["revenue_4w_avg"].iloc[0] == pytest.approx(float(prepared["revenue_gbp"].iloc[0]))
+    assert prepared["revenue_4w_avg"].iloc[3] == pytest.approx(float(prepared["revenue_gbp"].iloc[:4].mean()))
+    assert prepared["media_spend_4w_avg"].iloc[3] == pytest.approx(float(expected_total.iloc[:4].mean()))
+    assert prepared["total_media_spend_gbp"].std() > 0
+
+
 def test_summarize_kpis_matches_independently_computed_totals(demo_frame: pd.DataFrame) -> None:
     """Oracle: every KPI must equal the value recomputed straight from the frame."""
 
@@ -77,8 +114,6 @@ def test_summarize_kpis_matches_independently_computed_totals(demo_frame: pd.Dat
     assert kpis.new_customers == int(prepared["new_customers"].sum())
     assert kpis.average_order_value_gbp == pytest.approx(expected_revenue / expected_orders)
     assert kpis.blended_roas == pytest.approx(expected_revenue / expected_spend)
-    # A constant stub would satisfy "> 0" but not the magnitudes above.
-    assert kpis.revenue_gbp > 1_000_000
 
 
 def test_summarize_kpis_responds_to_the_data(demo_frame: pd.DataFrame) -> None:
@@ -104,14 +139,7 @@ def test_channel_summary_values_track_the_underlying_spend(demo_frame: pd.DataFr
 
     total_spend = float(prepared[spend_columns(prepared)].sum().sum())
     for column in spend_columns(prepared):
-        label = {
-            "paid_search_spend_gbp": "Paid search",
-            "paid_social_spend_gbp": "Paid social",
-            "display_spend_gbp": "Display",
-            "affiliates_spend_gbp": "Affiliates",
-            "email_spend_gbp": "Email",
-            "influencer_spend_gbp": "Influencer",
-        }[column]
+        label = CHANNEL_LABELS_FOR_ORACLE[column]
         expected_spend = float(prepared[column].sum())
         # numpy rather than pandas, so the oracle does not reuse the implementation's own call.
         expected_corr = float(
@@ -123,8 +151,33 @@ def test_channel_summary_values_track_the_underlying_spend(demo_frame: pd.DataFr
         assert summary.loc[label, "corr_with_revenue"] == pytest.approx(expected_corr, abs=1e-9)
 
     assert summary["spend_share"].sum() == pytest.approx(1.0)
-    # Channels must be distinguishable; a constant table collapses this to zero.
+    # Channels must be distinguishable; a constant table collapses this to one value.
     assert summary["spend_gbp"].nunique() == len(summary)
+
+
+def test_promotion_summary_matches_independently_computed_groups(demo_frame: pd.DataFrame) -> None:
+    """Oracle: promoted and non-promoted aggregates must match manual grouping."""
+
+    prepared = prepare_weekly_frame(demo_frame)
+    summary = promotion_summary(prepared).set_index("promotion_flag")
+
+    for flag, label in [(0, "Non-promo weeks"), (1, "Promo weeks")]:
+        subset = prepared[prepared["promotion_flag"] == flag]
+        assert int(summary.loc[label, "weeks"]) == len(subset)
+        assert summary.loc[label, "avg_revenue_gbp"] == pytest.approx(float(subset["revenue_gbp"].mean()))
+        assert summary.loc[label, "avg_media_spend_gbp"] == pytest.approx(
+            float(subset["total_media_spend_gbp"].mean())
+        )
+        assert summary.loc[label, "avg_promotion_depth_pct"] == pytest.approx(
+            float(subset["promotion_depth_pct"].mean())
+        )
+        assert summary.loc[label, "avg_orders"] == pytest.approx(float(subset["orders"].mean()))
+
+    # The two groups must be distinguishable; by construction promoted weeks discount more.
+    assert (
+        summary.loc["Promo weeks", "avg_promotion_depth_pct"]
+        > summary.loc["Non-promo weeks", "avg_promotion_depth_pct"]
+    )
 
 
 # --------------------------------------------------------------------------------------
@@ -206,9 +259,15 @@ def test_mmm_contribution_distinguishes_channels(fitted_mmm) -> None:
     assert table["estimated_roi"].std() > 0
     assert table["estimated_contribution_gbp"].std() > 0
     assert table["contribution_share"].sum() == pytest.approx(1.0)
-    # Contribution must be consistent with the spend and ROI reported beside it.
-    recomputed = table["estimated_contribution_gbp"] / table["spend_gbp"]
-    assert np.allclose(recomputed.to_numpy(float), table["estimated_roi"].to_numpy(float))
+
+    # Oracle: rebuild contribution from the fitted coefficients and the transformed feature,
+    # independently of _contribution_table. A constant table cannot match this.
+    indexed = table.set_index("channel")
+    for column in spend_columns(fitted_mmm.feature_frame):
+        coefficient = max(float(fitted_mmm.model.params.get(f"{column}_mmm", 0.0)), 0.0)
+        expected = float(fitted_mmm.feature_frame[f"{column}_mmm"].sum()) * coefficient
+        label = CHANNEL_LABELS_FOR_ORACLE[column]
+        assert indexed.loc[label, "estimated_contribution_gbp"] == pytest.approx(expected, rel=1e-9)
 
 
 # --------------------------------------------------------------------------------------
@@ -245,12 +304,14 @@ def test_budget_scenario_responds_to_a_spend_increase(demo_frame: pd.DataFrame, 
 
     assert scenario.summary["weekly_spend_change_gbp"] > 0
     assert scenario.summary["weekly_contribution_change_gbp"] > 0
-    # Diminishing returns: a 25% spend rise must not buy a 25% contribution rise.
+
+    # Diminishing returns: a 25% spend rise must not buy a 25% contribution rise. Read the
+    # current level from the summary rather than reconstructing it, so a frozen summary
+    # fails on the assertion rather than dying in a divide.
+    baseline_contribution = scenario.summary["current_weekly_contribution_gbp"]
+    assert baseline_contribution > 0
     spend_ratio = sum(increased.values()) / sum(current.values())
-    contribution_ratio = 1 + (
-        scenario.summary["weekly_contribution_change_gbp"]
-        / (scenario.summary["proposed_weekly_contribution_gbp"] - scenario.summary["weekly_contribution_change_gbp"])
-    )
+    contribution_ratio = 1 + scenario.summary["weekly_contribution_change_gbp"] / baseline_contribution
     assert contribution_ratio < spend_ratio
     assert scenario.channel_table["weekly_spend_change_gbp"].std() > 0
 
@@ -271,8 +332,11 @@ def test_budget_optimizer_allocation_responds_to_its_constraints(
     )
 
     assert (tight.diagnostics["optimized_share"] <= 0.20 + 1e-6).all()
-    assert loose.diagnostics["optimized_share"].max() > 0.20 + 1e-6, "loose cap should bind less"
     assert loose.allocation != tight.allocation
+    # Structural rather than fit-dependent: the tighter cap must bind on more channels.
+    loose_at_cap = int((loose.diagnostics["optimized_share"] >= 0.50 - 1e-6).sum())
+    tight_at_cap = int((tight.diagnostics["optimized_share"] >= 0.20 - 1e-6).sum())
+    assert tight_at_cap > loose_at_cap
     # The optimiser must actually move budget rather than echo the current mix.
     assert any(
         abs(loose.allocation[channel] - current[channel]) > 1.0 for channel in current
@@ -304,7 +368,13 @@ def test_uncertainty_intervals_have_width_and_vary_by_channel(fitted_mmm) -> Non
 
 
 def test_uncertainty_intervals_widen_with_the_requested_level(fitted_mmm) -> None:
-    """Sensitivity: a 95% interval must be strictly wider than a 50% one."""
+    """A 95% interval must be strictly wider than a 50% one.
+
+    Both runs share a seed and draw count, so the draw matrix is identical and this
+    follows from quantile monotonicity. It is a check that ``interval_width`` is actually
+    applied, not a statement about calibration — coverage is measured in
+    ``docs/validation.md``.
+    """
 
     narrow = simulate_mmm_uncertainty(fitted_mmm, draws=400, seed=11, interval_width=0.50)
     wide = simulate_mmm_uncertainty(fitted_mmm, draws=400, seed=11, interval_width=0.95)
