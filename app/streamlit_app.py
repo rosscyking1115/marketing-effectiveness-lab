@@ -964,6 +964,7 @@ with clv_tables_right:
         "avg_actual_future_margin_gbp",
         "expected_future_margin_gbp",
         "mean_absolute_error_gbp",
+        "baseline_mean_absolute_error_gbp",
     ]:
         clv_backtest_display[money_col] = clv_backtest_display[money_col].map(gbp)
     clv_backtest_display["repeat_rate_in_horizon"] = clv_backtest_display[
@@ -979,11 +980,18 @@ with clv_tables_right:
                 "avg_actual_future_margin_gbp",
                 "expected_future_margin_gbp",
                 "mean_absolute_error_gbp",
+                "baseline_mean_absolute_error_gbp",
                 "repeat_rate_in_horizon",
             ]
         ],
         width="stretch",
         hide_index=True,
+    )
+    st.caption(
+        "Segment expectations are estimated on the 180 days before the cutoff and scored on the "
+        "180 days after it, so the error is out of sample. Compare it against the baseline column, "
+        "which predicts the pooled average for every customer: where the baseline is lower, the "
+        "segmentation is not earning its keep."
     )
 
 st.markdown("**CRM incrementality diagnostics**")

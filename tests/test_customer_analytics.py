@@ -179,7 +179,44 @@ def test_customer_future_value_backtest_returns_segment_baseline() -> None:
     assert backtest["customers"].sum() > 0
     assert backtest["expected_future_margin_gbp"].ge(0).all()
     assert backtest["mean_absolute_error_gbp"].ge(0).all()
+    assert backtest["baseline_mean_absolute_error_gbp"].ge(0).all()
     assert backtest["repeat_rate_in_horizon"].between(0, 1).all()
+
+
+def test_customer_future_value_backtest_expectation_is_out_of_sample() -> None:
+    """The scored expectation must not be the mean of the labels it is scored against.
+
+    Guards the defect this replaced: segment expectations taken from the evaluation
+    window itself made ``mean_absolute_error_gbp`` a within-segment dispersion, so it
+    matched the actual segment mean exactly and could never indicate a bad forecast.
+    """
+
+    dataset = generate_customer_demo_data(seed=42, customer_count=800)
+    tables = prepare_customer_tables(dataset.as_tables())
+
+    backtest = customer_future_value_backtest(
+        tables["customers"],
+        tables["orders"],
+        cutoff_date="2025-01-01",
+        horizon_days=180,
+    )
+
+    gap = (backtest["expected_future_margin_gbp"] - backtest["avg_actual_future_margin_gbp"]).abs()
+    assert gap.max() > 1e-6, "expectation still collapses onto the actual segment mean"
+
+
+def test_customer_future_value_backtest_rejects_non_earlier_fit_window() -> None:
+    dataset = generate_customer_demo_data(seed=42, customer_count=200)
+    tables = prepare_customer_tables(dataset.as_tables())
+
+    with pytest.raises(ValueError, match="strictly earlier"):
+        customer_future_value_backtest(
+            tables["customers"],
+            tables["orders"],
+            cutoff_date="2025-01-01",
+            fit_cutoff_date="2025-01-01",
+            horizon_days=180,
+        )
 
 
 def test_score_customer_lapse_value_produces_risk_bands_and_expected_margin() -> None:

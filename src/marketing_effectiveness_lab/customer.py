@@ -241,10 +241,82 @@ def customer_future_value_backtest(
     *,
     cutoff_date: pd.Timestamp | str,
     horizon_days: int = 180,
+    fit_cutoff_date: pd.Timestamp | str | None = None,
 ) -> pd.DataFrame:
-    """Backtest segment-level future gross-margin baselines from a historical cutoff."""
+    """Backtest segment-level future gross-margin baselines out of sample.
+
+    Segment expectations are estimated on a *fit* window that ends at
+    ``fit_cutoff_date`` (default: one horizon before ``cutoff_date``) and are then
+    scored against actual margin in the *evaluation* window that follows
+    ``cutoff_date``. The two windows do not overlap, so ``mean_absolute_error_gbp``
+    is a genuine out-of-sample error rather than dispersion around a mean taken
+    from the labels being scored.
+
+    ``baseline_mean_absolute_error_gbp`` applies the pooled fit-window mean to
+    every customer, so the segmentation has something it can lose to.
+    """
 
     cutoff = pd.Timestamp(cutoff_date)
+    fit_cutoff = (
+        pd.Timestamp(fit_cutoff_date)
+        if fit_cutoff_date is not None
+        else cutoff - pd.Timedelta(days=horizon_days)
+    )
+    if fit_cutoff >= cutoff:
+        raise ValueError("fit_cutoff_date must be strictly earlier than cutoff_date.")
+
+    fit_frame = _segment_future_margin(customers, orders, fit_cutoff, horizon_days)
+    if fit_frame.empty:
+        raise ValueError(
+            "No customers with orders on or before the fit cutoff "
+            f"({fit_cutoff.date()}); the segment expectations cannot be estimated. "
+            "Move cutoff_date later or pass an explicit fit_cutoff_date."
+        )
+    evaluation = _segment_future_margin(customers, orders, cutoff, horizon_days)
+
+    segment_means = fit_frame.groupby(["lifecycle_segment", "value_segment"], as_index=False).agg(
+        segment_expected_future_margin_gbp=("actual_future_margin_gbp", "mean")
+    )
+    pooled_expectation = float(fit_frame["actual_future_margin_gbp"].mean())
+
+    scored = evaluation.merge(segment_means, on=["lifecycle_segment", "value_segment"], how="left")
+    # Segments seen at the evaluation cutoff but absent from the fit window fall
+    # back to the pooled fit-window mean rather than to their own future labels.
+    scored["segment_expected_future_margin_gbp"] = scored[
+        "segment_expected_future_margin_gbp"
+    ].fillna(pooled_expectation)
+    scored["absolute_error_gbp"] = (
+        scored["segment_expected_future_margin_gbp"] - scored["actual_future_margin_gbp"]
+    ).abs()
+    scored["baseline_absolute_error_gbp"] = (
+        pooled_expectation - scored["actual_future_margin_gbp"]
+    ).abs()
+
+    summary = (
+        scored.groupby(["lifecycle_segment", "value_segment"], as_index=False)
+        .agg(
+            customers=("customer_id", "nunique"),
+            avg_historical_margin_gbp=("gross_margin_gbp", "mean"),
+            avg_actual_future_margin_gbp=("actual_future_margin_gbp", "mean"),
+            expected_future_margin_gbp=("segment_expected_future_margin_gbp", "mean"),
+            mean_absolute_error_gbp=("absolute_error_gbp", "mean"),
+            baseline_mean_absolute_error_gbp=("baseline_absolute_error_gbp", "mean"),
+            repeat_rate_in_horizon=("actual_future_orders", lambda values: float((values > 0).mean())),
+        )
+        .sort_values("expected_future_margin_gbp", ascending=False)
+        .reset_index(drop=True)
+    )
+    return summary
+
+
+def _segment_future_margin(
+    customers: pd.DataFrame,
+    orders: pd.DataFrame,
+    cutoff: pd.Timestamp,
+    horizon_days: int,
+) -> pd.DataFrame:
+    """Segment customers as of ``cutoff`` and attach their realised future margin."""
+
     horizon_end = cutoff + pd.Timedelta(days=horizon_days)
     features = _customer_features_as_of(customers, orders, cutoff)
     eligible = features[features["order_count"] > 0].copy()
@@ -262,29 +334,7 @@ def customer_future_value_backtest(
         "actual_future_margin_gbp",
     ]:
         eligible[column] = eligible[column].fillna(0)
-
-    segment_means = eligible.groupby(["lifecycle_segment", "value_segment"], as_index=False).agg(
-        segment_expected_future_margin_gbp=("actual_future_margin_gbp", "mean")
-    )
-    scored = eligible.merge(segment_means, on=["lifecycle_segment", "value_segment"], how="left")
-    scored["absolute_error_gbp"] = (
-        scored["segment_expected_future_margin_gbp"] - scored["actual_future_margin_gbp"]
-    ).abs()
-
-    summary = (
-        scored.groupby(["lifecycle_segment", "value_segment"], as_index=False)
-        .agg(
-            customers=("customer_id", "nunique"),
-            avg_historical_margin_gbp=("gross_margin_gbp", "mean"),
-            avg_actual_future_margin_gbp=("actual_future_margin_gbp", "mean"),
-            expected_future_margin_gbp=("segment_expected_future_margin_gbp", "mean"),
-            mean_absolute_error_gbp=("absolute_error_gbp", "mean"),
-            repeat_rate_in_horizon=("actual_future_orders", lambda values: float((values > 0).mean())),
-        )
-        .sort_values("expected_future_margin_gbp", ascending=False)
-        .reset_index(drop=True)
-    )
-    return summary
+    return eligible
 
 
 def score_customer_lapse_value(
