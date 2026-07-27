@@ -7,11 +7,16 @@ from drifting apart (e.g. a model trained on demo data seeing a different
 seasonal encoding than connector-assembled data).
 
 Each helper accepts an array-like (a pandas ``Series``/``Index`` or a NumPy
-array) and returns the same kind of object, preserving the pandas index when one
-is supplied so the result can be assigned back to a frame without misalignment.
+array). A ``Series`` in gives a ``Series`` out, preserving the pandas index so the
+result can be assigned back to a frame without misalignment. An ``Index`` or a
+NumPy array in gives a NumPy array out, because ``Index.isin`` and NumPy
+comparisons return arrays rather than index-bearing objects.
 """
 
 from __future__ import annotations
+
+import numpy as np
+import pandas as pd
 
 # A promotion is treated as active once the weekly discount depth reaches this
 # threshold. Connector data only exposes discount depth, so the flag is derived
@@ -27,25 +32,25 @@ HOLIDAY_MONTHS = (11, 12)
 SPRING_SUMMER_MONTHS = (3, 4, 5, 6, 7, 8)
 
 
-def season_spring_summer_flag(month):
+def season_spring_summer_flag(month: pd.Series | pd.Index) -> pd.Series | np.ndarray:
     """Return 1 for spring/summer months (March-August), else 0."""
 
     return month.isin(SPRING_SUMMER_MONTHS).astype(int)
 
 
-def season_autumn_winter_flag(month):
+def season_autumn_winter_flag(month: pd.Series | pd.Index) -> pd.Series | np.ndarray:
     """Return 1 for autumn/winter months, as the complement of spring/summer."""
 
     return (1 - season_spring_summer_flag(month)).astype(int)
 
 
-def holiday_flag(month):
+def holiday_flag(month: pd.Series | pd.Index) -> pd.Series | np.ndarray:
     """Return 1 for peak holiday trading months (November-December), else 0."""
 
     return month.isin(HOLIDAY_MONTHS).astype(int)
 
 
-def promotion_flag(promotion_depth_pct):
+def promotion_flag(promotion_depth_pct: pd.Series | np.ndarray) -> pd.Series | np.ndarray:
     """Return 1 where weekly discount depth meets the promotion threshold."""
 
     return (promotion_depth_pct >= PROMOTION_DEPTH_THRESHOLD_PCT).astype(int)

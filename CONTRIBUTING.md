@@ -44,8 +44,28 @@ Install dependencies with [`uv`](https://docs.astral.sh/uv/), then:
 ```powershell
 uv run --group dev ruff check .
 uv run --group dev pytest
+uv run --group dev mypy
 uv run streamlit run app/streamlit_app.py --server.port 8501 --server.headless true
 ```
+
+### Type checking
+
+The package ships a `py.typed` marker and a non-strict mypy configuration scoped to `src/`
+(`[tool.mypy]` in `pyproject.toml`). CI runs ruff and pytest but **does not gate on mypy**, because
+mypy does not currently pass. That is deliberate and recorded rather than hidden:
+
+- **Known baseline: 36 errors across 6 files** — `reporting.py` (14), `customer.py` (11),
+  `access.py` (4), `calibration.py` (3), `budget.py` (2), `data/customer_generator.py` (2).
+- They are all the same idiom. Run manifests, CRM experiment artifacts and stakeholder payloads are
+  genuinely heterogeneous, so they are typed `dict[str, object]`; values read back out are then
+  passed straight to `int()` or `float()` without narrowing. The annotation is honest and the code
+  is correct — mypy is right that the narrowing is missing.
+- **No real defects were found.** All 36 are annotation precision, not bugs.
+
+Clearing them means adding narrowing helpers at roughly 36 call sites. That is a reasonable
+contribution, and the CI gate should be added in the same change rather than before it — a
+configured checker that nothing runs is worse than no checker. Do not clear them by disabling error
+codes.
 
 ## Pull request standard
 

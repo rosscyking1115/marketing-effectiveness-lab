@@ -17,6 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.11",
     "pytest>=8.0",
     "ruff>=0.8",
 ]
@@ -47,6 +48,21 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+marketing_effectiveness_lab = ["py.typed"]
+
+# Non-strict on purpose. The package is annotated but not written against a type
+# checker, and the third-party surface (pandas, statsmodels, plotly, streamlit) is
+# only partially typed, so strict mode would report far more about the ecosystem
+# than about this code. Scoped to src/: scripts/, app/ and tests/ are not checked.
+[tool.mypy]
+files = ["src"]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
 
 [tool.ruff]
 line-length = 120
