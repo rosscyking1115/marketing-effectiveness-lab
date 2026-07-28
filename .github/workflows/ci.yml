@@ -6,7 +6,7 @@ on:
   pull_request:
   # Lets the suite and the sabotage sweep be re-run on demand against any branch,
   # without opening a pull request.
-  workflow_dispatch::
+  workflow_dispatch:
 
 permissions:
   contents: read
