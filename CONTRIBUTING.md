@@ -79,6 +79,11 @@ Two things guard it now:
   together and reported a single "3 detected", which hid the fact that `promotion_summary` was
   still completely blind. **A function that detects nothing is a finding, not a pass.**
 
+  CI runs this on every pull request as the `Sabotage sweep` job, in `--fast` mode: it stops at the
+  first test that notices each function, so the gate takes about a minute rather than a full suite
+  run per target. A guard nobody runs decays exactly like the assertions it replaced, which is the
+  whole finding this repo is documenting.
+
 If you add a function that produces a number anyone would quote, add it to the sweep's target list,
 add a test to `test_metric_sensitivity.py`, and prove it bites:
 

@@ -29,9 +29,11 @@ with measurements that can.
   the metric independently or a sensitivity check that perturbs an input and requires the output to
   move, and **each was proven to fail under injection** before being committed.
 
-  Added `scripts/sabotage_sweep.py` so the audit is repeatable rather than a one-off claim. It
-  freezes one function at a time, reports per function, and exits non-zero if any function survives
-  undetected. All 14 audited functions are now detected; per-function detection counts went 0 → 2
+  Added `scripts/sabotage_sweep.py` so the audit is repeatable rather than a one-off claim, and
+  wired it into CI as the `Sabotage sweep` job. It freezes one function at a time, reports per
+  function, and exits non-zero if any function survives undetected. Verified to bite: with
+  `tests/test_metric_sensitivity.py` removed in a scratch worktree, the gate exits 1 and names
+  exactly the four functions that were blind before this change. All 14 audited functions are now detected; per-function detection counts went 0 → 2
   (`summarize_kpis`), 0 → 1 (`channel_summary`), 0 → 1 (`promotion_summary`), 0 → 2
   (`simulate_mmm_uncertainty`) and 3 → 10 (`hill_saturation`).
 

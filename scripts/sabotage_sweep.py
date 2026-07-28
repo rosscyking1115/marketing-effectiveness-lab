@@ -244,13 +244,16 @@ def _parse_counts(stdout: str) -> tuple[int, int]:
     return count("failed") + count("error"), count("passed")
 
 
-def _run_target(target: str) -> tuple[int, int]:
+SENSITIVITY_TESTS = "tests/test_metric_sensitivity.py"
+
+
+def _pytest(target: str, extra: list[str]) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
     env["SABOTAGE"] = target
     scripts_dir = str(PROJECT_ROOT / "scripts")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [scripts_dir, env.get("PYTHONPATH", "")]))
     completed = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "-p", "sabotage_sweep", "--tb=no"],
+        [sys.executable, "-m", "pytest", "-q", "-p", "sabotage_sweep", "--tb=no", *extra],
         cwd=PROJECT_ROOT,
         env=env,
         capture_output=True,
@@ -265,24 +268,54 @@ def _run_target(target: str) -> tuple[int, int]:
             f"pytest exited {completed.returncode} for target {target}:\n"
             f"{completed.stdout[-2000:]}\n{completed.stderr[-2000:]}"
         )
-    return _parse_counts(completed.stdout)
+    return completed
+
+
+def _run_target(target: str) -> tuple[int, int]:
+    return _parse_counts(_pytest(target, []).stdout)
+
+
+def _is_detected(target: str) -> bool:
+    """Gate-only check: does *any* test notice this function being frozen?
+
+    Runs the purpose-built guards first and stops at the first failure, so a healthy
+    target costs seconds rather than a full suite. Only a target that survives the
+    guards pays for a full run, which is exactly the case worth spending time on.
+    """
+
+    if (PROJECT_ROOT / SENSITIVITY_TESTS).exists() and _pytest(target, [SENSITIVITY_TESTS, "-x"]).returncode == 1:
+        return True
+    return _pytest(target, ["-x"]).returncode == 1
 
 
 def main() -> None:
     targets = sorted(_build_targets())
     parser = argparse.ArgumentParser(description="Freeze metric-bearing functions and report detection.")
     parser.add_argument("--target", choices=targets, help="Freeze a single function instead of all.")
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Gate mode: report only detected/blind, stopping at the first test that notices. Used by CI.",
+    )
     args = parser.parse_args()
 
     selected = [args.target] if args.target else targets
-    print(f"{'frozen function':<42} {'detected':>9} {'survived':>9}  verdict")
     blind = []
-    for target in selected:
-        detected, survived = _run_target(target)
-        if detected == 0:
-            blind.append(target)
-        verdict = "BLIND - no test noticed" if detected == 0 else "noticed"
-        print(f"{target:<42} {detected:>9} {survived:>9}  {verdict}")
+    if args.fast:
+        print(f"{'frozen function':<42} verdict")
+        for target in selected:
+            detected = _is_detected(target)
+            if not detected:
+                blind.append(target)
+            print(f"{target:<42} {'noticed' if detected else 'BLIND - no test noticed'}")
+    else:
+        print(f"{'frozen function':<42} {'detected':>9} {'survived':>9}  verdict")
+        for target in selected:
+            detected, survived = _run_target(target)
+            if detected == 0:
+                blind.append(target)
+            verdict = "BLIND - no test noticed" if detected == 0 else "noticed"
+            print(f"{target:<42} {detected:>9} {survived:>9}  {verdict}")
 
     if blind:
         print("\nBlind paths (add a test to tests/test_metric_sensitivity.py):")

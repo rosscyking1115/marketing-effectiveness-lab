@@ -36,3 +36,33 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+  sabotage:
+    name: Sabotage sweep
+    runs-on: ubuntu-latest
+
+    # A green suite is not evidence that anything is computed. This job freezes each
+    # metric-bearing function to a constant in turn and fails if no test notices. It
+    # exists because that check once failed here: four functions were undetectable and
+    # 119 of 139 tests passed against a model computing nothing. Without an automated
+    # guard the fix would decay exactly like the assertions it replaced.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          version: "0.11.19"
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Freeze each metric-bearing function and require a test to notice
+        run: uv run python scripts/sabotage_sweep.py --fast
