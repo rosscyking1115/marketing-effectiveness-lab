@@ -62,7 +62,11 @@ MMM-ready weekly dataset, with source-coverage and data-quality diagnostics.
 
 ### Measurement and modelling
 
-- Baseline econometrics with time-aware holdout validation.
+- Baseline econometrics with time-aware holdout validation. Validation never shuffles rows: the
+  final 26 weeks are held out as a contiguous block at the end of the series and the model sees
+  only earlier weeks, so nothing is scored on a period the fit already knew about. Parameter
+  tuning uses a further window nested inside the training period, carved out before the holdout,
+  so the test set is untouched by the search.
 - MMM-style adstock, saturation, contribution, ROI, and response curves.
 - Uncertainty intervals and a lightweight Bayesian posterior layer.
 - Lift-test evidence upload, quality governance, and experiment-informed calibration.
@@ -101,8 +105,9 @@ Real figures produced by the package on the demo data (regenerate with
 ## Does the model actually work?
 
 The demo data is generated from known adstock, saturation, and effect parameters, so the model
-can be checked against the truth rather than judged on plausibility. Two questions follow: does
-it recover those parameters, and is its uncertainty honest? Write-up in
+can be checked against the truth rather than judged on plausibility. Three questions follow: does
+it recover the channel effects, is its uncertainty honest, and could the adstock and saturation
+parameters have been found from the data at all? Write-up in
 [`docs/validation.md`](docs/validation.md).
 
 | | |
@@ -112,6 +117,20 @@ it recover those parameters, and is its uncertainty honest? Write-up in
 
 Building this turned up a real numerical bug, an ill-conditioned Bayesian posterior that had
 collapsed interval coverage to zero. The write-up has the diagnosis and the fix.
+
+The third question has the least flattering answer, which is why it is here. Both studies above
+hand the model the true adstock and saturation, because the model's defaults were copied from the
+generator. Take that away — search an absolute grid from a neutral start — and the parameters are
+not recovered: mean decay error 0.35 on a 0.05–0.75 grid, and 0 of 6 channels landing on the
+nearest half-saturation. The cause is a flat objective, not a weak search. Validation MAPE moves
+between 3.09% and 3.60% across all 80 candidates per channel, so the search is ranking noise. The
+tuned transform parameters this repo reports are legible defaults, not estimates.
+
+So what does that free gift buy? The write-up measures it rather than caveating it. Refit with
+deliberately wrong, uniform parameters and the holdout is *marginally better* — 4.98% MAPE against
+5.11% — so the accuracy figures here do not depend on knowing the answer in advance. Mean channel
+ROI moves about 13% (4.43× against 3.84×), which is the number that is genuinely conditional, on
+top of the larger confounding bias described above.
 
 That bias is an identification problem, so no amount of tuning removes it. An experiment can.
 Simulating geo-lift tests against the known ground truth and running them through the
@@ -203,7 +222,9 @@ Start with [`docs/methodology.md`](docs/methodology.md), which covers adstock, s
 priors, holdout and geo-lift calibration, and how each step is validated.
 
 - [`docs/validation.md`](docs/validation.md) asks whether the model recovers the known
-  generating parameters and whether its intervals are honest (`scripts/validate_recovery.py`).
+  generating parameters, whether its intervals are honest (`scripts/validate_recovery.py`), and
+  whether the adstock and saturation parameters are identifiable at all
+  (`scripts/validate_transform_recovery.py` — they are not, and the write-up says so).
 - [`docs/reconciliation.md`](docs/reconciliation.md) closes the causal loop: simulated geo-lift
   evidence calibrates the biased MMM back towards truth
   (`scripts/reconcile_mmm_experiments.py`).

@@ -89,6 +89,14 @@ channel, `decay ∈ {0.10, 0.30, 0.50, 0.70}` against a `half_saturation` multip
 It is a grid search rather than a global optimiser, and it tunes one channel at a time. That keeps
 it legible and cheap, not exhaustive.
 
+Two caveats, both measured rather than assumed in [section 3 of the validation study](validation.md).
+The default half-saturation grid is a multiplier around `DEFAULT_MEDIA_PARAMETERS`, and on the demo
+data those defaults *are* the generating values, so the default grid is anchored on the truth. Run
+with an absolute grid and a neutral seed instead — `half_saturation_candidates_gbp` and
+`initial_parameters` — and recovery fails outright: validation MAPE varies by less than a
+percentage point across the whole grid, so the search is choosing between candidates the data
+cannot tell apart. Treat the tuned values as a legible default, not as an estimate.
+
 ## 6. Uncertainty
 
 A point estimate without a confidence statement is not a recommendation. There are two layers.

@@ -17,6 +17,13 @@ from marketing_effectiveness_lab.analytics import (
 )
 from marketing_effectiveness_lab.modeling import _mape
 
+# NOTE: on the demo dataset these defaults are exactly the data-generating adstock
+# and saturation parameters (see ``data/generator.py`` and
+# ``data/demo/ground_truth_metadata.json``). That is deliberate — it isolates the
+# effect/ROI recovery question from transform misspecification — but it means the
+# default model's fit is not evidence that the transforms are identifiable. That
+# question is answered separately by ``scripts/validate_transform_recovery.py``,
+# which searches an independent grid. On real data these are only priors.
 DEFAULT_MEDIA_PARAMETERS = {
     "paid_search_spend_gbp": {"adstock_decay": 0.25, "half_saturation": 92_000.0, "slope": 1.35},
     "paid_social_spend_gbp": {"adstock_decay": 0.45, "half_saturation": 130_000.0, "slope": 1.35},
@@ -152,28 +159,47 @@ def calibrate_mmm_parameters(
     validation_weeks: int = 20,
     decay_candidates: tuple[float, ...] = (0.10, 0.30, 0.50, 0.70),
     half_saturation_multipliers: tuple[float, ...] = (0.70, 1.00, 1.30),
+    half_saturation_candidates_gbp: tuple[float, ...] | None = None,
+    initial_parameters: Mapping[str, Mapping[str, float]] | None = None,
 ) -> MmmCalibrationResult:
-    """Tune adstock and saturation parameters with a small time-aware validation search."""
+    """Tune adstock and saturation parameters with a small time-aware validation search.
+
+    By default the half-saturation grid is a set of multipliers applied to
+    ``DEFAULT_MEDIA_PARAMETERS``, and the search starts from those defaults. On the
+    demo dataset those defaults are the data-generating values, so that grid is
+    anchored on the truth and cannot be used to *test* whether the transforms are
+    identifiable. Pass ``half_saturation_candidates_gbp`` (an absolute grid, shared
+    by every channel) and ``initial_parameters`` (a neutral starting point) to run
+    a search that is independent of the generating parameters — see
+    ``scripts/validate_transform_recovery.py``.
+    """
 
     if len(df) <= holdout_weeks + validation_weeks + 30:
         raise ValueError("Not enough rows to calibrate MMM parameters with the requested splits.")
 
-    best_parameters = _resolved_media_parameters()
+    best_parameters = _resolved_media_parameters(initial_parameters)
     calibration_df = prepare_weekly_frame(df).iloc[:-holdout_weeks].copy()
     search_rows = []
 
     for channel in spend_columns(calibration_df):
         channel_best = best_parameters[channel].copy()
         channel_best_mape = float("inf")
-        default_half_saturation = DEFAULT_MEDIA_PARAMETERS[channel]["half_saturation"]
+        slope = best_parameters[channel]["slope"]
+        if half_saturation_candidates_gbp is not None:
+            half_saturation_grid = tuple(float(value) for value in half_saturation_candidates_gbp)
+        else:
+            default_half_saturation = DEFAULT_MEDIA_PARAMETERS[channel]["half_saturation"]
+            half_saturation_grid = tuple(
+                default_half_saturation * multiplier for multiplier in half_saturation_multipliers
+            )
 
         for decay in decay_candidates:
-            for multiplier in half_saturation_multipliers:
+            for half_saturation in half_saturation_grid:
                 candidate_parameters = _copy_parameters(best_parameters)
                 candidate_parameters[channel] = {
                     "adstock_decay": decay,
-                    "half_saturation": default_half_saturation * multiplier,
-                    "slope": DEFAULT_MEDIA_PARAMETERS[channel]["slope"],
+                    "half_saturation": half_saturation,
+                    "slope": slope,
                 }
                 validation_mape = _validation_mape(
                     calibration_df,
@@ -185,7 +211,7 @@ def calibrate_mmm_parameters(
                         "channel": CHANNEL_LABELS[channel],
                         "spend_column": channel,
                         "adstock_decay": decay,
-                        "half_saturation_gbp": default_half_saturation * multiplier,
+                        "half_saturation_gbp": half_saturation,
                         "validation_mape": validation_mape,
                     }
                 )
