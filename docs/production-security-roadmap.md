@@ -28,7 +28,7 @@ For real company data, the project should follow these principles:
 ## Application Security Roadmap
 
 A design demonstration of the governance core now exists in
-`marketing_effectiveness_lab.access` (see `docs/phase-43-access-governance.md`): a
+`marketing_effectiveness_lab.access` (see `docs/access-governance.md`): a
 role-based permission matrix, an approval workflow with separation of duties, and an
 append-only, hash-chained (tamper-evident) audit log, with a runnable demonstration in
 `scripts/governance_demo.py`. This covers **authorization and audit**; **authentication**

@@ -20,5 +20,5 @@ data/demo/*.json
 data/public/
 
 # internal working docs — kept local, not for the public repo
-/docs/phase-0-project-brief.md
-/docs/phase-39-product-repositioning.md
+/docs/project-brief.md
+/docs/product-repositioning.md

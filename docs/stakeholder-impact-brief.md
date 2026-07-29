@@ -37,5 +37,5 @@ Outputs are written to `.local/stakeholder_brief/` (git-ignored).
   example a misleading 0% MAPE). The customer section is omitted entirely when no
   highlights are supplied.
 - **Real data.** The brief's customer section uses the synthetic customer demo by default;
-  point it at the real Online Retail II outputs (see `phase-41-real-public-data.md`) to
+  point it at the real Online Retail II outputs (see `real-public-data.md`) to
   populate it from genuine purchase behaviour.

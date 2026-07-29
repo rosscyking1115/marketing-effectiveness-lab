@@ -47,7 +47,7 @@ with measurements that can.
   dispersion rather than forecast error. Expectations are now estimated on a non-overlapping
   earlier fit window and scored out of sample, with a new `baseline_mean_absolute_error_gbp`
   column (pooled fit-window mean) to compare against. See
-  [`docs/phase-26-empirical-clv-lapse-risk.md`](docs/phase-26-empirical-clv-lapse-risk.md).
+  [`docs/empirical-clv-lapse-risk.md`](docs/empirical-clv-lapse-risk.md).
 
 ### Added
 
