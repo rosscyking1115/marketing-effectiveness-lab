@@ -183,8 +183,8 @@ uv run --group data python scripts/build_public_mmm_dataset.py
 > [!TIP]
 > Each script writes a provenance-documented summary to `data/public/` (git-ignored) that
 > states exactly which fields are real versus imputed. See
-> [`docs/phase-41-real-public-data.md`](docs/phase-41-real-public-data.md) and
-> [`docs/phase-44-real-connector-mmm.md`](docs/phase-44-real-connector-mmm.md).
+> [`docs/real-public-data.md`](docs/real-public-data.md) and
+> [`docs/real-connector-mmm.md`](docs/real-connector-mmm.md).
 
 ## Stakeholder brief and governance demo
 

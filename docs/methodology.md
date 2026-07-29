@@ -188,4 +188,4 @@ uv run streamlit run app/streamlit_app.py           # inspect every step interac
 ```
 
 Real public data (UCI Online Retail II) can be substituted via
-`scripts/build_public_mmm_dataset.py`. See [`phase-44-real-connector-mmm.md`](phase-44-real-connector-mmm.md).
+`scripts/build_public_mmm_dataset.py`. See [`real-connector-mmm.md`](real-connector-mmm.md).
